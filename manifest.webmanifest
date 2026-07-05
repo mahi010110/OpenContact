@@ -1,0 +1,15 @@
+{
+  "name": "OpenContact — pistes & contacts partagés",
+  "short_name": "OpenContact",
+  "description": "Trouve, enrichis et partage des pistes de stage, d'alternance ou d'emploi avec ta promo. Local-first, sans compte, open source.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F6F5F1",
+  "theme_color": "#1C6E5A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

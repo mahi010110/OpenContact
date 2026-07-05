@@ -5,10 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>OpenContact — trouve, enrichis et partage des contacts utiles</title>
 <meta name="description" content="OpenContact : l'outil communautaire pour trouver, enrichir et partager des pistes et contacts utiles dans ta recherche de stage, d'alternance ou d'emploi. Local-first, open source, sans compte.">
+<meta name="theme-color" id="metaTheme" content="#FFFFFF">
+<meta property="og:type" content="website">
+<meta property="og:title" content="OpenContact — pistes &amp; contacts partagés">
+<meta property="og:description" content="Trouve, enrichis et partage des pistes de stage, d'alternance ou d'emploi avec ta promo. Local-first, sans compte, open source.">
+<meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OpenContact">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cline x1='9' y1='22' x2='16' y2='10' stroke='%231C6E5A' stroke-width='2.4'/%3E%3Cline x1='16' y1='10' x2='24' y2='20' stroke='%231C6E5A' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='10' r='4.5' fill='%231C6E5A'/%3E%3Ccircle cx='9' cy='22' r='3.6' fill='white' stroke='%231C6E5A' stroke-width='2.2'/%3E%3Ccircle cx='24' cy='20' r='3.6' fill='white' stroke='%23D98324' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com">
+<!-- polices non bloquantes : la page s'affiche avec la pile système, la webfont prend le relais -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <style>
 /* ============ MARQUE & TOKENS (contrastes AA vérifiés) ============ */
 :root{
@@ -37,6 +50,11 @@ html[data-theme="dark"]{
 html,body{height:100%}
 [hidden]{display:none!important}
 button,a,label,select,summary,input{touch-action:manipulation}
+::selection{background:color-mix(in srgb,var(--primary) 24%,transparent)}
+/* focus clavier visible partout, sans encombrer la navigation tactile */
+a:focus-visible,summary:focus-visible,select:focus-visible,input[type="checkbox"]:focus-visible,input[type="radio"]:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px}
+.skip{position:fixed;top:-48px;left:10px;z-index:5000;background:var(--primary);color:var(--on-primary);font-weight:700;font-size:13px;padding:10px 14px;border-radius:0 0 10px 10px;text-decoration:none;transition:top .15s}
+.skip:focus{top:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;overflow:hidden;transition:background .2s,color .2s}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;color:var(--ink)}
@@ -161,7 +179,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .pin.ping::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--c);animation:ping 1s ease-out 3}
 @keyframes ping{0%{transform:scale(.6);opacity:1}100%{transform:scale(2.4);opacity:0}}
 .loc-btn{position:absolute;top:82px;left:10px;z-index:800;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:16px;box-shadow:0 1px 5px rgba(0,0,0,.15)}
-.legend{position:absolute;left:12px;bottom:12px;z-index:800;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:9px 11px;backdrop-filter:blur(4px);max-width:215px}
+.legend{position:absolute;left:12px;bottom:12px;z-index:800;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:9px 11px;backdrop-filter:blur(4px);max-width:246px}
 .lg-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;user-select:none}
 .lg-toggle{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-left:auto}
 .lg-toggle button{background:transparent;border:0;color:var(--muted);font-size:11px;font-weight:700;padding:5px 9px;text-transform:uppercase;position:relative}
@@ -368,7 +386,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
   .drag-zone{padding:8px 0 6px;cursor:pointer}
   .drag{width:42px;height:4px;border-radius:4px;background:var(--line);margin:0 auto}
   .fab{display:block}
-  .legend{bottom:76px;max-width:175px}
+  .legend{bottom:76px;max-width:196px}
   .toast{bottom:calc(var(--nav-h) + 26px + env(safe-area-inset-bottom))}
   .vswitch button span{display:none}
   .count-line{display:none}
@@ -442,6 +460,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 </head>
 <body>
 <noscript><div style="padding:20px;font-family:system-ui;text-align:center">OpenContact a besoin de JavaScript pour fonctionner — active-le dans ton navigateur.</div></noscript>
+<a class="skip" href="#main">Aller au contenu</a>
 <div class="app">
 
   <!-- ============ HEADER ============ -->
@@ -474,13 +493,13 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
     <button id="swExport">Exporter maintenant</button>
   </div>
 
-  <div class="main">
+  <main class="main" id="main">
 
     <!-- ============ VUE PISTES ============ -->
     <section class="view" id="view-pistes">
       <div class="toolbar">
         <div class="search-wrap">
-          <input class="search" id="q" type="search" placeholder="Chercher : entreprise, contact, ville, techno…" aria-label="Rechercher une piste">
+          <input class="search" id="q" type="search" placeholder="Chercher : entreprise, contact, ville, techno…" aria-label="Rechercher une piste" title="Astuce : la touche / amène directement ici">
           <button class="q-clear" id="qClear" hidden aria-label="Effacer la recherche">✕</button>
         </div>
         <div class="vswitch" role="group" aria-label="Mode d'affichage">
@@ -709,6 +728,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
         <h3>Questions fréquentes</h3>
         <ul>
           <li><b>Où sont mes données ?</b> Dans ton navigateur, sur cet appareil. Pas de serveur, pas de compte. Fais une sauvegarde (⇅) régulièrement et pour changer d'appareil — le bouton ⬇ télécharge un fichier <code>.oc</code>.</li>
+          <li><b>Hors-ligne ? Installer l'app ?</b> Après ta première visite, OpenContact fonctionne <b>sans connexion</b> (seuls la carte et le géocodage ont besoin du réseau). Tu peux aussi l'installer comme une app : menu du navigateur → « Ajouter à l'écran d'accueil » / « Installer ».</li>
           <li><b>La fusion peut-elle écraser mes pistes ?</b> Non : elle ajoute les nouveautés, complète les champs vides, ajoute les contacts inconnus — et ne touche jamais à ce que tu as déjà. Les informations divergentes sont comptées, pas importées. Et juste après une fusion, un bouton <b>« ↩ Annuler »</b> reste affiché ~30 secondes pour revenir en arrière.</li>
           <li><b>Une piste sans position sur la carte ?</b> Elle reste pleinement visible en Liste et en Grille.</li>
           <li><b>Me rendre sur place ?</b> Ouvre la fiche d'une piste qui a une adresse ou une position → <b>🧭 Itinéraire</b> : ton application de navigation (Plans, Google Maps, Waze…) prend le relais.</li>
@@ -737,7 +757,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
         <div class="callout">📬 Contact : <b>[ton email ou LinkedIn]</b> — retours et idées bienvenus. Licence suggérée : MIT.</div>
       </div>
     </section>
-  </div>
+  </main>
 
   <!-- ============ NAV BASSE (mobile) ============ -->
   <nav class="bottomnav" aria-label="Navigation mobile">
@@ -921,7 +941,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
    11.actions 12.suivi 13.formulaire 14.email 15.docs 16.prompts
    17.sélection 18.échange 19.écouteurs 20.auto-tests 21.init
    ============================================================ */
-const APP_VERSION = '4.2.0';
+const APP_VERSION = '4.3.0';
 
 /* ---------- 1. constantes ---------- */
 const DOMAINS = {
@@ -1308,6 +1328,7 @@ function initMap(){
   if (!window.L){
     const b = document.querySelector('.vswitch button[data-vm="map"]');
     if (b){ b.disabled = true; b.style.opacity = '.45'; b.title = 'Carte indisponible (pas de réseau)'; }
+    $('#fabMap').hidden = true;                 /* pas de raccourci vers une carte morte */
     return;
   }
   map = L.map('map', {
@@ -1383,6 +1404,8 @@ function locateMe(target){
 function applyTheme(t){
   theme = t;
   document.documentElement.dataset.theme = t;
+  const mt = $('#metaTheme');
+  if (mt) mt.content = (t === 'dark') ? '#1A222B' : '#FFFFFF';   /* barre du navigateur assortie */
   kvSet(THEME_KEY, t);
   setTiles();
 }
@@ -1396,7 +1419,11 @@ function applyRoute(){
   route = r;
   if (selecting && r !== 'pistes') endSelect(false);
   ROUTES.forEach(x => { const el = $('#view-' + x); if (el) el.hidden = (x !== r); });
-  document.querySelectorAll('[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === r));
+  document.querySelectorAll('[data-r]').forEach(a => {
+    const on = a.dataset.r === r;
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
   /* les pages du menu « Plus » allument l'entrée ⋯ / Plus ▾ : on sait toujours où on est */
   const inMore = MORE_ROUTES.includes(r);
   $('#btnMore').classList.toggle('on', inMore);
@@ -1549,6 +1576,26 @@ function makeRowEl(c){
   el.addEventListener('keydown', ev => { if (ev.key === 'Enter') act(); });
   return el;
 }
+/* rendu par tranches : même avec des centaines de pistes, la liste reste fluide
+   sur un téléphone modeste — la suite se charge en approchant du bas */
+const RENDER_CHUNK = 80;
+let renderLimit = RENDER_CHUNK;
+let renderSig = '';
+function moreBtnEl(rest){
+  const b = document.createElement('button');
+  b.className = 'btn';
+  b.style.width = '100%';
+  b.style.marginTop = '6px';
+  b.textContent = `Afficher plus (${rest} restante${rest > 1 ? 's' : ''})`;
+  b.addEventListener('click', () => { renderLimit += RENDER_CHUNK * 4; renderResults(); });
+  if ('IntersectionObserver' in window){
+    const io = new IntersectionObserver(es => {
+      if (es.some(x => x.isIntersecting)){ io.disconnect(); b.click(); }
+    }, { rootMargin: '600px' });
+    io.observe(b);
+  }
+  return b;
+}
 /* compteur + entrée « Sélectionner » : la sélection multiple se lance là où sont les pistes */
 function listToolsEl(n){
   const d = document.createElement('div');
@@ -1564,6 +1611,11 @@ function listToolsEl(n){
 }
 function renderResults(){
   const items = filtered();
+  /* un changement de recherche / filtre / tri / vue repart sur la première tranche */
+  const sig = [viewMode, $('#q').value, $('#fDomain').value, $('#fStatus').value, $('#fSort').value].join('¦');
+  if (sig !== renderSig){ renderSig = sig; renderLimit = RENDER_CHUNK; }
+  const shown = items.slice(0, renderLimit);
+  const rest = items.length - shown.length;
   $('#countLine').textContent = items.length + ' piste' + (items.length > 1 ? 's' : '') +
     (items.length !== companies.length ? ` / ${companies.length}` : '');
   const emptyMsg = companies.length
@@ -1574,7 +1626,8 @@ function renderResults(){
     list.innerHTML = '';
     if (!items.length){ list.innerHTML = emptyMsg; return; }
     if (!selecting) list.appendChild(listToolsEl(items.length));
-    for (const c of items) list.appendChild(makeCardEl(c, () => focusCompany(c.id)));
+    for (const c of shown) list.appendChild(makeCardEl(c, () => focusCompany(c.id)));
+    if (rest > 0) list.appendChild(moreBtnEl(rest));
   } else {
     const inner = $('#flatInner');
     inner.innerHTML = '';
@@ -1582,8 +1635,9 @@ function renderResults(){
     if (!selecting) inner.appendChild(listToolsEl(items.length));
     const wrap = document.createElement('div');
     wrap.className = viewMode === 'list' ? 'rows' : 'gcards';
-    for (const c of items) wrap.appendChild(viewMode === 'list' ? makeRowEl(c) : makeCardEl(c, () => openCard(c)));
+    for (const c of shown) wrap.appendChild(viewMode === 'list' ? makeRowEl(c) : makeCardEl(c, () => openCard(c)));
     inner.appendChild(wrap);
+    if (rest > 0) inner.appendChild(moreBtnEl(rest));
   }
 }
 function renderMarkers(){
@@ -3400,9 +3454,18 @@ function bindEvents(){
     });
   });
 
-  /* clavier : Échap ferme la modale la plus haute (B6), Tab reste piégé (A2) */
+  /* clavier : Échap ferme la modale la plus haute (B6), Tab reste piégé (A2),
+     « / » saute à la recherche (hors champ de saisie) */
   document.addEventListener('keydown', e => {
     if (e.key === 'Tab' && modalStack.length){ trapTab(e); return; }
+    if (e.key === '/' && !modalStack.length && !e.ctrlKey && !e.metaKey && !e.altKey){
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      e.preventDefault();
+      if (route !== 'pistes') location.hash = '#/pistes';
+      setTimeout(() => { try { $('#q').focus(); } catch (x) {} }, 40);
+      return;
+    }
     if (e.key !== 'Escape') return;
     if (placing){ endPlacing(true); return; }
     if ($('#moreMenu').classList.contains('open')){ toggleMore(false); return; }
@@ -3551,6 +3614,7 @@ async function runSelfTests(){
   theme = (t === 'light' || t === 'dark') ? t
     : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.dataset.theme = theme;
+  $('#metaTheme').content = (theme === 'dark') ? '#1A222B' : '#FFFFFF';
 
   const rawP = await kvGet(PROFILE_KEY);
   profile = defaultProfile();
@@ -3613,6 +3677,22 @@ async function runSelfTests(){
   applyRoute();
 
   if (backend === 'memory') setSaveWarn(true);    /* B2 : alerte persistante, pas un toast fugace */
+
+  /* PWA : après la première visite, l'app fonctionne hors-ligne et peut
+     s'installer sur l'écran d'accueil. Enregistré en dernier : zéro impact
+     sur le démarrage. En cas d'échec (vieux navigateur, file://), rien ne change. */
+  if ('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const w = reg.installing;
+        if (!w) return;
+        w.addEventListener('statechange', () => {
+          if (w.state === 'installed' && navigator.serviceWorker.controller)
+            toast('Nouvelle version prête ✓ — elle s’appliquera à la prochaine ouverture');
+        });
+      });
+    }).catch(() => {});
+  }
 
   if (new URLSearchParams(location.search).has('test')) runSelfTests();
 })();
