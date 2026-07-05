@@ -2,10 +2,10 @@
 <html lang="fr" data-theme="light">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>OpenContact — trouve, enrichis et partage des contacts utiles</title>
 <meta name="description" content="OpenContact : l'outil communautaire pour trouver, enrichir et partager des pistes et contacts utiles dans ta recherche de stage, d'alternance ou d'emploi. Local-first, open source, sans compte.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cline x1='9' y1='22' x2='16' y2='10' stroke='%23217A65' stroke-width='2.4'/%3E%3Cline x1='16' y1='10' x2='24' y2='20' stroke='%23217A65' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='10' r='4.5' fill='%23217A65'/%3E%3Ccircle cx='9' cy='22' r='3.6' fill='white' stroke='%23217A65' stroke-width='2.2'/%3E%3Ccircle cx='24' cy='20' r='3.6' fill='white' stroke='%23D98324' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cline x1='9' y1='22' x2='16' y2='10' stroke='%231C6E5A' stroke-width='2.4'/%3E%3Cline x1='16' y1='10' x2='24' y2='20' stroke='%231C6E5A' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='10' r='4.5' fill='%231C6E5A'/%3E%3Ccircle cx='9' cy='22' r='3.6' fill='white' stroke='%231C6E5A' stroke-width='2.2'/%3E%3Ccircle cx='24' cy='20' r='3.6' fill='white' stroke='%23D98324' stroke-width='2.2'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
 html[data-theme="light"]{
   --bg:#F6F5F1; --panel:#FFFFFF; --panel-2:#EFEDE7;
   --line:#E2DFD6; --ink:#22303B; --muted:#576879;
-  --primary:#217A65; --on-primary:#FFFFFF;
+  --primary:#1C6E5A; --on-primary:#FFFFFF;
   --amber:#96570A; --danger:#BA3B46; --ok:#20795A;
   --glass:rgba(255,255,255,.94); --shadow:0 10px 30px rgba(34,48,59,.12);
   color-scheme:light;
@@ -36,6 +36,7 @@ html[data-theme="dark"]{
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 [hidden]{display:none!important}
+button,a,label,select,summary,input{touch-action:manipulation}
 body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;overflow:hidden;transition:background .2s,color .2s}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;color:var(--ink)}
@@ -53,7 +54,7 @@ a{color:var(--primary)}
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);flex:none}
 .logo{flex:none}
 .brand b{font-size:16.5px;letter-spacing:.01em}
-.brand small{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}
+.brand small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
 .topnav{display:flex;gap:2px;align-items:center}
 .topnav a,.topnav button{
   text-decoration:none;color:var(--muted);font-size:13.5px;font-weight:600;background:none;border:0;
@@ -78,18 +79,23 @@ html[data-theme="dark"] .btn:hover{filter:brightness(1.12)}
 
 /* ============ BADGES ============ */
 .chips{display:flex;gap:5px;flex-wrap:wrap}
-.chip{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid color-mix(in srgb,var(--cc,var(--line)) 55%,transparent);color:var(--cc,var(--muted));background:color-mix(in srgb,var(--cc,var(--line)) 9%,transparent);white-space:nowrap}
-.score{font-family:var(--mono);font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px;border:1px solid color-mix(in srgb,var(--sc) 55%,transparent);color:var(--sc);background:color-mix(in srgb,var(--sc) 9%,transparent);white-space:nowrap;cursor:help}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid color-mix(in srgb,var(--cc,var(--line)) 55%,transparent);color:color-mix(in srgb,var(--cc,var(--muted)) 55%,var(--ink));background:color-mix(in srgb,var(--cc,var(--line)) 9%,transparent);white-space:nowrap}
+.score{font-family:var(--mono);font-size:12px;font-weight:500;padding:3px 9px;border-radius:99px;border:1px solid color-mix(in srgb,var(--sc) 55%,transparent);color:var(--sc);background:color-mix(in srgb,var(--sc) 9%,transparent);white-space:nowrap;cursor:pointer}
 button.score{min-height:0;line-height:1.2}
-.tag-share{font-size:10.5px;font-weight:700;color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);border-radius:99px;padding:2px 8px}
-.tag-priv{font-size:10.5px;font-weight:700;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+.tag-share{font-size:11.5px;font-weight:700;color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);border-radius:99px;padding:2px 8px}
+.tag-priv{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
 
 /* ============ VUE PISTES : barre d'outils + tiroir filtres ============ */
 #view-pistes{flex-direction:column}
 .toolbar{display:flex;gap:8px;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap;z-index:1050}
-.search{flex:1;min-width:160px;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:10px 13px;font-size:14px}
+.search-wrap{flex:1;min-width:150px;position:relative;display:flex}
+.search{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:10px 40px 10px 13px;font-size:14px}
 .search::placeholder{color:var(--muted)}
 .search:focus{outline:2px solid var(--primary);outline-offset:-1px}
+.search::-webkit-search-cancel-button,.search::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+.q-clear{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;background:none;color:var(--muted);font-size:17px;border-radius:9px;display:flex;align-items:center;justify-content:center}
+.q-clear:hover{color:var(--ink);background:color-mix(in srgb,var(--muted) 12%,transparent)}
+.bf-n{background:var(--primary);color:var(--on-primary);border-radius:99px;font-size:11px;font-weight:700;padding:1px 6px;margin-left:5px}
 .fdrawer{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .fdrawer select{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px;font-size:12.5px;max-width:170px;min-height:40px}
 .fdrawer .fpriv{display:flex;align-items:center;gap:5px}
@@ -97,7 +103,7 @@ button.score{min-height:0;line-height:1.2}
 .vswitch{display:flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;flex:none;background:var(--panel-2)}
 .vswitch button{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:600;padding:9px 12px;display:flex;gap:5px;align-items:center;min-height:40px}
 .vswitch button.on{background:var(--primary);color:var(--on-primary)}
-.count-line{font-size:11.5px;color:var(--muted);flex:none}
+.count-line{font-size:12px;color:var(--muted);flex:none}
 
 /* ============ VUE PISTES : contenus ============ */
 .pistes-body{flex:1;min-height:0;position:relative;display:flex}
@@ -122,7 +128,7 @@ button.score{min-height:0;line-height:1.2}
 .row-item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:box-shadow .15s}
 .row-item:hover{box-shadow:var(--shadow)}
 .row-item .dotc{width:10px;height:10px;border-radius:50%;flex:none}
-.row-item .ri-main{flex:1;min-width:0}
+.row-item .ri-main{flex:1;min-width:0;width:0}  /* width:0 : le texte nowrap ne doit jamais dicter la largeur de page (dézoom mobile) */
 .row-item h3{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row-item .ri-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row-item .ri-side{display:flex;gap:6px;align-items:center;flex:none}
@@ -137,7 +143,7 @@ button.score{min-height:0;line-height:1.2}
 .selbar .btn{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 35%,transparent);min-height:36px}
 .selbar .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
 .selbar .btn-danger{color:#FFB3B9;border-color:rgba(255,179,185,.5)}
-body.selecting .fab-add{display:none!important}
+body.selecting .fab{display:none!important}
 
 /* ============ CARTE LEAFLET ============ */
 .leaflet-container{font-family:var(--sans)}
@@ -148,17 +154,19 @@ body.selecting .fab-add{display:none!important}
 .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
 .leaflet-popup-content{margin:13px 15px;font-size:13px;line-height:1.5}
 a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!important;padding:6px!important;width:28px!important;height:28px!important}
-.pin{display:block;width:15px;height:15px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2.5px var(--panel),0 2px 6px rgba(0,0,0,.3);position:relative}
+/* le point visuel fait 15px, mais la zone tactile du marqueur (iconSize) est élargie — le point est centré dedans */
+.pin{display:block;width:15px;height:15px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2.5px var(--panel),0 2px 6px rgba(0,0,0,.3);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
 .pin.ping::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--c);animation:ping 1s ease-out 3}
 @keyframes ping{0%{transform:scale(.6);opacity:1}100%{transform:scale(2.4);opacity:0}}
 .loc-btn{position:absolute;top:82px;left:10px;z-index:800;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:16px;box-shadow:0 1px 5px rgba(0,0,0,.15)}
 .legend{position:absolute;left:12px;bottom:12px;z-index:800;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:9px 11px;backdrop-filter:blur(4px);max-width:215px}
 .lg-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;user-select:none}
 .lg-toggle{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-left:auto}
-.lg-toggle button{background:transparent;border:0;color:var(--muted);font-size:10px;font-weight:700;padding:4px 8px;text-transform:uppercase}
+.lg-toggle button{background:transparent;border:0;color:var(--muted);font-size:11px;font-weight:700;padding:5px 9px;text-transform:uppercase;position:relative}
+.lg-toggle button::after{content:'';position:absolute;left:0;right:0;top:-6px;bottom:-6px}
 .lg-toggle button.on{background:var(--primary);color:var(--on-primary)}
 .lg-items{margin-top:8px;display:flex;flex-direction:column;gap:5px}
-.lg-items .it{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+.lg-items .it{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 .lg-items .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .legend.folded .lg-items,.legend.folded .lg-toggle{display:none}
 
@@ -174,29 +182,34 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .fab{position:absolute;z-index:1150;border-radius:16px;border:1px solid var(--line);padding:13px 17px;font-weight:700;font-size:14px;box-shadow:var(--shadow);display:none}
 .fab-add{right:14px;bottom:16px;background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
 .fab-list{left:14px;bottom:16px;background:var(--panel);color:var(--ink)}
+.fab-map{left:14px;bottom:16px;background:var(--panel);color:var(--ink)}
 
 /* ============ FICHE / CONTACTS ============ */
 .pp h3{font-size:15.5px;margin-bottom:2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .pp .desc{font-size:12.5px;color:var(--muted);margin-top:2px}
+.pp-loc{font-size:13px;color:var(--muted);margin:7px 0 2px;line-height:1.5}
+.pp-loc b{color:var(--ink);font-weight:600;word-break:break-word}
+.linklike{background:none;border:0;color:var(--primary);font-weight:700;font-size:12px;text-decoration:underline;padding:6px;margin:-6px 0;border-radius:8px}
+.linklike:focus-visible{outline:2px solid var(--primary)}
 .pp .chips{margin:7px 0 8px}
 .pp .row{display:flex;gap:7px;align-items:baseline;margin:3px 0;color:var(--muted);font-size:12.5px}
 .pp .row b{color:var(--ink);font-weight:500;word-break:break-word}
-.pp .row .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;flex:none;width:58px;color:var(--muted)}
+.pp .row .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;flex:none;width:58px;color:var(--muted)}
 .ct-list{margin:8px 0 2px;display:flex;flex-direction:column;gap:6px}
 .ct{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px}
 .ct .ct-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .ct .ct-h b{font-weight:700}
 .ct .ct-role{color:var(--muted)}
 .ct .ct-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px}
-.ct .ct-note{font-size:11.5px;color:var(--muted);margin-top:4px;font-style:italic}
-.conf-ok{color:var(--ok);font-size:10.5px;font-weight:700}
-.conf-doubt{color:var(--amber);font-size:10.5px;font-weight:700}
+.ct .ct-note{font-size:12px;color:var(--muted);margin-top:4px;font-style:italic}
+.conf-ok{color:var(--ok);font-size:11.5px;font-weight:700}
+.conf-doubt{color:var(--amber);font-size:11.5px;font-weight:700}
 .pp details{margin-top:7px}
-.pp summary{cursor:pointer;font-size:11.5px;color:var(--primary);font-weight:700}
+.pp summary{cursor:pointer;font-size:12px;color:var(--primary);font-weight:700}
 .pp .notes{margin-top:6px;padding:7px 9px;background:var(--panel-2);border-radius:9px;font-size:12px;color:var(--muted);white-space:pre-wrap}
 .pp .pp-actions{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap;align-items:center}
 .pp select{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:6px 8px;font-size:12px;max-width:160px;min-height:34px}
-.priv-sep{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.priv-sep{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .priv-sep::after{content:'';flex:1;height:1px;background:var(--line)}
 
 /* ============ SUIVI ============ */
@@ -206,12 +219,12 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .stat.ok b{color:var(--ok)}
 .due-banner{background:color-mix(in srgb,var(--amber) 11%,transparent);border:1px solid color-mix(in srgb,var(--amber) 40%,transparent);color:var(--amber);border-radius:12px;padding:10px 13px;font-size:13px;margin-bottom:15px;line-height:1.5;font-weight:600}
 .tk-sec{margin-bottom:20px}
-.tk-h{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.tk-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .tk-h .dot{width:9px;height:9px;border-radius:50%}
 .tk-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:8px}
 .tk-card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:var(--radius);padding:10px 12px}
 .tk-card h4{font-size:13.5px;margin-bottom:2px}
-.tk-dates{font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px;margin:5px 0 8px}
+.tk-dates{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px;margin:5px 0 8px}
 .tk-dates .late{color:var(--amber);font-weight:700}
 .tk-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .tk-actions select{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:6px 7px;font-size:11.5px;max-width:150px;min-height:34px}
@@ -222,9 +235,9 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .pcard .pd{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:10px}
 .pcard details{margin-bottom:10px}
 .pcard summary{cursor:pointer;font-size:12px;color:var(--primary);font-weight:700}
-.pre{font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px;white-space:pre-wrap;margin-top:8px;max-height:250px;overflow-y:auto}
+.pre{font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px;white-space:pre-wrap;margin-top:8px;max-height:250px;overflow-y:auto}
 .field{margin-bottom:12px}
-.field label{display:block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.field label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
 .field input,.field select,.field textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;min-height:40px}
 .field textarea{min-height:68px;resize:vertical}
 .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--primary);outline-offset:-1px}
@@ -263,9 +276,9 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .pos-box .pos-val{font-size:12px;color:var(--muted);margin-bottom:9px}
 .pos-box .pos-val b{color:var(--primary)}
 .pos-btns{display:flex;gap:7px;flex-wrap:wrap}
-.hint{font-size:11.5px;color:var(--muted);margin-top:7px;line-height:1.5}
+.hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
 .hint.warn{color:var(--amber)}
-.io-ta{width:100%;min-height:120px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px;font-family:var(--mono);font-size:11px;resize:vertical}
+.io-ta{width:100%;min-height:120px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px;font-family:var(--mono);font-size:12px;resize:vertical}
 .io-sec{border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:12px}
 .io-sec h3{font-size:13.5px;margin-bottom:8px;display:flex;gap:7px;align-items:center}
 .io-sub{border-top:1px dashed var(--line);margin-top:12px;padding-top:12px}
@@ -281,7 +294,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .timeline{list-style:none;margin:4px 0 0;padding:0}
 .timeline li{font-size:12px;color:var(--muted);padding:4px 0;border-bottom:1px dashed var(--line);display:flex;gap:9px}
 .timeline li:last-child{border-bottom:0}
-.timeline .d{font-family:var(--mono);font-size:10.5px;color:var(--primary);flex:none;padding-top:2px}
+.timeline .d{font-family:var(--mono);font-size:11.5px;color:var(--primary);flex:none;padding-top:2px}
 
 /* ============ ALERTE SAUVEGARDE ============ */
 .save-warn{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--danger);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;border-radius:12px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow);max-width:calc(100% - 24px)}
@@ -289,7 +302,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 
 /* ============ NAV BASSE / DIVERS ============ */
 .bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1500;background:var(--panel);border-top:1px solid var(--line);padding:5px 4px calc(5px + env(safe-area-inset-bottom));align-items:center}
-.bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);font-size:10px;font-weight:700;padding:5px 0;border-radius:10px}
+.bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);font-size:11.5px;font-weight:700;padding:6px 0;border-radius:10px}
 .bottomnav a .i{font-size:18px}
 .bottomnav a.on{color:var(--primary)}
 .bn-add{flex:none;width:52px;height:52px;margin:-16px 6px 0;border-radius:50%;background:var(--primary);color:var(--on-primary);border:0;font-size:25px;font-weight:400;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 45%,transparent)}
@@ -302,6 +315,12 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .place-banner button{background:rgba(0,0,0,.16);border:0;border-radius:8px;padding:6px 11px;font-weight:700;color:var(--on-primary);font-size:12px;flex:none;min-height:34px}
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(12px);z-index:4000;background:var(--ink);color:var(--bg);font-weight:600;font-size:13px;padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 40px);text-align:center;line-height:1.5}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.up{bottom:100px}
+
+/* ============ ANNULATION (filet de sécurité fusion / restauration) ============ */
+.undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:2900;background:var(--ink);color:var(--bg);border-radius:14px;padding:9px 8px 9px 15px;display:flex;gap:8px;align-items:center;box-shadow:var(--shadow);font-size:13px;font-weight:600;line-height:1.45;max-width:calc(100% - 24px)}
+.undo-bar .btn{flex:none;background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.undo-bar .x{color:var(--bg);opacity:.75;flex:none}
 
 /* ============ RESPONSIVE ============ */
 @media (min-width:901px){
@@ -334,6 +353,60 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
   .save-warn{top:58px}
 }
 @media (min-width:901px){.drag-zone{display:none}}
+
+/* ============ MOBILE-FIRST : cibles tactiles ≥ 44px, lisibilité, une seule ligne d'outils ============ */
+@media (max-width:900px){
+  /* pas de zoom iOS à la prise de focus + textes de saisie lisibles */
+  input,select,textarea{font-size:16px}
+  /* barre d'outils compacte : recherche + vues + filtres sur UNE ligne dès 320px */
+  .toolbar{gap:7px;padding:8px 10px}
+  .search-wrap{min-width:96px}
+  .search{min-height:44px;padding-right:44px}
+  .q-clear{width:44px;height:44px;right:0}
+  .vswitch button{min-height:44px;min-width:44px;justify-content:center}
+  .bf-txt{display:none}
+  #btnFilters{min-width:44px;justify-content:center;padding:6px 9px}
+  .bf-n{margin-left:3px}
+  .fdrawer select{min-height:44px;flex:1 1 46%;min-width:0}
+  .fdrawer .fpriv{flex:1 1 46%;min-width:0}
+  .fdrawer .fpriv select{flex:1}
+  /* cibles tactiles ≥ 44 × 44 px */
+  .field input,.field select,.field textarea,.pw-row input{min-height:44px}
+  .btn,.btn-sm{min-height:44px;min-width:44px}
+  .icon-btn{width:44px;height:44px}
+  .x{min-width:44px;min-height:44px}
+  .selbar .btn{min-height:44px}
+  .place-banner button,.save-warn button{min-height:44px}
+  .pp select{min-height:44px;max-width:100%}
+  .tk-actions select{min-height:44px;max-width:none;flex:1}
+  .checks label{min-height:44px;font-size:13.5px;padding:9px 14px}
+  .checks input{width:18px;height:18px}
+  .loc-btn{width:44px;height:44px;top:108px}
+  .leaflet-bar a{width:44px!important;height:44px!important;line-height:44px!important;font-size:20px!important}
+  a.leaflet-popup-close-button{width:44px!important;height:44px!important;font-size:24px!important;padding:10px!important}
+  .leaflet-popup-content .pp h3{padding-right:26px}
+  .lg-head{position:relative;padding:5px 0}
+  .lg-head::after{content:'';position:absolute;left:0;right:0;top:-8px;bottom:-8px}
+  .lg-toggle{position:relative;z-index:1}
+  .lg-toggle button{padding:8px 10px}
+  .lg-toggle button::after{top:-8px;bottom:-8px}
+  .drag-zone{padding:14px 0 10px;position:relative}
+  .drag-zone::after{content:'';position:absolute;left:0;right:0;top:-8px;bottom:-8px}
+  .score{position:relative}
+  .score::after{content:'';position:absolute;left:-6px;right:-6px;top:-11px;bottom:-11px}
+  .pcard details>summary,.modal-b details:not(.fs)>summary{padding:15px 0}
+  .linklike{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;margin:-12px 0}
+  .ct .ct-links a,.pp .row a{display:inline-flex;align-items:center;min-height:44px;margin:-8px 0}
+  /* bascule Liste → Carte à portée du pouce (visible seulement en mode Liste/Grille, et s'il y a des pistes) */
+  .fab-map{display:none}
+  #modeFlat:not([hidden]) ~ .fab-map{display:block}
+  #emptyMap:not([hidden]) ~ .fab-map{display:none}
+  /* barre d'annulation au-dessus de la nav basse : message sur sa ligne, boutons dessous */
+  .undo-bar{left:10px;right:10px;transform:none;bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom));flex-wrap:wrap;padding:11px 12px}
+  .undo-bar #undoMsg{flex:1 1 100%}
+  .toast.up{bottom:calc(var(--nav-h) + 132px + env(safe-area-inset-bottom))}
+}
+@media (max-width:349px){.grid2{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -362,7 +435,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
     <div class="hdr-actions">
       <button class="btn btn-ghost icon-btn" id="btnTheme" aria-label="Thème clair ou sombre" title="Thème clair / sombre">🌓</button>
       <button class="btn btn-outline btn-sm btn-io-top" id="btnIOTop">⇅ Échanger</button>
-      <button class="btn btn-primary btn-cta" id="btnCTA">➕ Partager une piste</button>
+      <button class="btn btn-primary btn-cta" id="btnCTA">➕ Ajouter une piste</button>
     </div>
   </header>
 
@@ -376,13 +449,16 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
     <!-- ============ VUE PISTES ============ -->
     <section class="view" id="view-pistes">
       <div class="toolbar">
-        <input class="search" id="q" type="search" placeholder="Chercher : entreprise, contact, ville, techno…" aria-label="Rechercher une piste">
-        <div class="vswitch" role="group" aria-label="Mode d'affichage">
-          <button data-vm="map" class="on" title="Carte" aria-pressed="true">🗺<span> Carte</span></button>
-          <button data-vm="list" title="Liste" aria-pressed="false">☰<span> Liste</span></button>
-          <button data-vm="grid" title="Grille" aria-pressed="false">▦<span> Grille</span></button>
+        <div class="search-wrap">
+          <input class="search" id="q" type="search" placeholder="Chercher : entreprise, contact, ville, techno…" aria-label="Rechercher une piste">
+          <button class="q-clear" id="qClear" hidden aria-label="Effacer la recherche">✕</button>
         </div>
-        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer">⚙ Filtres</button>
+        <div class="vswitch" role="group" aria-label="Mode d'affichage">
+          <button data-vm="map" class="on" title="Carte" aria-label="Carte" aria-pressed="true">🗺<span> Carte</span></button>
+          <button data-vm="list" title="Liste" aria-label="Liste" aria-pressed="false">☰<span> Liste</span></button>
+          <button data-vm="grid" title="Grille" aria-label="Grille" aria-pressed="false">▦<span> Grille</span></button>
+        </div>
+        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer" aria-label="Filtres">⚙<span class="bf-txt"> Filtres</span><span class="bf-n" id="bfN" hidden></span></button>
         <span class="count-line" id="countLine"></span>
         <div class="fdrawer" id="fDrawer">
           <select id="fDomain" aria-label="Filtrer par domaine"><option value="">Domaine</option></select>
@@ -391,6 +467,9 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
             <option value="recent">Récentes</option>
             <option value="score">Complètes d'abord</option>
             <option value="az">A → Z</option>
+            <option value="dist">📍 Plus proches</option>
+            <option value="status">🔒 Par mon statut</option>
+            <option value="contacts">👤 Plus de contacts</option>
           </select>
         </div>
       </div>
@@ -415,7 +494,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
               <div class="lg-items" id="lgItems"></div>
             </div>
             <button class="fab fab-list" id="fabList">☰ Pistes</button>
-            <button class="fab fab-add" id="fabAdd" aria-label="Partager une piste">➕</button>
+            <button class="fab fab-add" id="fabAdd" aria-label="Ajouter une piste">➕</button>
           </div>
         </div>
 
@@ -432,12 +511,13 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
           </div>
           <p>Entreprises, contacts, conseils : ce que chacun découvre profite à tous.</p>
           <div class="em-actions">
-            <button class="btn btn-primary" id="btnAddEmpty">➕ Partager ma première piste</button>
+            <button class="btn btn-primary" id="btnAddEmpty">➕ Ajouter ma première piste</button>
             <button class="btn" id="btnImportEmpty">⇅ Importer des pistes reçues</button>
             <button class="btn" id="btnDemoEmpty">👀 Voir un exemple</button>
             <button class="btn" id="btnLocEmpty">📍 Autour de moi</button>
           </div>
         </div>
+        <button class="fab fab-map" id="fabMap">🗺 Carte</button>
       </div>
     </section>
 
@@ -499,7 +579,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
         <div class="sub">Les réponses aux questions fréquentes — le reste s'apprend en utilisant.</div>
 
         <h3>Comment ça marche ?</h3>
-        <p><b>1.</b> Cherche une entreprise, un contact ou une ville. <b>2.</b> Consulte les pistes (carte, liste ou grille). <b>3.</b> Contribue en partageant une piste utile. <b>4.</b> Échange tes pistes avec ta promo (⇅) — par fichier ou copier-coller. <b>5.</b> Si tu candidates, garde un suivi privé sur la fiche.</p>
+        <p><b>1.</b> Cherche une entreprise, un contact ou une ville. <b>2.</b> Consulte les pistes (carte, liste ou grille). <b>3.</b> Contribue en ajoutant une piste utile. <b>4.</b> Échange tes pistes avec ta promo (⇅) — par fichier ou copier-coller. <b>5.</b> Si tu candidates, garde un suivi privé sur la fiche.</p>
 
         <h3>Qu'est-ce qui est partagé, qu'est-ce qui reste privé ?</h3>
         <p><span class="tag-share">🤝 partagé</span> : entreprise, ville, contacts professionnels, technos, types de postes, process, conseils.<br><span class="tag-priv">🔒 privé</span> : ton statut, tes notes, tes dates, ton historique — jamais inclus dans un fichier « Pistes à partager ». Tu peux aussi choisir précisément <b>quelles pistes</b> partent dans le fichier (« Ma sélection »).</p>
@@ -516,7 +596,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
         <h3>Questions fréquentes</h3>
         <ul>
           <li><b>Où sont mes données ?</b> Dans ton navigateur, sur cet appareil. Pas de serveur, pas de compte. Fais une sauvegarde (⇅) régulièrement et pour changer d'appareil — le bouton ⬇ télécharge un fichier <code>.oc</code>.</li>
-          <li><b>La fusion peut-elle écraser mes pistes ?</b> Non : elle ajoute les nouveautés, complète les champs vides, ajoute les contacts inconnus — et ne touche jamais à ce que tu as déjà. Les informations divergentes sont comptées, pas importées.</li>
+          <li><b>La fusion peut-elle écraser mes pistes ?</b> Non : elle ajoute les nouveautés, complète les champs vides, ajoute les contacts inconnus — et ne touche jamais à ce que tu as déjà. Les informations divergentes sont comptées, pas importées. Et juste après une fusion, un bouton <b>« ↩ Annuler »</b> reste affiché ~30 secondes pour revenir en arrière.</li>
           <li><b>Une piste sans position sur la carte ?</b> Elle reste pleinement visible en Liste et en Grille.</li>
           <li><b>L'historique d'une piste ?</b> Il garde les 25 derniers événements (créations, changements de statut) — les plus anciens s'effacent d'eux-mêmes.</li>
           <li><b>Supprimer plusieurs pistes ?</b> ⇅ Échanger → Zone avancée → « Choisir des pistes à supprimer », ou « Tout supprimer » (après sauvegarde !).</li>
@@ -549,7 +629,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
   <nav class="bottomnav" aria-label="Navigation mobile">
     <a href="#/pistes" data-r="pistes"><span class="i" aria-hidden="true">🧭</span>Pistes</a>
     <a href="#/suivi" data-r="suivi"><span class="i" aria-hidden="true">📋</span>Suivi</a>
-    <button class="bn-add" id="bnAdd" aria-label="Partager une piste">＋</button>
+    <button class="bn-add" id="bnAdd" aria-label="Ajouter une piste">＋</button>
     <a href="#" id="bnIO"><span class="i" aria-hidden="true">⇅</span>Échanger</a>
     <a href="#" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"><span class="i" aria-hidden="true">⋯</span>Plus</a>
   </nav>
@@ -558,7 +638,6 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
     <a href="#/prompts" role="menuitem">✨ Prompts IA</a>
     <a href="#/guide" role="menuitem">❓ Aide</a>
     <a href="#/apropos" role="menuitem">ℹ️ À propos</a>
-    <button id="btnTheme2" role="menuitem">🌓 Thème clair / sombre</button>
   </div>
 
   <!-- ============ BARRE DE SÉLECTION ============ -->
@@ -577,7 +656,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 <!-- ============ MODALE PISTE ============ -->
 <div class="overlay" id="ovForm">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
-    <div class="modal-h"><h2 id="formTitle">Partager une piste</h2><button class="x" id="xForm" aria-label="Fermer">×</button></div>
+    <div class="modal-h"><h2 id="formTitle">Ajouter une piste</h2><button class="x" id="xForm" aria-label="Fermer">×</button></div>
     <div class="modal-b">
 
       <div class="field"><label for="fName">Entreprise / structure *</label><input id="fName" placeholder="Ex : Orange Cyberdefense"></div>
@@ -585,6 +664,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
         <div class="field"><label for="fCity">Ville</label><input id="fCity" placeholder="Ex : Lille"></div>
         <div class="field"><label for="fDom">Domaine</label><select id="fDom"></select></div>
       </div>
+      <div class="field"><label for="fAddr">Adresse complète</label><input id="fAddr" placeholder="N°, rue, code postal, ville"></div>
 
       <div class="pos-box">
         <div class="pos-val" id="posVal">Pas de position — la piste restera visible en Liste et Grille.</div>
@@ -610,12 +690,13 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
         <summary>ℹ️ Plus de détails <span class="tag-share">🤝 partagé</span></summary>
         <div class="fs-b">
           <div class="field"><label for="fDesc">Activité en une phrase</label><input id="fDesc" placeholder="Ex : ESN infra & sécurité, ~200 salariés"></div>
-          <div class="field"><label id="lblPositions">Types de postes</label><div class="checks" id="fPositions" role="group" aria-labelledby="lblPositions"></div></div>
-          <div class="field"><label for="fTechs">Technologies</label><input id="fTechs" placeholder="Windows Server, Azure, Fortinet…"></div>
-          <div class="grid2">
-            <div class="field"><label for="fWeb">Site web</label><input id="fWeb" type="url" placeholder="https://…"></div>
-            <div class="field"><label for="fAddr">Adresse complète</label><input id="fAddr" placeholder="N°, rue, CP, ville"></div>
+          <div class="field">
+            <label id="lblPositions">Contrats proposés</label>
+            <div class="checks" id="fPositions" role="group" aria-labelledby="lblPositions"></div>
+            <div class="hint">Ce que cette structure propose (ou a déjà proposé) — pas ce que toi tu cherches.</div>
           </div>
+          <div class="field"><label for="fTechs">Technologies</label><input id="fTechs" placeholder="Windows Server, Azure, Fortinet…"></div>
+          <div class="field"><label for="fWeb">Site web</label><input id="fWeb" type="url" placeholder="https://…"></div>
           <div class="field"><label for="fProcess">Process de recrutement</label><textarea id="fProcess" placeholder="Ex : appel RH → entretien technique (1 h) → réponse sous 2 semaines"></textarea></div>
           <div class="field"><label for="fTips">Conseils &amp; retours d'expérience</label><textarea id="fTips" placeholder="Ex : la spontanée marche bien, citer la certif CCNA…"></textarea></div>
         </div>
@@ -756,6 +837,12 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
   <button id="btnCancelPlace">Annuler</button>
 </div>
 
+<div class="undo-bar" id="undoBar" hidden>
+  <span id="undoMsg" role="status" aria-live="polite"></span>
+  <button class="btn btn-sm" id="btnUndo">↩ Annuler</button>
+  <button class="x" id="undoX" aria-label="Fermer sans annuler">×</button>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -767,7 +854,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
    11.actions 12.suivi 13.formulaire 14.email 15.docs 16.prompts
    17.sélection 18.échange 19.écouteurs 20.auto-tests 21.init
    ============================================================ */
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.1.0';
 
 /* ---------- 1. constantes ---------- */
 const DOMAINS = {
@@ -819,6 +906,9 @@ let selectedIds = new Set();
 let prevViewMode = null;
 let lastExport = null;             // { text, kind, n }
 let lastFocus = null;
+let userPos = null;                // position volontaire (tri distance) — jamais enregistrée
+let pendingFit = null;             // cadrage de carte différé tant qu'elle est masquée
+let undoSnap = null, undoTimer = null;   // filet de sécurité fusion/restauration
 let map = null, markersLayer = null, tileLayer = null;
 const markerById = {};
 
@@ -830,6 +920,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => (
 function toast(msg){
   const t = $('#toast');
   t.textContent = msg;
+  t.classList.toggle('up', !$('#undoBar').hidden);   /* ne recouvre pas la barre « Annuler » */
   t.classList.add('on');
   clearTimeout(t._h);
   t._h = setTimeout(() => t.classList.remove('on'), Math.min(6500, 2400 + msg.length * 35));
@@ -854,7 +945,7 @@ function distKm(a, b, c, d){
   return 2 * R * Math.asin(Math.sqrt(x));
 }
 function cssVar(name){
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#217A65';
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#1C6E5A';
 }
 /* bouton à confirmation en deux temps (factorisé) */
 function armButton(btn, confirmLabel, fn){
@@ -1149,25 +1240,35 @@ function colorOf(c){
     ? (DOMAINS[c.domain]?.color || '#8A99A6')
     : (STATUSES[c.status]?.color || '#8A99A6');
 }
+/* zone tactile du marqueur : 44px au doigt (pointeur grossier), 26px à la souris — le point visuel reste 15px */
+const PIN_HIT = (window.matchMedia && matchMedia('(pointer:coarse)').matches) ? 44 : 26;
 function makeIcon(color, ping){
   return L.divIcon({
     className: '',
     html: `<span class="pin ${ping ? 'ping' : ''}" style="--c:${color}"></span>`,
-    iconSize: [15,15], iconAnchor: [8,8], popupAnchor: [0,-9]
+    iconSize: [PIN_HIT, PIN_HIT], iconAnchor: [PIN_HIT/2, PIN_HIT/2], popupAnchor: [0,-12]
   });
 }
 function locateMe(target){
-  if (!navigator.geolocation){ toast('Géolocalisation non disponible sur cet appareil'); return; }
+  if (!navigator.geolocation){
+    toast('Géolocalisation non disponible sur cet appareil');
+    if (target === 'sort'){ $('#fSort').value = 'recent'; renderResults(); updateFilterBtn(); }
+    return;
+  }
   toast('Recherche de ta position… (jamais enregistrée ni partagée)');
   navigator.geolocation.getCurrentPosition(pos => {
     const la = pos.coords.latitude, lo = pos.coords.longitude;
+    userPos = { lat: la, lng: lo };                 /* en mémoire seulement, pour le tri distance */
     if (target === 'form'){ setFormPos(la, lo); toast('Position utilisée pour cette piste ✓'); return; }
-    if (viewMode !== 'map') setViewMode('map');
+    if (target === 'sort'){ renderResults(); toast('Pistes triées des plus proches ✓ — ta position n’est jamais enregistrée'); return; }
+    if (viewMode !== 'map') setViewMode('map', { persist: false });
     map.setView([la, lo], 12);
     const mk = L.circleMarker([la, lo], { radius: 8, weight: 3, color: cssVar('--primary'), fillOpacity: .25 }).addTo(map);
     setTimeout(() => map.removeLayer(mk), 12000);
+    renderResults();
     toast('Carte centrée sur toi — rien n’est enregistré');
   }, err => {
+    if (target === 'sort'){ $('#fSort').value = 'recent'; renderResults(); updateFilterBtn(); }
     toast(err.code === 1 ? 'Autorisation refusée — la position reste 100 % optionnelle' : 'Position introuvable pour le moment');
   }, { enableHighAccuracy: false, timeout: 8000 });
 }
@@ -1197,14 +1298,23 @@ function applyRoute(){
 function toggleMore(open){
   const mm = $('#moreMenu');
   const want = (open === undefined) ? !mm.classList.contains('open') : open;
+  if (want && matchMedia('(min-width:901px)').matches){
+    /* desktop : le menu s'ancre au bouton « Plus ▾ », pas à un coin d'écran */
+    const r = $('#btnMoreTop').getBoundingClientRect();
+    mm.style.top = (r.bottom + 6) + 'px';
+    mm.style.left = Math.max(8, Math.min(r.left, innerWidth - 235)) + 'px';
+    mm.style.right = 'auto'; mm.style.bottom = 'auto';
+  } else {
+    mm.style.top = mm.style.left = mm.style.right = mm.style.bottom = '';
+  }
   mm.classList.toggle('open', want);
   ['#btnMore','#btnMoreTop'].forEach(s => { const b = $(s); if (b) b.setAttribute('aria-expanded', String(want)); });
 }
 
 /* ---------- 9. mode de vue / filtres / rendus ---------- */
-function setViewMode(vm){
+function setViewMode(vm, opts){
   viewMode = vm;
-  kvSet(VIEW_KEY, vm);
+  if (!opts || opts.persist !== false) kvSet(VIEW_KEY, vm);   /* la préférence n'est mémorisée que sur choix explicite */
   document.querySelectorAll('.vswitch button').forEach(b => {
     const on = b.dataset.vm === vm;
     b.classList.toggle('on', on);
@@ -1212,7 +1322,10 @@ function setViewMode(vm){
   });
   $('#modeCarte').hidden = (vm !== 'map');
   $('#modeFlat').hidden = (vm === 'map');
-  if (vm === 'map' && map) setTimeout(() => map.invalidateSize(), 60);
+  if (vm === 'map' && map) setTimeout(() => {
+    map.invalidateSize();
+    if (pendingFit){ map.fitBounds(pendingFit, { maxZoom: 11 }); pendingFit = null; }
+  }, 60);
   renderResults();
 }
 function blobOf(c){
@@ -1233,6 +1346,17 @@ function filtered(){
   const s = $('#fSort').value;
   if (s === 'score') arr.sort((a,b) => scoreOf(b) - scoreOf(a));
   else if (s === 'az') arr.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+  else if (s === 'dist' && userPos){
+    const dv = c => (c.lat == null) ? Infinity : distKm(userPos.lat, userPos.lng, c.lat, c.lng);
+    arr.sort((a,b) => dv(a) - dv(b) || (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
+  else if (s === 'status'){
+    const ord = Object.keys(STATUSES);
+    arr.sort((a,b) => ord.indexOf(a.status) - ord.indexOf(b.status) || (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
+  else if (s === 'contacts'){
+    arr.sort((a,b) => ((b.contacts || []).length - (a.contacts || []).length) || (scoreOf(b) - scoreOf(a)));
+  }
   else arr.sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   return arr;
 }
@@ -1244,6 +1368,10 @@ function renderAll(){
 }
 function metaLine(c){
   const bits = [];
+  if ($('#fSort').value === 'dist' && userPos && c.lat != null){
+    const km = distKm(userPos.lat, userPos.lng, c.lat, c.lng);
+    bits.push('🧭 ' + (km < 10 ? km.toFixed(1).replace('.', ',') : String(Math.round(km))) + ' km');
+  }
   if (c.city) bits.push('📍 ' + esc(c.city));
   const n = (c.contacts || []).length;
   if (n) bits.push('👤 ' + n + ' contact' + (n > 1 ? 's' : ''));
@@ -1428,9 +1556,14 @@ function buildCardBody(c, inPopup){
   box.className = 'pp';
   const pos = (c.positions || []).map(p =>
     `<span class="chip" style="--cc:var(--primary)">${esc(POSITIONS[p])}</span>`).join('');
+  /* U4/lot 2 : le lieu (adresse complète, sinon ville) s'affiche en tête de fiche */
+  const place = c.address || c.city;
+  const locLine = place
+    ? `<div class="pp-loc">📍 <b>${esc(place)}</b>${(!inPopup && c.lat != null) ? ` <button type="button" class="linklike" data-seemap>Voir sur la carte</button>` : ''}</div>`
+    : '';
   let rows = '';
-  if (c.city) rows += `<div class="row"><span class="k">Ville</span><b>${esc(c.city)}</b></div>`;
-  if (c.address) rows += `<div class="row"><span class="k">Adresse</span><b>${esc(c.address)}</b></div>`;
+  if (c.address && c.city && !normName(c.address).includes(normName(c.city)))
+    rows += `<div class="row"><span class="k">Ville</span><b>${esc(c.city)}</b></div>`;
   if (c.website){
     const url = /^https?:\/\//.test(c.website) ? c.website : 'https://' + c.website;
     rows += `<div class="row"><span class="k">Web</span><b><a href="${esc(url)}" target="_blank" rel="noopener">${esc(c.website)}</a></b></div>`;
@@ -1439,6 +1572,7 @@ function buildCardBody(c, inPopup){
   box.innerHTML =
     `<h3>${esc(c.name)} ${scoreChipHTML(c)}${c.demo ? ' <span class="chip" style="--cc:var(--amber)">Exemple</span>' : ''}</h3>` +
     (c.desc ? `<div class="desc">${esc(c.desc)}</div>` : '') +
+    locLine +
     `<div class="chips"><span class="chip" style="--cc:${d.color}">${esc(d.label)}</span>${pos}</div>` +
     rows;
   if ((c.contacts || []).length){
@@ -1499,6 +1633,12 @@ function buildCardBody(c, inPopup){
   });
   actions.appendChild(bDel);
   box.appendChild(actions);
+  const seeBtn = box.querySelector('[data-seemap]');
+  if (seeBtn) seeBtn.addEventListener('click', () => {
+    closeCard();
+    if (viewMode !== 'map') setViewMode('map');
+    setTimeout(() => focusCompany(c.id), 90);
+  });
   return box;
 }
 function mkBtn(txt, title, fn){
@@ -1526,6 +1666,7 @@ function explainScore(n){
 
 /* ---------- 11. actions sur une piste + mise à jour ciblée (B1 / Pf1) ---------- */
 function refreshCompany(c){
+  hideUndo();                              /* toute modification invalide le filet « annuler la fusion » */
   saveData();
   const m = markerById[c.id];
   if (m){
@@ -1588,6 +1729,7 @@ function focusCompany(id){
   }, delay);
 }
 function removeCompany(id){
+  hideUndo();
   companies = companies.filter(x => x.id !== id);
   profile.confirmedIds = profile.confirmedIds.filter(x => x !== id);
   shareSelIds.delete(id);
@@ -1597,6 +1739,7 @@ function removeCompany(id){
   toast('Piste supprimée');
 }
 function deleteMany(ids){
+  hideUndo();
   const set = ids instanceof Set ? ids : new Set(ids);
   companies = companies.filter(c => !set.has(c.id));
   profile.confirmedIds = profile.confirmedIds.filter(id => !set.has(id));
@@ -1743,7 +1886,7 @@ function setFormPos(lat, lng){
 function openForm(id){
   editingId = id || null;
   const c = id ? companies.find(x => x.id === id) : null;
-  $('#formTitle').textContent = c ? 'Modifier la piste' : 'Partager une piste';
+  $('#formTitle').textContent = c ? 'Modifier la piste' : 'Ajouter une piste';
   $('#fName').value = c?.name || '';
   $('#fCity').value = c?.city || '';
   $('#fDom').value = c?.domain || 'esn';
@@ -1820,6 +1963,7 @@ function saveForm(){
     setStatus(saved, newStatus);
     companies.push(saved);
   }
+  hideUndo();
   saveData();
   const pos = formPos;
   closeForm();
@@ -1859,7 +2003,7 @@ async function geocode(){
 }
 function startPlacing(){
   if (route !== 'pistes') location.hash = '#/pistes';
-  if (viewMode !== 'map') setViewMode('map');
+  if (viewMode !== 'map') setViewMode('map', { persist: false });
   placing = true;
   closeOverlay('ovForm', false);
   $('#placeBanner').classList.add('on');
@@ -2143,7 +2287,7 @@ function startSelect(mode, preset){
   if ($('#ovIO').classList.contains('open')) closeOverlay('ovIO', false);
   if (route !== 'pistes') location.hash = '#/pistes';
   prevViewMode = viewMode;
-  if (viewMode === 'map') setViewMode('list'); else renderResults();
+  if (viewMode === 'map') setViewMode('list', { persist: false }); else renderResults();
   $('#selDel').hidden = mode !== 'delete';
   $('#selOk').hidden = mode !== 'share';
   updateSelBar();
@@ -2160,7 +2304,7 @@ function endSelect(reopenIO){
   $('#selBar').classList.remove('on');
   const back = prevViewMode;
   prevViewMode = null;
-  if (back && back !== viewMode) setViewMode(back); else renderResults();
+  if (back && back !== viewMode) setViewMode(back, { persist: false }); else renderResults();
   if (reopenIO) openIO({ preserve: true });
 }
 function updateShareCounts(){
@@ -2297,6 +2441,46 @@ function mergeIncoming(list){
     }
   }
   return stats;
+}
+
+/* — 18a-bis. filet de sécurité : instantané avant fusion/remplacement + « ↩ Annuler » (30 s) —
+   Version volontairement simple : on restaure l'état complet d'avant l'opération.
+   Toute autre modification de données (ajout, statut, suppression…) invalide le filet. */
+function takeSnapshot(){
+  undoSnap = { c: JSON.stringify(companies), p: JSON.stringify(profile) };
+}
+function showUndo(msg, btnLabel){
+  $('#undoMsg').textContent = msg;
+  $('#btnUndo').textContent = btnLabel || '↩ Annuler';
+  $('#undoBar').hidden = false;
+  $('#toast').classList.add('up');                 /* un toast déjà affiché ne doit pas recouvrir la barre */
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideUndo, 30000);
+}
+function hideUndo(){
+  clearTimeout(undoTimer);
+  if (!$('#undoBar').hidden) $('#undoBar').hidden = true;
+  undoSnap = null;
+  $('#toast').classList.remove('up');
+}
+function undoRestore(){
+  if (!undoSnap) return;
+  let cs, ps;
+  try { cs = JSON.parse(undoSnap.c); ps = JSON.parse(undoSnap.p); }
+  catch (e) { hideUndo(); return; }
+  hideUndo();
+  companies = (cs || []).map(normalizeCompany);
+  profile = Object.assign(defaultProfile(), ps);
+  if (!Array.isArray(profile.templates) || !profile.templates.length) profile.templates = defaultTemplates();
+  if (!Array.isArray(profile.confirmedIds)) profile.confirmedIds = [];
+  if (!profile.flags || typeof profile.flags !== 'object') profile.flags = {};
+  saveData(); saveProfile();
+  document.querySelectorAll('[data-p]').forEach(inp => { inp.value = profile[inp.dataset.p] || ''; });
+  renderTpls();
+  if (cardShownId && !companies.some(c => c.id === cardShownId)) closeCard();
+  updateShareCounts();
+  renderAll();
+  toast('↩ Annulé — tes données d’avant ont été restaurées telles quelles');
 }
 
 /* — 18b. échange : interface — */
@@ -2449,7 +2633,10 @@ function setLegendFold(folded){
 }
 function updateFilterBtn(){
   const n = ($('#fDomain').value ? 1 : 0) + ($('#fStatus').value ? 1 : 0) + ($('#fSort').value !== 'recent' ? 1 : 0);
-  $('#btnFilters').textContent = '⚙ Filtres' + (n ? ` (${n})` : '');
+  const badge = $('#bfN');
+  badge.textContent = n || '';
+  badge.hidden = !n;
+  $('#btnFilters').setAttribute('aria-label', n ? `Filtres — ${n} actif${n > 1 ? 's' : ''}` : 'Filtres');
 }
 const OV_CLOSERS = {
   ovForm: () => closeForm(),
@@ -2509,12 +2696,25 @@ function bindEvents(){
   }));
 
   /* recherche / filtres / vues */
+  const syncQClear = () => { $('#qClear').hidden = !$('#q').value; };
   $('#q').addEventListener('input', debounce(() => { renderResults(); renderMarkers(); }, 140));
+  $('#q').addEventListener('input', syncQClear);
+  $('#q').addEventListener('search', () => { syncQClear(); renderResults(); renderMarkers(); });
+  $('#qClear').addEventListener('click', () => {
+    $('#q').value = '';
+    syncQClear();
+    renderResults(); renderMarkers();
+    $('#q').focus();
+  });
   $('#fDomain').addEventListener('change', () => { renderResults(); renderMarkers(); updateFilterBtn(); });
   $('#fStatus').addEventListener('change', () => { renderResults(); renderMarkers(); updateFilterBtn(); });
-  $('#fSort').addEventListener('change', () => { renderResults(); updateFilterBtn(); });
+  $('#fSort').addEventListener('change', () => {
+    if ($('#fSort').value === 'dist' && !userPos) locateMe('sort');   /* position demandée seulement à ce moment-là */
+    renderResults(); updateFilterBtn();
+  });
   document.querySelectorAll('.vswitch button').forEach(b =>
     b.addEventListener('click', () => setViewMode(b.dataset.vm)));
+  $('#fabMap').addEventListener('click', () => setViewMode('map'));
   $('#btnFilters').addEventListener('click', () => {
     const open = $('#fDrawer').classList.toggle('open');
     $('#btnFilters').setAttribute('aria-expanded', String(open));
@@ -2547,7 +2747,6 @@ function bindEvents(){
 
   /* thème, menus, navigation */
   $('#btnTheme').addEventListener('click', toggleTheme);
-  $('#btnTheme2').addEventListener('click', () => { toggleTheme(); toggleMore(false); });
   $('#btnIOTop').addEventListener('click', () => openIO());
   $('#bnIO').addEventListener('click', e => { e.preventDefault(); openIO(); });
   $('#btnMoreTop').addEventListener('click', () => toggleMore());
@@ -2581,6 +2780,7 @@ function bindEvents(){
     let obj;
     try { obj = await parseInput($('#ioTA').value, $('#ioPass').value); }
     catch (e) { ioFail(e); return; }
+    takeSnapshot();                                                /* filet de sécurité */
     const st = mergeIncoming(obj.companies);
     saveData(); renderAll();
     $('#ioTA').value = ''; $('#ioPass').value = '';
@@ -2588,7 +2788,7 @@ function bindEvents(){
     const parts = [`${st.addedC} nouvelle(s) piste(s)`, `${st.enriched} complétée(s)`, `${st.addedCt} contact(s) ajoutés`];
     if (st.conflicts) parts.push(`${st.conflicts} info(s) divergente(s) non importée(s)`);   /* D2 */
     if (obj.v && obj.v > 4) parts.push(`fichier v${obj.v} : champs inconnus conservés`);     /* D3 */
-    toast('Fusion ✓ — ' + parts.join(' · '));
+    showUndo('Fusion ✓ — ' + parts.join(' · '), '↩ Annuler la fusion');
   }));
 
   /* échange : donner */
@@ -2694,6 +2894,7 @@ function bindEvents(){
       okLabel: 'Remplacer tout'
     });
     if (!ok) return;
+    takeSnapshot();                                                /* filet de sécurité */
     companies = obj.companies.map(normalizeCompany);
     if (obj.profile && typeof obj.profile === 'object'){
       profile = Object.assign(defaultProfile(), obj.profile);
@@ -2708,7 +2909,7 @@ function bindEvents(){
     lastExport = null;
     $('#ioTA').value = ''; $('#ioPass').value = '';                /* B5 */
     saveData(); renderAll(); closeIO();
-    toast('Restauration : ' + companies.length + ' piste(s)');
+    showUndo('Restauration ✓ — ' + companies.length + ' piste(s)', '↩ Annuler le remplacement');
   }));
 
   /* barre de sélection */
@@ -2744,6 +2945,10 @@ function bindEvents(){
     endSelect(false);
     toast('🗑 ' + n + ' piste(s) supprimée(s)');
   });
+
+  /* filet de sécurité fusion/restauration */
+  $('#btnUndo').addEventListener('click', undoRestore);
+  $('#undoX').addEventListener('click', hideUndo);
 
   /* modale de confirmation */
   $('#cfOk').addEventListener('click', () => settleConfirm(true));
@@ -2968,14 +3173,20 @@ async function runSelfTests(){
   renderPrompts();
   updateFilterBtn();
 
+  /* premier lancement sur petit écran : la Liste accueille mieux qu'une carte vide.
+     La préférence n'est mémorisée qu'à partir d'un choix explicite de l'utilisateur. */
   const vm = await kvGet(VIEW_KEY);
-  setViewMode(vm === 'list' || vm === 'grid' ? vm : 'map');
+  const smallScreen = matchMedia('(max-width:900px)').matches;
+  setViewMode((vm === 'map' || vm === 'list' || vm === 'grid') ? vm : (smallScreen ? 'list' : 'map'), { persist: false });
+  if (matchMedia('(max-width:480px)').matches) $('#q').placeholder = 'Chercher…';
   renderAll();
   setLegendFold(companies.length >= 10);          /* U7 : légende dépliée tant que la base est petite */
 
   const placed = companies.filter(c => c.lat != null);
   if (placed.length){
-    map.fitBounds(L.latLngBounds(placed.map(c => [c.lat, c.lng])).pad(0.25), { maxZoom: 11 });
+    const b = L.latLngBounds(placed.map(c => [c.lat, c.lng])).pad(0.25);
+    if (viewMode === 'map') map.fitBounds(b, { maxZoom: 11 });
+    else pendingFit = b;                          /* la carte est masquée : cadrage appliqué à sa 1re ouverture */
   }
   applyRoute();
 
