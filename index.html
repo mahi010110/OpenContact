@@ -88,6 +88,7 @@ a{color:var(--primary)}
 html[data-theme="dark"] .btn:hover{filter:brightness(1.12)}
 .btn:active{transform:scale(.97)}
 .btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.btn:disabled{opacity:.45;pointer-events:none;box-shadow:none}
 .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
 .btn-ghost{background:transparent;border-color:transparent;color:var(--muted)}
 .btn-outline{background:transparent}
@@ -135,15 +136,16 @@ button.score{min-height:0;line-height:1.2}
 .rows{display:flex;flex-direction:column;gap:7px}
 .gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px}
 
-.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c,var(--line));border-radius:var(--radius);padding:11px 13px;cursor:pointer;transition:box-shadow .15s;display:flex;gap:9px;align-items:flex-start}
+.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c,var(--line));border-radius:var(--radius);padding:11px 13px;cursor:pointer;transition:box-shadow .15s,transform .08s;display:flex;gap:9px;align-items:flex-start}
 .card:hover{box-shadow:var(--shadow)}
+.card:active,.row-item:active{transform:scale(.985)}   /* retour tactile : le tap se sent */
 .card:focus-visible{outline:2px solid var(--primary)}
 .card .card-main{flex:1;min-width:0}
 .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .card h3{font-size:14.5px;font-weight:700;line-height:1.25}
 .card .meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45;display:flex;gap:10px;flex-wrap:wrap}
 .card .chips{margin-top:8px}
-.row-item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:box-shadow .15s}
+.row-item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:box-shadow .15s,transform .08s}
 .row-item:hover{box-shadow:var(--shadow)}
 .row-item .dotc{width:10px;height:10px;border-radius:50%;flex:none}
 .row-item .ri-main{flex:1;min-width:0;width:0}  /* width:0 : le texte nowrap ne doit jamais dicter la largeur de page (dézoom mobile) */
@@ -290,6 +292,9 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .fs[open] summary::before{transform:rotate(90deg)}
 .fs .fs-b{padding:4px 13px 13px}
 .fs .field input,.fs .field select,.fs .field textarea{background:var(--panel)}
+/* variante « danger » : la zone destructive a la même grammaire visuelle que le reste */
+.fs-danger{background:color-mix(in srgb,var(--danger) 5%,var(--panel-2));border-color:color-mix(in srgb,var(--danger) 30%,var(--line))}
+.fs-danger summary,.fs-danger summary::before{color:var(--danger)}
 .ct-edit{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px 4px;margin-bottom:9px;position:relative}
 .ct-edit .ct-del{position:absolute;top:7px;right:8px}
 .pos-box{background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:11px 12px;margin-bottom:12px}
@@ -324,7 +329,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .bn-add{flex:none;width:52px;height:52px;margin:-16px 6px 0;border-radius:50%;background:var(--primary);color:var(--on-primary);border:0;font-size:25px;font-weight:400;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 45%,transparent)}
 .moremenu{position:fixed;z-index:1600;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);display:none;flex-direction:column;min-width:215px;overflow:hidden}
 .moremenu.open{display:flex}
-.moremenu button,.moremenu a{background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font-size:13.5px;font-weight:600;padding:13px 15px;text-align:left;text-decoration:none;display:block}
+.moremenu button,.moremenu a{background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font-size:13.5px;font-weight:600;padding:13px 15px;text-align:left;text-decoration:none;display:block;width:100%}
 .moremenu :last-child{border-bottom:0}
 .place-banner{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:3200;background:var(--primary);color:var(--on-primary);font-weight:700;font-size:13.5px;padding:11px 15px;border-radius:12px;display:none;align-items:center;gap:11px;box-shadow:var(--shadow);max-width:calc(100% - 28px)}
 .place-banner.on{display:flex}
@@ -332,6 +337,8 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(12px);z-index:4000;background:var(--ink);color:var(--bg);font-weight:600;font-size:13px;padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 40px);text-align:center;line-height:1.5}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.up{bottom:100px}
+/* norme : un message ne recouvre jamais les actions d'une modale — il passe en haut */
+body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inset-top) + 66px)}
 
 /* ============ ANNULATION (filet de sécurité fusion / restauration) ============ */
 .undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:2900;background:var(--ink);color:var(--bg);border-radius:14px;padding:9px 8px 9px 15px;display:flex;gap:8px;align-items:center;box-shadow:var(--shadow);font-size:13px;font-weight:600;line-height:1.45;max-width:calc(100% - 24px)}
@@ -383,8 +390,8 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
   .moremenu{bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom));right:10px}
   .results{position:fixed;left:0;right:0;top:16dvh;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));width:auto;border-right:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;transform:translateY(110%);transition:transform .28s ease;z-index:1400}
   .results.open{transform:translateY(0)}
-  .drag-zone{padding:8px 0 6px;cursor:pointer}
-  .drag{width:42px;height:4px;border-radius:4px;background:var(--line);margin:0 auto}
+  .drag-zone{padding:8px 0 6px;cursor:grab;touch-action:none}
+  .drag{width:44px;height:5px;border-radius:5px;background:color-mix(in srgb,var(--muted) 40%,transparent);margin:0 auto}
   .fab{display:block}
   .legend{bottom:76px;max-width:196px}
   .toast{bottom:calc(var(--nav-h) + 26px + env(safe-area-inset-bottom))}
@@ -424,9 +431,18 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
   .selbar .btn{min-height:44px}
   .selbar{bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom))}
   body.selecting .toast{bottom:calc(var(--nav-h) + 148px + env(safe-area-inset-bottom))}
+  /* safe-areas latérales (encoche en paysage) : rien ne se glisse sous le matériel */
+  .hdr{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
+  .toolbar{padding-left:calc(10px + env(safe-area-inset-left));padding-right:calc(10px + env(safe-area-inset-right))}
+  .bottomnav{padding-left:calc(4px + env(safe-area-inset-left));padding-right:calc(4px + env(safe-area-inset-right))}
+  .page{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
+  /* pieds de modale : boutons équilibrés (max 2 par rangée), jamais collés au bord bas */
+  .modal-f{padding-bottom:calc(13px + env(safe-area-inset-bottom))}
+  .modal-f .btn{flex:1 1 45%}
   .place-banner button,.save-warn button{min-height:44px}
   .pp select{min-height:44px;max-width:100%}
-  .tk-actions select{min-height:44px;max-width:none;flex:1}
+  .tk-actions select{min-height:44px;max-width:none;flex:1 1 100%}
+  .tk-actions .btn{flex:1}
   .checks label{min-height:44px;font-size:13.5px;padding:9px 14px}
   .checks input{width:18px;height:18px}
   .loc-btn{width:44px;height:44px;top:108px}
@@ -503,11 +519,11 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
           <button class="q-clear" id="qClear" hidden aria-label="Effacer la recherche">✕</button>
         </div>
         <div class="vswitch" role="group" aria-label="Mode d'affichage">
-          <button data-vm="map" class="on" title="Carte" aria-label="Carte" aria-pressed="true">🗺<span> Carte</span></button>
+          <button data-vm="map" class="on" title="Carte" aria-label="Carte" aria-pressed="true">🗺️<span> Carte</span></button>
           <button data-vm="list" title="Liste" aria-label="Liste" aria-pressed="false">☰<span> Liste</span></button>
           <button data-vm="grid" title="Grille" aria-label="Grille" aria-pressed="false">▦<span> Grille</span></button>
         </div>
-        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer" aria-label="Filtres">⚙<span class="bf-txt"> Filtres</span><span class="bf-n" id="bfN" hidden></span></button>
+        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer" aria-label="Filtres">⚙️<span class="bf-txt"> Filtres</span><span class="bf-n" id="bfN" hidden></span></button>
         <span class="count-line" id="countLine"></span>
         <div class="fdrawer" id="fDrawer">
           <select id="fDomain" aria-label="Filtrer par domaine"><option value="">Domaine</option></select>
@@ -566,7 +582,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
             <button class="btn" id="btnLocEmpty">📍 Autour de moi</button>
           </div>
         </div>
-        <button class="fab fab-map" id="fabMap">🗺 Carte</button>
+        <button class="fab fab-map" id="fabMap">🗺️ Carte</button>
       </div>
     </section>
 
@@ -588,7 +604,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
     <!-- ============ VUE ÉCHANGER ============ -->
     <section class="view page" id="view-echanger" hidden>
       <div class="page-inner">
-        <h2>⇅ Échanger des pistes</h2>
+        <h2>Échanger des pistes</h2>
         <div class="sub">De la main à la main, par fichier ou copier-coller — ton suivi privé ne part jamais.</div>
 
         <div class="io-seg" role="tablist" aria-label="Recevoir ou donner">
@@ -645,16 +661,18 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
           </div>
         </div>
 
-        <details style="margin-top:4px">
-          <summary class="hint" style="cursor:pointer;color:var(--danger);font-weight:700;padding:10px 0">Zone avancée — actions destructives</summary>
-          <div class="hint" style="margin:8px 0">Fais toujours une copie de sécurité avant :</div>
-          <div class="pos-btns">
-            <button class="btn btn-sm" id="btnBackupNow">💾 Sauvegarder d'abord</button>
-            <button class="btn btn-sm" id="btnSelDelete">🗑 Choisir des pistes à supprimer</button>
-            <button class="btn btn-sm btn-danger" id="btnDeleteAll">Tout supprimer</button>
-            <button class="btn btn-sm btn-danger" id="btnImport">Remplacer tout</button>
+        <details class="fs fs-danger" style="margin-top:4px">
+          <summary>⚠️ Zone avancée — actions destructives</summary>
+          <div class="fs-b">
+            <div class="hint" style="margin:4px 0 8px">Fais toujours une copie de sécurité avant :</div>
+            <div class="pos-btns">
+              <button class="btn btn-sm" id="btnBackupNow">💾 Sauvegarder d'abord</button>
+              <button class="btn btn-sm" id="btnSelDelete">🗑 Choisir des pistes à supprimer</button>
+              <button class="btn btn-sm btn-danger" id="btnDeleteAll">Tout supprimer</button>
+              <button class="btn btn-sm btn-danger" id="btnImport">Remplacer tout</button>
+            </div>
+            <div class="hint" style="margin-top:8px">« Remplacer tout » restaure une sauvegarde : colle-la (ou ouvre-la) d'abord dans 📥 Recevoir.</div>
           </div>
-          <div class="hint" style="margin-top:8px">« Remplacer tout » restaure une sauvegarde : colle-la (ou ouvre-la) d'abord dans 📥 Recevoir.</div>
         </details>
       </div>
     </section>
@@ -772,6 +790,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
     <a href="#/prompts" role="menuitem">✨ Prompts IA</a>
     <a href="#/guide" role="menuitem">❓ Aide</a>
     <a href="#/apropos" role="menuitem">ℹ️ À propos</a>
+    <button id="miInstall" role="menuitem" hidden>📲 Installer l'app</button>
   </div>
 
   <!-- ============ BARRE DE SÉLECTION ============ -->
@@ -796,7 +815,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 <!-- ============ MODALE PISTE ============ -->
 <div class="overlay" id="ovForm">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
-    <div class="modal-h"><h2 id="formTitle">Ajouter une piste</h2><button class="x" id="xForm" aria-label="Fermer">×</button></div>
+    <div class="modal-h"><h2 id="formTitle">Ajouter une piste</h2><button class="x" id="xForm" aria-label="Fermer">✕</button></div>
     <div class="modal-b">
 
       <div class="field"><label for="fName">Entreprise / structure *</label><input id="fName" placeholder="Ex : Orange Cyberdefense"></div>
@@ -823,7 +842,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
             <div class="pos-val" id="posVal">Pas de position — la piste restera visible en Liste et Grille.</div>
             <div class="pos-btns">
               <button class="btn btn-sm" id="btnGeo">🔍 Depuis l'adresse</button>
-              <button class="btn btn-sm" id="btnPlace">🗺 Placer sur la carte</button>
+              <button class="btn btn-sm" id="btnPlace">🗺️ Placer sur la carte</button>
               <button class="btn btn-sm" id="btnMyPos">📍 Ma position</button>
               <button class="btn btn-sm btn-ghost" id="btnClearPos">Effacer</button>
             </div>
@@ -873,15 +892,16 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 <!-- ============ MODALE FICHE ============ -->
 <div class="overlay" id="ovCard">
   <div class="modal" role="dialog" aria-modal="true" aria-label="Détail de la piste">
-    <div class="modal-h"><h2 id="cardTitle">Piste</h2><button class="x" id="xCard" aria-label="Fermer">×</button></div>
+    <div class="modal-h"><h2 id="cardTitle">Piste</h2><button class="x" id="xCard" aria-label="Fermer">✕</button></div>
     <div class="modal-b" id="cardBody"></div>
+    <div class="modal-f" id="cardFoot"></div>
   </div>
 </div>
 
 <!-- ============ MODALE EMAIL ============ -->
 <div class="overlay" id="ovMail">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mailTitle">
-    <div class="modal-h"><h2 id="mailTitle">✉️ Écrire</h2><button class="x" id="xMail" aria-label="Fermer">×</button></div>
+    <div class="modal-h"><h2 id="mailTitle">✉️ Écrire</h2><button class="x" id="xMail" aria-label="Fermer">✕</button></div>
     <div class="modal-b">
       <div class="grid2">
         <div class="field"><label for="mailTo">Destinataire</label><select id="mailTo"></select></div>
@@ -904,7 +924,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 <!-- ============ MODALE CONFIRMATION (actions destructives) ============ -->
 <div class="overlay" id="ovConfirm">
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfMsg" style="max-width:430px">
-    <div class="modal-h"><h2 id="cfTitle">Confirmer ?</h2><button class="x" id="cfX" aria-label="Fermer">×</button></div>
+    <div class="modal-h"><h2 id="cfTitle">Confirmer ?</h2><button class="x" id="cfX" aria-label="Fermer">✕</button></div>
     <div class="modal-b">
       <p id="cfMsg" style="font-size:13.5px;line-height:1.6;color:var(--muted)"></p>
       <div class="field" id="cfVerifyWrap" hidden style="margin-top:12px">
@@ -927,7 +947,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
 <div class="undo-bar" id="undoBar" hidden>
   <span id="undoMsg" role="status" aria-live="polite"></span>
   <button class="btn btn-sm" id="btnUndo">↩ Annuler</button>
-  <button class="x" id="undoX" aria-label="Fermer sans annuler">×</button>
+  <button class="x" id="undoX" aria-label="Fermer sans annuler">✕</button>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -941,7 +961,7 @@ a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!importa
    11.actions 12.suivi 13.formulaire 14.email 15.docs 16.prompts
    17.sélection 18.échange 19.écouteurs 20.auto-tests 21.init
    ============================================================ */
-const APP_VERSION = '4.3.0';
+const APP_VERSION = '4.4.0';
 
 /* ---------- 1. constantes ---------- */
 const DOMAINS = {
@@ -1756,11 +1776,14 @@ function buildCardBody(c, inPopup){
     rows += `<div class="row"><span class="k">Web</span><b><a href="${esc(url)}" target="_blank" rel="noopener">${esc(c.website)}</a></b></div>`;
   }
   if (c.techs) rows += `<div class="row"><span class="k">Technos</span><b>${esc(c.techs)}</b></div>`;
+  /* en modale, le nom et le score vivent dans l'en-tête (pas de titre en double) ;
+     en popup de carte, il n'y a pas d'en-tête : le titre reste dans le corps */
+  const demoChip = c.demo ? ' <span class="chip" style="--cc:var(--amber)">Exemple</span>' : '';
   box.innerHTML =
-    `<h3>${esc(c.name)} ${scoreChipHTML(c)}${c.demo ? ' <span class="chip" style="--cc:var(--amber)">Exemple</span>' : ''}</h3>` +
+    (inPopup ? `<h3>${esc(c.name)} ${scoreChipHTML(c)}${demoChip}</h3>` : '') +
     (c.desc ? `<div class="desc">${esc(c.desc)}</div>` : '') +
     locLine +
-    `<div class="chips"><span class="chip" style="--cc:${d.color}">${esc(d.label)}</span>${pos}</div>` +
+    `<div class="chips">${inPopup ? '' : demoChip}<span class="chip" style="--cc:${d.color}">${esc(d.label)}</span>${pos}</div>` +
     rows;
   if ((c.contacts || []).length){
     const cl = document.createElement('div');
@@ -1773,6 +1796,14 @@ function buildCardBody(c, inPopup){
     (c.process ? `<details><summary>Process de recrutement</summary><div class="notes">${esc(c.process)}</div></details>` : '') +
     (c.tips ? `<details><summary>Conseils de la communauté</summary><div class="notes">${esc(c.tips)}</div></details>` : '');
   box.appendChild(extra);
+  if (!inPopup){
+    /* la vérification concerne les infos partagées : elle vit près d'elles,
+       les actions principales, elles, sont dans le pied fixe de la modale */
+    const vw = document.createElement('div');
+    vw.className = 'pp-actions';
+    vw.appendChild(mkBtn('✓ J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c)));
+    box.appendChild(vw);
+  }
 
   /* — suivi privé — */
   const priv = document.createElement('div');
@@ -1806,26 +1837,28 @@ function buildCardBody(c, inPopup){
   priv.appendChild(selWrap);
   box.appendChild(priv);
 
-  /* — actions — */
-  const actions = document.createElement('div');
-  actions.className = 'pp-actions';
-  const closeCtx = () => { if (inPopup && map) map.closePopup(); else closeCard(); };
-  actions.append(
-    mkBtn('✉️ Écrire', 'Générer un email', () => { closeCtx(); openMail(c); }),
-    mkBtn('✓ J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c)),
-    mkBtn('✎ Modifier', 'Modifier la piste', () => { closeCtx(); openForm(c.id); })
-  );
-  const bDel = document.createElement('button');
-  bDel.className = 'btn btn-sm btn-danger';
-  bDel.textContent = c.demo ? 'Supprimer l’exemple' : '🗑';
-  bDel.title = 'Supprimer la piste';
-  bDel.setAttribute('aria-label', 'Supprimer la piste');
-  bDel.addEventListener('click', () => {
-    if (c.demo){ removeCompany(c.id); closeCtx(); return; }
-    armButton(bDel, 'Sûr ?', () => { removeCompany(c.id); closeCtx(); });
-  });
-  actions.appendChild(bDel);
-  box.appendChild(actions);
+  /* — actions inline : uniquement en popup de carte (la modale a son pied fixe) — */
+  if (inPopup){
+    const actions = document.createElement('div');
+    actions.className = 'pp-actions';
+    const closeCtx = () => { if (map) map.closePopup(); };
+    actions.append(
+      mkBtn('✉️ Écrire', 'Générer un email', () => { closeCtx(); openMail(c); }),
+      mkBtn('✓ J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c)),
+      mkBtn('✎ Modifier', 'Modifier la piste', () => { closeCtx(); openForm(c.id); })
+    );
+    const bDel = document.createElement('button');
+    bDel.className = 'btn btn-sm btn-danger';
+    bDel.textContent = c.demo ? 'Supprimer l’exemple' : '🗑';
+    bDel.title = 'Supprimer la piste';
+    bDel.setAttribute('aria-label', 'Supprimer la piste');
+    bDel.addEventListener('click', () => {
+      if (c.demo){ removeCompany(c.id); closeCtx(); return; }
+      armButton(bDel, 'Sûr ?', () => { removeCompany(c.id); closeCtx(); });
+    });
+    actions.appendChild(bDel);
+    box.appendChild(actions);
+  }
   const seeBtn = box.querySelector('[data-seemap]');
   if (seeBtn) seeBtn.addEventListener('click', () => {
     closeCard();
@@ -1843,12 +1876,32 @@ function mkBtn(txt, title, fn){
   b.addEventListener('click', fn);
   return b;
 }
-function openCard(c){
-  cardShownId = c.id;
-  $('#cardTitle').textContent = c.name;
+/* modale fiche : titre + score dans l'en-tête, corps scrollable, actions dans
+   un pied fixe (une seule action primaire : ✉️ Écrire) — atteignables au pouce
+   sans faire défiler toute la fiche */
+function renderCardModal(c){
+  $('#cardTitle').innerHTML = `${esc(c.name)} ${scoreChipHTML(c)}`;
   const body = $('#cardBody');
   body.innerHTML = '';
   body.appendChild(buildCardBody(c, false));
+  const f = $('#cardFoot');
+  f.innerHTML = '';
+  const bDel = document.createElement('button');
+  bDel.className = 'btn btn-sm btn-danger';
+  bDel.textContent = c.demo ? 'Supprimer l’exemple' : '🗑 Supprimer';
+  bDel.setAttribute('aria-label', 'Supprimer la piste');
+  bDel.addEventListener('click', () => {
+    if (c.demo){ removeCompany(c.id); closeCard(); return; }
+    armButton(bDel, 'Sûr ?', () => { removeCompany(c.id); closeCard(); });
+  });
+  const bEdit = mkBtn('✎ Modifier', 'Modifier la piste', () => { closeCard(); openForm(c.id); });
+  const bMail = mkBtn('✉️ Écrire', 'Générer un email', () => { closeCard(); openMail(c); });
+  bMail.classList.add('btn-primary');
+  f.append(bDel, bEdit, bMail);
+}
+function openCard(c){
+  cardShownId = c.id;
+  renderCardModal(c);
   openOverlay('ovCard');
 }
 function closeCard(){ cardShownId = null; closeOverlay('ovCard'); }
@@ -1874,11 +1927,7 @@ function refreshCompany(c){
       if (m.isPopupOpen()) m.setPopupContent(buildCardBody(c, true));
     }
   }
-  if (cardShownId === c.id && $('#ovCard').classList.contains('open')){
-    const b = $('#cardBody');
-    b.innerHTML = '';
-    b.appendChild(buildCardBody(c, false));
-  }
+  if (cardShownId === c.id && $('#ovCard').classList.contains('open')) renderCardModal(c);
   renderResults();
   if (route === 'suivi') renderTrack();
 }
@@ -2238,12 +2287,12 @@ async function geocode(){
     setFormPos(+j[0].lat, +j[0].lon);
     if (map) map.setView([+j[0].lat, +j[0].lon], 13);
     hint.className = 'hint';
-    hint.textContent = 'Position trouvée ✓ — ajuste avec « 🗺 Placer sur la carte » si besoin.';
+    hint.textContent = 'Position trouvée ✓ — ajuste avec « 🗺️ Placer sur la carte » si besoin.';
   } catch (e) {
     hint.className = 'hint warn';
     hint.textContent = (e.message === 'empty')
-      ? 'Introuvable — utilise « 🗺 Placer sur la carte » (un tap suffit).'
-      : 'Géocodage indisponible pour le moment — « 🗺 Placer sur la carte » fonctionne toujours.';
+      ? 'Introuvable — utilise « 🗺️ Placer sur la carte » (un tap suffit).'
+      : 'Géocodage indisponible pour le moment — « 🗺️ Placer sur la carte » fonctionne toujours.';
   }
   clearTimeout(tm);
   b.disabled = false; b.textContent = '🔍 Depuis l’adresse';
@@ -2286,6 +2335,9 @@ function openMail(c){
   $('#mailTitle').textContent = (pq ? `✉️ ${pq.i + 1}/${pq.ids.length} — ` : '✉️ Écrire à ') + c.name;
   $('#btnMailSkip').hidden = !pq;
   $('#btnMailSent').textContent = pq ? '📤 Envoyée · suivante' : '📤 Envoyée ✓';
+  /* une seule action primaire : en file, c'est l'enchaînement ; sinon, l'envoi */
+  $('#btnMailSent').classList.toggle('btn-primary', !!pq);
+  $('#btnMailto').classList.toggle('btn-primary', !pq);
   renderMailDocs();
   const to = $('#mailTo');
   to.innerHTML = '';
@@ -2717,6 +2769,8 @@ function toggleSel(id, el, cb){
 function updateSelBar(){
   const n = selectedIds.size;
   $('#selCount').textContent = n + ' sélectionnée' + (n > 1 ? 's' : '');
+  /* norme : pas d'action groupée cliquable tant que rien n'est sélectionné */
+  ['#selOk','#selQueue','#selShare','#selDel'].forEach(s => { $(s).disabled = !n; });
 }
 function startSelect(mode, preset){
   selecting = mode;                                  /* 'share' | 'delete' | 'multi' */
@@ -3125,6 +3179,29 @@ function bindEvents(){
   $('#fabList').addEventListener('click', () => $('#results').classList.toggle('open'));
   $('#dragZone').addEventListener('click', closeSheet);
   $('#dragZone').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); closeSheet(); } });
+  /* la poignée se laisse aussi glisser vers le bas — le geste attendu d'un panneau */
+  (() => {
+    const sheet = $('#results'), dz = $('#dragZone');
+    let sy = 0, dy = 0, on = false;
+    dz.addEventListener('touchstart', e => {
+      sy = e.touches[0].clientY; dy = 0; on = true;
+      sheet.style.transition = 'none';
+    }, { passive: true });
+    dz.addEventListener('touchmove', e => {
+      if (!on) return;
+      dy = Math.max(0, e.touches[0].clientY - sy);
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    const end = () => {
+      if (!on) return;
+      on = false;
+      sheet.style.transition = '';
+      if (dy > 70) closeSheet();
+      requestAnimationFrame(() => { sheet.style.transform = ''; });
+    };
+    dz.addEventListener('touchend', end);
+    dz.addEventListener('touchcancel', end);
+  })();
 
   /* alerte de sauvegarde (B2) : export de secours en un clic */
   $('#swExport').addEventListener('click', () => {
@@ -3473,6 +3550,22 @@ function bindEvents(){
     if (top){ (OV_CLOSERS[top] || (() => closeOverlay(top)))(); return; }
     if (selecting){ endSelect(true); return; }
   });
+
+  /* PWA : proposer l'installation quand le navigateur le permet (Android/desktop) */
+  let installEv = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    installEv = e;
+    $('#miInstall').hidden = false;
+  });
+  $('#miInstall').addEventListener('click', () => {
+    toggleMore(false);
+    if (!installEv) return;
+    installEv.prompt();
+    installEv = null;
+    $('#miInstall').hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { $('#miInstall').hidden = true; toast('OpenContact est installé sur ton appareil ✓'); });
 
   /* B4 : la dernière frappe du profil n'est jamais perdue */
   window.addEventListener('beforeunload', flushProfile);
