@@ -8,9 +8,12 @@ données vivent dans le navigateur et circulent par fichiers `.oc` échangés.
 
 | Fichier | Rôle |
 |---|---|
-| `index.html` | Structure et styles de l'interface (HTML + CSS) |
+| `index.html` | Structure de l'interface (HTML) |
+| `styles/` | Feuille de production `app.css` + `tokens/` (couleurs, typos, effets — source unique du design) |
 | `app.js` | Couche interface : état de l'application, rendus, carte, écouteurs |
 | `engine/` | Le moteur : modèle de données, stockage, chiffrement, fusion, score, filtres, géocodage — aucun accès à l'écran |
+| `assets/` | Polices (WOFF2 + licences OFL), 73 icônes pixel (pixelarticons, MIT), logos |
+| `design/` | Le kit de design « Utilitaire 98 » : composants de référence, guidelines, maquettes |
 | `tests.js` | Auto-tests du moteur (`?test` dans l'URL) |
 | `sw.js` | Service worker : hors-ligne + installation (PWA) |
 | `manifest.webmanifest` | Manifeste d'installation |

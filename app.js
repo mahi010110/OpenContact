@@ -59,6 +59,13 @@ const markerById = {};
 
 /* ---------- 2. utilitaires d'écran (le reste : engine/utils.js) ---------- */
 const $ = s => document.querySelector(s);
+/* icône pixel (assets/icons/) teintée par currentColor — masque CSS .ic.
+   mask-image est posé en style direct : une url() relative dans une
+   variable CSS ne se résout pas pareil selon les navigateurs. */
+function icHTML(name, extra){
+  const u = 'url(assets/icons/' + name + '.svg)';
+  return '<span class="ic' + (extra || '') + '" style="-webkit-mask-image:' + u + ';mask-image:' + u + '" aria-hidden="true"></span>';
+}
 function toast(msg){
   const t = $('#toast');
   t.textContent = msg;
@@ -68,24 +75,24 @@ function toast(msg){
   t._h = setTimeout(() => t.classList.remove('on'), Math.min(6500, 2400 + msg.length * 35));
 }
 function cssVar(name){
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#1C6E5A';
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#0B7268';
 }
 /* bouton à confirmation en deux temps (factorisé) */
 function armButton(btn, confirmLabel, fn){
   if (btn.dataset.arm){
     delete btn.dataset.arm;
-    btn.textContent = btn.dataset.orig || btn.textContent;
+    btn.innerHTML = btn.dataset.orig || btn.innerHTML;
     delete btn.dataset.orig;
     fn();
     return;
   }
-  btn.dataset.orig = btn.textContent;
+  btn.dataset.orig = btn.innerHTML;
   btn.dataset.arm = '1';
   btn.textContent = confirmLabel;
   setTimeout(() => {
     if (btn.dataset.arm){
       delete btn.dataset.arm;
-      btn.textContent = btn.dataset.orig;
+      btn.innerHTML = btn.dataset.orig;
       delete btn.dataset.orig;
     }
   }, 3200);
@@ -111,10 +118,10 @@ function saveProfile(){ kvSet(PROFILE_KEY, JSON.stringify(profile)).then(ok => s
 /* ---------- 5. modèle de données : engine/model.js ---------- */
 
 /* ---------- 6. indice de complétude : engine/score.js — ici : sa pastille ---------- */
-function scoreColor(s){ return s >= 70 ? 'var(--ok)' : s >= 40 ? 'var(--amber)' : 'var(--danger)'; }
 function scoreChipHTML(c){
   const s = scoreOf(c);
-  return `<button type="button" class="score" data-sinfo="${s}" style="--sc:${scoreColor(s)}" aria-label="Complétude ${s} sur 100 — toucher pour l'explication">${s}</button>`;
+  const tone = s >= 70 ? 'ok' : s >= 40 ? 'mid' : 'low';
+  return `<button type="button" class="score score--${tone}" data-sinfo="${s}" aria-label="Complétude ${s} sur 100 — toucher pour l'explication">${s}</button>`;
 }
 
 /* ---------- 7. carte ---------- */
@@ -162,7 +169,7 @@ function colorOf(c){
     ? (DOMAINS[c.domain]?.color || '#8A99A6')
     : (STATUSES[c.status]?.color || '#8A99A6');
 }
-/* zone tactile du marqueur : 44px au doigt (pointeur grossier), 26px à la souris — le point visuel reste 15px */
+/* zone tactile du marqueur : 44px au doigt (pointeur grossier), 26px à la souris — le point visuel reste 14px */
 const PIN_HIT = (window.matchMedia && matchMedia('(pointer:coarse)').matches) ? 44 : 26;
 function makeIcon(color, ping){
   return L.divIcon({
@@ -201,7 +208,7 @@ function applyTheme(t){
   theme = t;
   document.documentElement.dataset.theme = t;
   const mt = $('#metaTheme');
-  if (mt) mt.content = (t === 'dark') ? '#1A222B' : '#FFFFFF';   /* barre du navigateur assortie */
+  if (mt) mt.content = (t === 'dark') ? '#1E232B' : '#F7F6F1';   /* barre du navigateur assortie */
   kvSet(THEME_KEY, t);
   setTiles();
 }
@@ -284,14 +291,14 @@ function metaLine(c){
   const bits = [];
   if ($('#fSort').value === 'dist' && userPos && c.lat != null){
     const km = distKm(userPos.lat, userPos.lng, c.lat, c.lng);
-    bits.push('🧭 ' + (km < 10 ? km.toFixed(1).replace('.', ',') : String(Math.round(km))) + ' km');
+    bits.push((km < 10 ? km.toFixed(1).replace('.', ',') : String(Math.round(km))) + ' km');
   }
-  if (c.city) bits.push('📍 ' + esc(c.city));
+  if (c.city) bits.push(esc(c.city));
   const n = (c.contacts || []).length;
-  if (n) bits.push('👤 ' + n + ' contact' + (n > 1 ? 's' : ''));
-  const pos = (c.positions || []).map(p => POSITIONS[p]).join(' · ');
-  if (pos) bits.push('💼 ' + esc(pos));
-  return bits.join('  ');
+  if (n) bits.push(n + ' contact' + (n > 1 ? 's' : ''));
+  const pos = (c.positions || []).map(p => POSITIONS[p]).join(', ');
+  if (pos) bits.push(esc(pos));
+  return bits.join(' · ');
 }
 function addSelCheck(el, c){
   const cb = document.createElement('input');
@@ -319,7 +326,7 @@ function makeCardEl(c, onOpen){
     `<div class="chips">` +
       (c.demo ? `<span class="chip" style="--cc:var(--amber)">Exemple</span>` : '') +
       `<span class="chip" style="--cc:${d.color}">${esc(d.label)}</span>` +
-      (c.status !== 'todo' ? `<span class="chip" style="--cc:${s.color}">🔒 ${esc(s.label)}</span>` : '') +
+      (c.status !== 'todo' ? `<span class="chip" style="--cc:${s.color}">${esc(s.label)}</span>` : '') +
     `</div>`;
   el.appendChild(main);
   const act = () => { if (selecting) toggleSel(c.id, el, el.querySelector('.sel-check')); else onOpen(); };
@@ -377,7 +384,7 @@ function listToolsEl(n){
   d.innerHTML = `<span>${n} piste${n > 1 ? 's' : ''}${n !== companies.length ? ' / ' + companies.length : ''}</span><span class="grow"></span>`;
   const b = document.createElement('button');
   b.className = 'btn btn-sm';
-  b.textContent = '☑ Sélectionner';
+  b.innerHTML = icHTML('checkbox', ' ic-14') + ' Sélectionner';
   b.setAttribute('aria-label', 'Sélectionner plusieurs pistes pour une action groupée');
   b.addEventListener('click', () => startSelect('multi'));
   d.appendChild(b);
@@ -431,7 +438,7 @@ function renderLegend(){
   $('#lgItems').innerHTML = Object.values(src).map(v =>
     `<div class="it"><span class="dot" style="background:${v.color}"></span>${esc(v.label)}</div>`
   ).join('') +
-  `<div class="it" style="margin-top:3px"><span class="score" style="--sc:var(--ok)">80</span>complétude /100 — touche le chiffre d'une fiche</div>`;
+  `<div class="it" style="margin-top:3px"><span class="score score--ok">80</span>complétude /100 — touche le chiffre d'une fiche</div>`;
   document.querySelectorAll('#lgToggle button').forEach(b => {
     const on = b.dataset.mode === colorMode;
     b.classList.toggle('on', on);
@@ -493,14 +500,14 @@ function contactBlock(ct){
   const conf = ct.conf === 'ok' ? '<span class="conf-ok">✓ vérifié</span>'
              : ct.conf === 'doubt' ? '<span class="conf-doubt">? à confirmer</span>' : '';
   const links = [];
-  if (ct.email) links.push(`<a href="mailto:${esc(ct.email)}">✉ ${esc(ct.email)}</a>`);
-  if (ct.phone) links.push(`<a href="tel:${esc(ct.phone.replace(/\s/g,''))}">☎ ${esc(ct.phone)}</a>`);
+  if (ct.email) links.push(`<a href="mailto:${esc(ct.email)}">${icHTML('mail', ' ic-14')} ${esc(ct.email)}</a>`);
+  if (ct.phone) links.push(`<a href="tel:${esc(ct.phone.replace(/\s/g,''))}">${icHTML('phone', ' ic-14')} ${esc(ct.phone)}</a>`);
   if (ct.link){
     const url = /^https?:\/\//.test(ct.link) ? ct.link : 'https://' + ct.link;
-    links.push(`<a href="${esc(url)}" target="_blank" rel="noopener">🔗 lien</a>`);
+    links.push(`<a href="${esc(url)}" target="_blank" rel="noopener">${icHTML('link', ' ic-14')} lien</a>`);
   }
   wrap.innerHTML =
-    `<div class="ct-h"><b>👤 ${esc(ct.name || 'Contact')}</b>` +
+    `<div class="ct-h"><b>${esc(ct.name || 'Contact')}</b>` +
     (ct.role ? `<span class="ct-role">— ${esc(ct.role)}</span>` : '') + conf + `</div>` +
     (links.length ? `<div class="ct-links">${links.join('')}</div>` : '') +
     (ct.note ? `<div class="ct-note">${esc(ct.note)}</div>` : '');
@@ -517,8 +524,8 @@ function buildCardBody(c, inPopup){
   const place = c.address || c.city || (c.lat != null ? 'Position sur la carte' : '');
   const dirUrl = directionsUrl(c);
   const locLine = place
-    ? `<div class="pp-loc">📍 <b>${esc(place)}</b>` +
-      (dirUrl ? ` <a class="linklike" href="${esc(dirUrl)}" target="_blank" rel="noopener">🧭 Itinéraire</a>` : '') +
+    ? `<div class="pp-loc"><b>${esc(place)}</b>` +
+      (dirUrl ? ` <a class="linklike" href="${esc(dirUrl)}" target="_blank" rel="noopener">${icHTML('directions', ' ic-14')} Itinéraire</a>` : '') +
       ((!inPopup && c.lat != null) ? ` <button type="button" class="linklike" data-seemap>Voir sur la carte</button>` : '') +
       `</div>`
     : '';
@@ -555,18 +562,18 @@ function buildCardBody(c, inPopup){
        les actions principales, elles, sont dans le pied fixe de la modale */
     const vw = document.createElement('div');
     vw.className = 'pp-actions';
-    vw.appendChild(mkBtn('✓ J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c)));
+    vw.appendChild(mkBtn('J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c), 'check'));
     box.appendChild(vw);
   }
 
   /* — suivi privé — */
   const priv = document.createElement('div');
-  priv.innerHTML = `<div class="priv-sep">🔒 mon suivi</div>`;
+  priv.innerHTML = `<div class="priv-sep">${icHTML('lock', ' ic-14')} mon suivi</div>`;
   let prows = '';
   if (c.appliedAt) prows += `<div class="row"><span class="k">Envoyée</span><b>${esc(fmtDate(c.appliedAt))}</b></div>`;
-  if (c.nextAction) prows += `<div class="row"><span class="k">Action</span><b style="${isLate(c.nextAction) ? 'color:var(--amber)' : ''}">${esc(fmtDate(c.nextAction))}${isLate(c.nextAction) ? ' ⏰' : ''}</b></div>`;
+  if (c.nextAction) prows += `<div class="row"><span class="k">Action</span><b style="${isLate(c.nextAction) ? 'color:var(--amber)' : ''}">${esc(fmtDate(c.nextAction))}${isLate(c.nextAction) ? ' — en retard' : ''}</b></div>`;
   const histHtml = (c.history && c.history.length)
-    ? `<details><summary>🕘 Historique (${c.history.length})</summary><ul class="timeline">` +
+    ? `<details><summary>Historique (${c.history.length})</summary><ul class="timeline">` +
       c.history.slice().reverse().slice(0,10)
         .map(h => `<li><span class="d">${esc(fmtDate(h.d))}</span><span>${esc(h.t)}</span></li>`).join('') +
       `</ul></details>`
@@ -597,13 +604,13 @@ function buildCardBody(c, inPopup){
     actions.className = 'pp-actions';
     const closeCtx = () => { if (map) map.closePopup(); };
     actions.append(
-      mkBtn('✉️ Écrire', 'Générer un email', () => { closeCtx(); openMail(c); }),
-      mkBtn('✓ J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c)),
-      mkBtn('✎ Modifier', 'Modifier la piste', () => { closeCtx(); openForm(c.id); })
+      mkBtn('Écrire', 'Générer un email', () => { closeCtx(); openMail(c); }, 'mail'),
+      mkBtn('J’ai vérifié ces infos', 'Confirmer que la fiche est exacte et à jour', () => confirmInfo(c), 'check'),
+      mkBtn('Modifier', 'Modifier la piste', () => { closeCtx(); openForm(c.id); }, 'pencil')
     );
     const bDel = document.createElement('button');
     bDel.className = 'btn btn-sm btn-danger';
-    bDel.textContent = c.demo ? 'Supprimer l’exemple' : '🗑';
+    bDel.innerHTML = c.demo ? 'Supprimer l’exemple' : icHTML('trash', ' ic-14');
     bDel.title = 'Supprimer la piste';
     bDel.setAttribute('aria-label', 'Supprimer la piste');
     bDel.addEventListener('click', () => {
@@ -621,17 +628,17 @@ function buildCardBody(c, inPopup){
   });
   return box;
 }
-function mkBtn(txt, title, fn){
+function mkBtn(txt, title, fn, icon){
   const b = document.createElement('button');
   b.className = 'btn btn-sm';
-  b.textContent = txt;
+  b.innerHTML = (icon ? icHTML(icon, ' ic-14') + (txt ? ' ' : '') : '') + esc(txt);
   b.title = title;
   b.setAttribute('aria-label', title);
   b.addEventListener('click', fn);
   return b;
 }
 /* modale fiche : titre + score dans l'en-tête, corps scrollable, actions dans
-   un pied fixe (une seule action primaire : ✉️ Écrire) — atteignables au pouce
+   un pied fixe (une seule action primaire : Écrire) — atteignables au pouce
    sans faire défiler toute la fiche */
 function renderCardModal(c){
   $('#cardTitle').innerHTML = `${esc(c.name)} ${scoreChipHTML(c)}`;
@@ -642,14 +649,14 @@ function renderCardModal(c){
   f.innerHTML = '';
   const bDel = document.createElement('button');
   bDel.className = 'btn btn-sm btn-danger';
-  bDel.textContent = c.demo ? 'Supprimer l’exemple' : '🗑 Supprimer';
+  bDel.innerHTML = c.demo ? 'Supprimer l’exemple' : icHTML('trash', ' ic-14') + ' Supprimer';
   bDel.setAttribute('aria-label', 'Supprimer la piste');
   bDel.addEventListener('click', () => {
     if (c.demo){ removeCompany(c.id); closeCard(); return; }
     armButton(bDel, 'Sûr ?', () => { removeCompany(c.id); closeCard(); });
   });
-  const bEdit = mkBtn('✎ Modifier', 'Modifier la piste', () => { closeCard(); openForm(c.id); });
-  const bMail = mkBtn('✉️ Écrire', 'Générer un email', () => { closeCard(); openMail(c); });
+  const bEdit = mkBtn('Modifier', 'Modifier la piste', () => { closeCard(); openForm(c.id); }, 'pencil');
+  const bMail = mkBtn('Écrire', 'Générer un email', () => { closeCard(); openMail(c); }, 'mail');
   bMail.classList.add('btn-primary');
   f.append(bDel, bEdit, bMail);
 }
@@ -689,7 +696,7 @@ function setStatus(c, st){
   if (c.status === st) return;
   c.status = st; c.updatedAt = Date.now();
   pushHist(c, 'Statut → ' + STATUSES[st].label);
-  logJ('🔖 ' + c.name + ' → ' + STATUSES[st].label, c.id);
+  logJ('Statut : ' + c.name + ' → ' + STATUSES[st].label, c.id);
 }
 function confirmInfo(c){
   c.verifiedAt = todayISO();
@@ -700,14 +707,14 @@ function confirmInfo(c){
   }
   c.updatedAt = Date.now();
   pushHist(c, 'Fiche vérifiée ✓');
-  logJ('✓ Fiche vérifiée : ' + c.name, c.id);
+  logJ('Fiche vérifiée : ' + c.name, c.id);
   refreshCompany(c);
   if (!profile.flags.confirmTaught){                       /* U5 : pédagogie la 1re fois */
     profile.flags.confirmTaught = 1;
     saveProfile();
-    toast('Merci ! Ta confirmation date la fiche et augmente son indice de complétude — pour tout le monde ✓');
+    toast('Merci. Ta confirmation date la fiche et augmente son indice de complétude — pour tout le monde.');
   } else {
-    toast('Merci ! Fiche marquée vérifiée ✓');
+    toast('Fiche marquée vérifiée.');
   }
 }
 function focusCompany(id){
@@ -733,10 +740,10 @@ function removeCompany(id){
   profile.confirmedIds = profile.confirmedIds.filter(x => x !== id);
   shareSelIds.delete(id);
   selectedIds.delete(id);
-  if (gone && !gone.demo) logJ('🗑 Piste supprimée : ' + gone.name);
+  if (gone && !gone.demo) logJ('Piste supprimée : ' + gone.name);
   saveData(); saveProfile(); renderAll();
   if (cardShownId === id) closeCard();
-  toast('Piste supprimée');
+  toast('Piste supprimée.');
 }
 function deleteMany(ids){
   hideUndo();
@@ -746,7 +753,7 @@ function deleteMany(ids){
   profile.confirmedIds = profile.confirmedIds.filter(id => !set.has(id));
   for (const id of set) shareSelIds.delete(id);
   if (cardShownId && set.has(cardShownId)) closeCard();
-  if (n) logJ('🗑 ' + n + ' piste' + (n > 1 ? 's' : '') + ' supprimée' + (n > 1 ? 's' : ''));
+  if (n) logJ(n + ' piste' + (n > 1 ? 's' : '') + ' supprimée' + (n > 1 ? 's' : ''));
   saveData(); saveProfile(); renderAll();
 }
 function plus7(c){
@@ -754,7 +761,7 @@ function plus7(c){
   c.nextAction = d.toISOString().slice(0,10);
   c.updatedAt = Date.now();
   pushHist(c, 'Relance planifiée le ' + fmtDate(c.nextAction));
-  logJ('⏰ Relance planifiée : ' + c.name, c.id);
+  logJ('Relance planifiée : ' + c.name, c.id);
   refreshCompany(c);
   toast('Relance planifiée le ' + fmtDate(c.nextAction));
 }
@@ -774,7 +781,7 @@ function renderTrack(){
   const db = $('#dueBanner');
   if (late.length){
     db.hidden = false;
-    db.textContent = '⏰ ' + late.length + ' relance(s) en retard : ' +
+    db.textContent = late.length + ' relance(s) en retard : ' +
       late.map(c => c.name).slice(0,4).join(', ') + (late.length > 4 ? '…' : '');
   } else { db.hidden = true; }
   renderJournal();
@@ -802,12 +809,12 @@ function trackCard(c){
   el.className = 'tk-card';
   el.style.setProperty('--c', STATUSES[c.status]?.color || '#8A99A6');
   let dates = '';
-  if (c.appliedAt) dates += `<span>📤 envoyée le ${esc(fmtDate(c.appliedAt))}</span>`;
+  if (c.appliedAt) dates += `<span>envoyée le ${esc(fmtDate(c.appliedAt))}</span>`;
   if (c.nextAction){
     const late = isLate(c.nextAction) && !['rejected','won'].includes(c.status);
-    dates += `<span class="${late ? 'late' : ''}">⏰ action le ${esc(fmtDate(c.nextAction))}${late ? ' — en retard' : ''}</span>`;
+    dates += `<span class="${late ? 'late' : ''}">action le ${esc(fmtDate(c.nextAction))}${late ? ' — en retard' : ''}</span>`;
   }
-  if (!dates) dates = '<span>— pas de dates (✎ pour en ajouter)</span>';
+  if (!dates) dates = '<span>— pas de dates (« Modifier » pour en ajouter)</span>';
   el.innerHTML = `<h4>${esc(c.name)}</h4><div class="tk-dates">${dates}</div>`;
   const act = document.createElement('div'); act.className = 'tk-actions';
   const sel = document.createElement('select');
@@ -821,9 +828,9 @@ function trackCard(c){
   sel.addEventListener('change', () => { setStatus(c, sel.value); refreshCompany(c); });
   act.append(sel,
     mkBtn('+7 j', 'Planifier une relance dans 7 jours', () => plus7(c)),
-    mkBtn('✉️', 'Écrire un email', () => openMail(c)),
-    mkBtn('✎', 'Modifier la piste', () => openForm(c.id)),
-    mkBtn('👁', 'Voir la piste', () => focusCompany(c.id)));
+    mkBtn('', 'Écrire un email', () => openMail(c), 'mail'),
+    mkBtn('', 'Modifier la piste', () => openForm(c.id), 'pencil'),
+    mkBtn('', 'Voir la piste', () => focusCompany(c.id), 'eye'));
   el.appendChild(act);
   return el;
 }
@@ -899,7 +906,7 @@ function renderContactEditors(){
   });
   updateCtCount();
 }
-/* badge sur le pli « 📇 Contacts » : on voit d'un coup d'œil ce que contient la section fermée */
+/* badge sur le pli « Contacts » : on voit d'un coup d'œil ce que contient la section fermée */
 function updateCtCount(){
   const n = formContacts.filter(contactHasData).length;
   const b = $('#fsCtN');
@@ -1004,21 +1011,21 @@ function saveForm(){
     if (JSON.stringify([data.desc, data.address, data.city, data.website, data.techs, data.process, data.tips, data.positions]) !== before.shared)
       pushHist(c, 'Fiche complétée');
     setStatus(c, newStatus);
-    logJ('✎ Piste modifiée : ' + c.name, c.id);
+    logJ('Piste modifiée : ' + c.name, c.id);
     saved = c;
   } else {
     saved = normalizeCompany(Object.assign({ id: uid(), createdAt: Date.now(), status: 'todo' }, data));
     saved.history = [{ d: todayISO(), t: 'Piste créée' }];
     setStatus(saved, newStatus);
     companies.push(saved);
-    logJ('➕ Piste créée : ' + saved.name, saved.id);
+    logJ('Piste créée : ' + saved.name, saved.id);
   }
   hideUndo();
   saveData();
   const pos = formPos;
   closeForm();
   renderAll();
-  toast('Piste enregistrée ✓');
+  toast('Piste enregistrée.');
   if (pos) focusCompany(saved.id);
 }
 async function geocode(){
@@ -1029,23 +1036,24 @@ async function geocode(){
   const hint = $('#posHint');
   if (!q){ hint.className = 'hint warn'; hint.textContent = 'Renseigne la ville ou l’adresse d’abord.'; return; }
   const b = $('#btnGeo');
-  b.disabled = true; b.textContent = '🔍 Recherche…';
+  const bOrig = b.innerHTML;
+  b.disabled = true; b.textContent = 'Recherche…';
   try {
     const pos = await geocodeAddress(q);
     setFormPos(pos.lat, pos.lng);
     if (map) map.setView([pos.lat, pos.lng], 13);
     hint.className = 'hint';
-    hint.textContent = 'Position trouvée ✓ — ajuste avec « 🗺️ Placer sur la carte » si besoin.';
+    hint.textContent = 'Position trouvée — ajuste avec « Placer sur la carte » si besoin.';
   } catch (e) {
     hint.className = 'hint warn';
     hint.textContent = (e.message === 'empty')
-      ? 'Introuvable — utilise « 🗺️ Placer sur la carte » (un tap suffit).'
-      : 'Géocodage indisponible pour le moment — « 🗺️ Placer sur la carte » fonctionne toujours.';
+      ? 'Introuvable — utilise « Placer sur la carte » (un tap suffit).'
+      : 'Géocodage indisponible pour le moment — « Placer sur la carte » fonctionne toujours.';
   }
-  b.disabled = false; b.textContent = '🔍 Depuis l’adresse';
+  b.disabled = false; b.innerHTML = bOrig;
 }
 function startPlacing(){
-  if (!map){ toast('Carte indisponible pour le moment — utilise « 🔍 Depuis l’adresse »'); return; }
+  if (!map){ toast('Carte indisponible pour le moment — utilise « Depuis l’adresse ».'); return; }
   if (route !== 'pistes') location.hash = '#/pistes';
   if (viewMode !== 'map') setViewMode('map', { persist: false });
   placing = true;
@@ -1068,9 +1076,9 @@ function openMail(c){
   mailLogged = false;
   mailRecipients = (c.contacts || []).filter(t => t.email);
   /* en file de prospection : progression visible, boutons d'enchaînement — chaque message reste individuel */
-  $('#mailTitle').textContent = (pq ? `✉️ ${pq.i + 1}/${pq.ids.length} — ` : '✉️ Écrire à ') + c.name;
+  $('#mailTitle').textContent = (pq ? `${pq.i + 1}/${pq.ids.length} — ` : 'Écrire à ') + c.name;
   $('#btnMailSkip').hidden = !pq;
-  $('#btnMailSent').textContent = pq ? '📤 Envoyée · suivante' : '📤 Envoyée ✓';
+  $('#btnMailSent').textContent = pq ? 'Envoyée · suivante' : 'Envoyée';
   /* une seule action primaire : en file, c'est l'enchaînement ; sinon, l'envoi */
   $('#btnMailSent').classList.toggle('btn-primary', !!pq);
   $('#btnMailto').classList.toggle('btn-primary', !pq);
@@ -1133,7 +1141,7 @@ function closeMail(){
   if (pq){
     const done = pq.i;
     pq = null;
-    toast(`File interrompue (${done} piste${done > 1 ? 's' : ''} traitée${done > 1 ? 's' : ''}) — relance-la via ☑ Sélectionner`);
+    toast(`File interrompue (${done} piste${done > 1 ? 's' : ''} traitée${done > 1 ? 's' : ''}) — relance-la via « Sélectionner ».`);
   }
 }
 /* « email préparé » : trace dans l'historique de la piste + le journal, une fois par ouverture */
@@ -1142,8 +1150,8 @@ function logMailPrep(){
   mailLogged = true;
   const ct = currentCt();
   const who = ct ? (ct.name || ct.email) : '';
-  pushHist(mailCompany, '✉️ Email préparé' + (who ? ' — ' + who : ''));
-  logJ('✉️ Email préparé : ' + mailCompany.name + (who ? ' (' + who + ')' : ''), mailCompany.id);
+  pushHist(mailCompany, 'Email préparé' + (who ? ' — ' + who : ''));
+  logJ('Email préparé : ' + mailCompany.name + (who ? ' (' + who + ')' : ''), mailCompany.id);
   saveData();
 }
 /* ---------- 14bis. file de prospection : une piste après l'autre, jamais d'envoi groupé ---------- */
@@ -1151,7 +1159,7 @@ function startQueue(ids){
   const valid = ids.filter(id => companies.some(c => c.id === id));
   if (!valid.length){ toast('Sélectionne au moins une piste'); return; }
   pq = { ids: valid, i: 0 };
-  logJ('▶ File de prospection démarrée (' + valid.length + ' piste' + (valid.length > 1 ? 's' : '') + ')');
+  logJ('File de prospection démarrée (' + valid.length + ' piste' + (valid.length > 1 ? 's' : '') + ')');
   toast('File de prospection : un email personnalisé par piste, à ton rythme');
   openQueueStep();
 }
@@ -1167,8 +1175,8 @@ function advanceQueue(){
     const n = pq.ids.length;
     pq = null;                                   /* avant closeMail : pas de toast « interrompue » */
     closeMail();
-    logJ('🏁 File de prospection terminée (' + n + ' piste' + (n > 1 ? 's' : '') + ')');
-    toast('🏁 File terminée — ' + n + ' piste' + (n > 1 ? 's' : '') + ' passée' + (n > 1 ? 's' : '') + ' en revue');
+    logJ('File de prospection terminée (' + n + ' piste' + (n > 1 ? 's' : '') + ')');
+    toast('File terminée : ' + n + ' piste' + (n > 1 ? 's' : '') + ' passée' + (n > 1 ? 's' : '') + ' en revue.');
   } else openQueueStep();
 }
 
@@ -1250,11 +1258,11 @@ function renderDocSlots(){
     const main = document.createElement('div');
     main.className = 'ds-main';
     main.innerHTML = meta
-      ? `<div class="ds-name">${esc(d.label)}</div><div class="ds-sub">${esc(meta.name)} · ${fmtSize(meta.size)} — prêt à joindre depuis ✉️</div>`
+      ? `<div class="ds-name">${esc(d.label)}</div><div class="ds-sub">${esc(meta.name)} · ${fmtSize(meta.size)} — prêt à joindre depuis « Écrire »</div>`
       : `<div class="ds-name">${esc(d.label)}</div><div class="ds-sub">Aucun PDF pour l'instant</div>`;
     el.appendChild(main);
     if (meta){
-      el.appendChild(mkBtn('👁 Ouvrir', 'Ouvrir ' + d.label, () => openDoc(d.k, 'open')));
+      el.appendChild(mkBtn('Ouvrir', 'Ouvrir ' + d.label, () => openDoc(d.k, 'open'), 'eye'));
       const del = document.createElement('button');
       del.className = 'btn btn-sm btn-ghost';
       del.textContent = '✕';
@@ -1270,7 +1278,7 @@ function renderDocSlots(){
     }
     const pick = document.createElement('button');
     pick.className = 'btn btn-sm';
-    pick.textContent = meta ? '↻ Remplacer' : '📂 Choisir un PDF';
+    pick.innerHTML = meta ? icHTML('reload', ' ic-14') + ' Remplacer' : icHTML('folder', ' ic-14') + ' Choisir un PDF';
     const inp = document.createElement('input');
     inp.type = 'file';
     inp.accept = 'application/pdf,.pdf';
@@ -1286,7 +1294,7 @@ function renderDocSlots(){
         await docPut(d.k, { name: f.name, size: f.size, added: Date.now(), blob: f });
         docsMeta[d.k] = { name: f.name, size: f.size };
         renderDocSlots();
-        toast(d.label + ' enregistré ✓ — stocké à part de tes pistes, jamais partagé');
+        toast(d.label + ' enregistré — stocké à part de tes pistes, jamais partagé.');
       } catch (e) {
         toast('Impossible d’enregistrer ce document ici — tes pistes ne sont pas affectées');
       }
@@ -1301,7 +1309,7 @@ async function openDoc(k, how){
   let rec;
   try { rec = await docGet(k); } catch (e) { rec = null; }
   if (!rec){
-    toast('Document introuvable — ajoute-le dans 👤 Mon profil');
+    toast('Document introuvable — ajoute-le dans « Mon profil ».');
     delete docsMeta[k];
     renderDocSlots();
     return;
@@ -1335,7 +1343,7 @@ function renderMailDocs(){
   lbl.textContent = 'À joindre depuis ton appli mail :';
   row.appendChild(lbl);
   for (const d of have)
-    row.appendChild(mkBtn('📎 ' + d.short, 'Joindre ou ouvrir ' + d.label, () => openDoc(d.k, 'share')));
+    row.appendChild(mkBtn(d.short, 'Joindre ou ouvrir ' + d.label, () => openDoc(d.k, 'share'), 'attachment'));
 }
 
 /* ---------- 16. prompts IA (modèle multi-contacts) ---------- */
@@ -1376,7 +1384,7 @@ const OC_RULES = `Règles impératives :
 7. Réponds UNIQUEMENT avec le tableau JSON : aucun texte autour, pas de balises Markdown.`;
 const PROMPTS = [
   {
-    title: '🗂 Formater mes notes en pistes OpenContact',
+    title: 'Formater mes notes en pistes OpenContact',
     desc: 'Une liste d’entreprises en vrac (notes, annonces, tableur…) ? L’IA la transforme en fichier prêt à fusionner.',
     body: `Tu prépares des données pour OpenContact, un outil communautaire de partage de pistes et de contacts pour la recherche de stage/alternance/emploi.
 
@@ -1393,7 +1401,7 @@ Informations à formater :
 [COLLE ICI TES NOTES OU TA LISTE]`
   },
   {
-    title: '🔎 Trouver des pistes dans ma zone',
+    title: 'Trouver des pistes dans ma zone',
     desc: 'Pour les IA avec navigation web : de nouvelles cibles vérifiées, déjà au bon format.',
     body: `Active ta navigation web si disponible.
 
@@ -1407,7 +1415,7 @@ ${OC_SCHEMA}
 ${OC_RULES}`
   },
   {
-    title: '✉️ Personnaliser ma candidature pour une piste',
+    title: 'Personnaliser ma candidature pour une piste',
     desc: 'Colle une piste + ton profil : l’IA rédige un email court, précis et crédible.',
     body: `Tu es un conseiller en insertion professionnelle exigeant.
 
@@ -1424,7 +1432,7 @@ MON PROFIL / MA LETTRE TYPE :
 [COLLE ICI]`
   },
   {
-    title: '🎤 Préparer un entretien',
+    title: 'Préparer un entretien',
     desc: 'Questions probables, points à réviser, questions à poser — puis simulation.',
     body: `Je passe un entretien pour [POSTE] chez [ENTREPRISE] ([ACTIVITÉ / TECHNOLOGIES si connues]).
 
@@ -1435,7 +1443,7 @@ Prépare-moi en 4 parties :
 4. Un jeu de rôle : pose-moi les questions une par une et critique honnêtement mes réponses.`
   },
   {
-    title: '🧩 Compléter une piste existante',
+    title: 'Compléter une piste existante',
     desc: 'Pour les IA avec navigation web : remplit uniquement les champs vides, sans rien inventer.',
     body: `Active ta navigation web si disponible.
 
@@ -1460,9 +1468,9 @@ function renderPrompts(){
       `<details><summary>Voir le prompt</summary><div class="pre">${esc(p.body)}</div></details>`;
     const b = document.createElement('button');
     b.className = 'btn btn-sm';
-    b.textContent = '📋 Copier le prompt';
+    b.innerHTML = icHTML('copy', ' ic-14') + ' Copier le prompt';
     b.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(p.body); toast('Prompt copié ✓ — colle-le dans ton IA'); }
+      try { await navigator.clipboard.writeText(p.body); toast('Prompt copié — colle-le dans ton IA.'); }
       catch (e) { toast('Copie impossible ici — ouvre le prompt et sélectionne-le'); }
     });
     el.appendChild(b);
@@ -1500,9 +1508,9 @@ function startSelect(mode, preset){
   updateSelBar();
   $('#selBar').classList.add('on');
   closeSheet();
-  toast(mode === 'share' ? 'Touche les pistes à inclure dans le partage, puis ✅ Valider'
-      : mode === 'delete' ? 'Touche les pistes à supprimer, puis 🗑 Supprimer'
-      : 'Touche des pistes, puis choisis une action : ✉️ Prospecter, 🤝 Partager ou 🗑');
+  toast(mode === 'share' ? 'Touche les pistes à inclure dans le partage, puis « Valider ».'
+      : mode === 'delete' ? 'Touche les pistes à supprimer, puis « Supprimer ».'
+      : 'Touche des pistes, puis choisis une action : Prospecter, Partager ou Supprimer.');
 }
 function endSelect(backToIO){
   if (!selecting) return;
@@ -1542,7 +1550,7 @@ function takeSnapshot(){
 }
 function showUndo(msg, btnLabel){
   $('#undoMsg').textContent = msg;
-  $('#btnUndo').textContent = btnLabel || '↩ Annuler';
+  $('#btnUndo').textContent = btnLabel || 'Annuler';
   $('#undoBar').hidden = false;
   $('#toast').classList.add('up');                 /* un toast déjà affiché ne doit pas recouvrir la barre */
   clearTimeout(undoTimer);
@@ -1568,14 +1576,14 @@ function undoRestore(){
   if (cardShownId && !companies.some(c => c.id === cardShownId)) closeCard();
   updateShareCounts();
   renderAll();
-  toast('↩ Annulé — tes données d’avant ont été restaurées telles quelles');
+  toast('Annulé — tes données d’avant ont été restaurées telles quelles.');
 }
 
 /* — 18b. échange : interface — */
 function ioFail(e){
   const m = e && e.message;
   if (m === 'vide') toast('Colle d’abord un fichier ou du JSON dans la zone « Recevoir »');
-  else if (m === 'besoinpass'){ toast('Fichier protégé 🔐 — entre le mot de passe de groupe'); $('#ioPassWrap').hidden = false; $('#ioPass').focus(); }
+  else if (m === 'besoinpass'){ toast('Fichier protégé — entre le mot de passe de groupe.'); $('#ioPassWrap').hidden = false; $('#ioPass').focus(); }
   else if (m === 'motdepasse'){ toast('Mot de passe incorrect pour ce fichier'); $('#ioPass').focus(); $('#ioPass').select(); }
   else if (m === 'altéré') toast('Fichier incomplet ou modifié — redemande l’original');
   else if (m === 'nocrypto') toast('Chiffrement indisponible ici (page non sécurisée)');
@@ -1585,11 +1593,11 @@ function ioFail(e){
 }
 /* Pf2 : état visuel pendant la dérivation PBKDF2 (600 000 itérations) */
 async function busy(btn, label, fn){
-  const orig = btn.textContent;
+  const orig = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = label;
   try { return await fn(); }
-  finally { btn.disabled = false; btn.textContent = orig; }
+  finally { btn.disabled = false; btn.innerHTML = orig; }
 }
 function syncPassUI(){
   const visible = $('#sharePass').type === 'text';
@@ -1600,7 +1608,7 @@ function toggleEye(){
   ['#sharePass', '#sharePass2'].forEach(s => { $(s).type = show ? 'text' : 'password'; });
   const b = $('#btnEye');
   b.setAttribute('aria-pressed', String(show));
-  b.textContent = show ? '🙈' : '👁';
+  b.innerHTML = icHTML(show ? 'eye-off' : 'eye');
   syncPassUI();
 }
 function getSharePass(forBackup){
@@ -1653,7 +1661,7 @@ function downloadText(exp){                                        /* D1 : fichi
   a.href = url; a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
-  toast('⬇ ' + name + (exp.enc ? ' (chiffré 🔐)' : ''));
+  toast('Téléchargé : ' + name + (exp.enc ? ' (chiffré)' : '') + '.');
 }
 /* la page Échanger montre un volet à la fois : Recevoir ou Donner */
 function setIOMode(m){
@@ -1708,19 +1716,19 @@ function settleConfirm(ok){
 
 /* ---------- piste d'exemple ---------- */
 function addDemo(){
-  if (companies.some(c => c.demo)){ toast('L’exemple est déjà dans tes pistes 👀'); renderAll(); return; }
+  if (companies.some(c => c.demo)){ toast('L’exemple est déjà dans tes pistes.'); renderAll(); return; }
   const d = normalizeCompany({
     name: 'Atelier Numérik (exemple)', demo: true, city: 'Lille', domain: 'esn',
     desc: 'Piste fictive pour montrer le format — supprime-la quand tu veux',
     techs: 'Windows Server, réseau, support N2', positions: ['stage','alternance'],
-    tips: 'Exemple de conseil partagé : la candidature spontanée passe mieux le matin 😉',
+    tips: 'Exemple de conseil partagé : la candidature spontanée passe mieux le matin.',
     contacts: [{ name: 'Alex Martin', role: 'RH (fictif)', email: 'recrutement@exemple.invalid', conf: 'doubt', note: 'Contact d’illustration — non réel' }],
     lat: 50.6329, lng: 3.0573
   });
   d.demo = true;
   companies.push(d);
   saveData(); renderAll();
-  toast('Exemple ajouté — ouvre-le, puis supprime-le quand tu veux');
+  toast('Exemple ajouté — ouvre-le, puis supprime-le quand tu veux.');
 }
 
 /* ---------- 19. écouteurs ---------- */
@@ -1892,20 +1900,20 @@ function bindEvents(){
       $('#ioTA').value = String(r.result || '');
       syncIOPass();
       const enc = $('#ioTA').value.trim().startsWith('OC2.');
-      toast(enc ? 'Fichier chargé 🔐 — entre le mot de passe puis « Fusionner »'
-                : 'Fichier chargé — clique « Fusionner dans mes pistes »');
+      toast(enc ? 'Fichier chargé — entre le mot de passe puis « Fusionner ».'
+                : 'Fichier chargé — clique « Fusionner dans mes pistes ».');
       (enc ? $('#ioPass') : $('#btnMerge')).focus();
     };
     r.onerror = () => toast('Lecture du fichier impossible');
     r.readAsText(f);
   });
-  $('#btnMerge').addEventListener('click', () => busy($('#btnMerge'), '⏳ Lecture…', async () => {
+  $('#btnMerge').addEventListener('click', () => busy($('#btnMerge'), 'Lecture…', async () => {
     let obj;
     try { obj = await parseInput($('#ioTA').value, $('#ioPass').value); }
     catch (e) { ioFail(e); return; }
     takeSnapshot();                                                /* filet de sécurité */
     const st = mergeIncoming(obj.companies, companies);
-    logJ(`🤝 Fusion reçue : +${st.addedC} piste(s), ${st.enriched} complétée(s), +${st.addedCt} contact(s)`);
+    logJ(`Fusion reçue : ${st.addedC} ajout(s), ${st.enriched} complétée(s), ${st.addedCt} contact(s)`);
     saveData(); renderAll();
     $('#ioTA').value = ''; $('#ioPass').value = '';
     syncIOPass();
@@ -1913,7 +1921,7 @@ function bindEvents(){
     const parts = [`${st.addedC} nouvelle(s) piste(s)`, `${st.enriched} complétée(s)`, `${st.addedCt} contact(s) ajoutés`];
     if (st.conflicts) parts.push(`${st.conflicts} info(s) divergente(s) non importée(s)`);   /* D2 */
     if (obj.v && obj.v > 4) parts.push(`fichier v${obj.v} : champs inconnus conservés`);     /* D3 */
-    showUndo('Fusion ✓ — ' + parts.join(' · '), '↩ Annuler la fusion');
+    showUndo('Fusion terminée : ' + parts.join(' · '), 'Annuler la fusion');
   }));
 
   /* échange : donner */
@@ -1923,27 +1931,27 @@ function bindEvents(){
     if (!companies.filter(c => !c.demo).length){ toast('Aucune piste à sélectionner pour l’instant'); return; }
     startSelect('share', shareSelIds);
   });
-  $('#btnDownload').addEventListener('click', () => busy($('#btnDownload'), '🔐 Préparation…', async () => {
+  $('#btnDownload').addEventListener('click', () => busy($('#btnDownload'), 'Préparation…', async () => {
     const ex = await makeExport('share');
     if (!ex) return;
     downloadText(ex);
-    logJ(`📤 Partage téléchargé (${ex.n} piste${ex.n > 1 ? 's' : ''}${ex.enc ? ', chiffré' : ''})`);
+    logJ(`Partage téléchargé (${ex.n} piste${ex.n > 1 ? 's' : ''}${ex.enc ? ', chiffré' : ''})`);
   }));
-  $('#btnCopy').addEventListener('click', () => busy($('#btnCopy'), '🔐 Préparation…', async () => {
+  $('#btnCopy').addEventListener('click', () => busy($('#btnCopy'), 'Préparation…', async () => {
     const ex = await makeExport('share');
     if (!ex) return;
     try {
       await navigator.clipboard.writeText(ex.text);
-      toast(`Copié ✓ — ${ex.n} piste(s)` + (ex.enc ? ' · chiffré 🔐' : ' · lisible (mot de passe = chiffré)'));
-      logJ(`📤 Partage copié (${ex.n} piste${ex.n > 1 ? 's' : ''})`);
+      toast(`Copié — ${ex.n} piste(s)` + (ex.enc ? ' · chiffré' : ' · lisible (mot de passe = chiffré)') + '.');
+      logJ(`Partage copié (${ex.n} piste${ex.n > 1 ? 's' : ''})`);
     } catch (e) {
       downloadText(ex);
-      toast('Copie impossible ici — fichier téléchargé à la place ⬇');
+      toast('Copie impossible ici — fichier téléchargé à la place.');
     }
   }));
-  $('#btnExport').addEventListener('click', () => busy($('#btnExport'), '🔐 Préparation…', async () => {
+  $('#btnExport').addEventListener('click', () => busy($('#btnExport'), 'Préparation…', async () => {
     if ($('#backupEnc').checked && !$('#sharePass').value){
-      toast('Saisis d’abord un mot de passe de groupe (pli 🔐 de « Donner »), ou décoche le chiffrement');
+      toast('Saisis d’abord un mot de passe de groupe (pli « Mot de passe » de « Donner »), ou décoche le chiffrement.');
       $('#fsPass').open = true;
       $('#sharePass').focus();
       return;
@@ -1951,22 +1959,22 @@ function bindEvents(){
     const ex = await makeExport('full');
     if (!ex) return;
     downloadText(ex);
-    logJ('💾 Sauvegarde complète téléchargée');
+    logJ('Sauvegarde complète téléchargée');
   }));
   $('#backupEnc').addEventListener('change', () => {
     if ($('#backupEnc').checked && !$('#sharePass').value){
-      toast('Saisis un mot de passe de groupe dans le pli 🔐 de « Donner »');
+      toast('Saisis un mot de passe de groupe dans le pli « Mot de passe » de « Donner ».');
       $('#fsPass').open = true;
       $('#sharePass').focus();
     }
   });
 
   /* échange : zone avancée */
-  $('#btnBackupNow').addEventListener('click', () => busy($('#btnBackupNow'), '🔐 Préparation…', async () => {
+  $('#btnBackupNow').addEventListener('click', () => busy($('#btnBackupNow'), 'Préparation…', async () => {
     const ex = await makeExport('full');
     if (!ex) return;
     downloadText(ex);
-    logJ('💾 Sauvegarde complète téléchargée');
+    logJ('Sauvegarde complète téléchargée');
   }));
   $('#btnSelDelete').addEventListener('click', () => {
     if (!companies.length){ toast('Rien à supprimer'); return; }
@@ -1979,21 +1987,21 @@ function bindEvents(){
       title: 'Tout supprimer ?',
       msg: `Les <b>${n}</b> piste${n > 1 ? 's' : ''} et tout ton suivi privé seront <b>définitivement effacés</b> de cet appareil.<br>` +
            `Ton profil et tes modèles d'emails sont conservés.<br><br>` +
-           `💡 « Sauvegarder d'abord » te donne une copie de secours.`,
+           `« Sauvegarder d'abord » te donne une copie de secours.`,
       okLabel: 'Tout supprimer',
       verify: 'SUPPRIMER'
     });
     if (!ok) return;
     deleteMany(companies.map(c => c.id));
     updateShareCounts();
-    toast('🗑 ' + n + ' piste(s) supprimée(s) — la carte est vide');
+    toast(n + ' piste(s) supprimée(s) — la carte est vide.');
   });
-  $('#btnImport').addEventListener('click', () => busy($('#btnImport'), '⏳ Lecture…', async () => {
+  $('#btnImport').addEventListener('click', () => busy($('#btnImport'), 'Lecture…', async () => {
     let obj;
     try { obj = await parseInput($('#ioTA').value, $('#ioPass').value); }
     catch (e) { ioFail(e); return; }
     if (obj.kind === 'share'){                                     /* B3 : garde-fou */
-      toast('Ce fichier est un « partage » : il ne contient aucun suivi privé. Le remplacement effacerait le tien pour rien — utilise « ➕ Fusionner dans mes pistes » juste au-dessus.');
+      toast('Ce fichier est un « partage » : il ne contient aucun suivi privé. Le remplacement effacerait le tien pour rien — utilise « Fusionner dans mes pistes » juste au-dessus.');
       $('#btnMerge').focus();
       return;
     }
@@ -2001,7 +2009,7 @@ function bindEvents(){
       title: 'Remplacer toutes mes données ?',
       msg: `Tes <b>${companies.length}</b> piste${companies.length > 1 ? 's' : ''} actuelle${companies.length > 1 ? 's' : ''} (suivi compris) seront remplacées par les <b>${obj.companies.length}</b> du fichier` +
            (obj.profile ? ', <b>profil et modèles compris</b>.' : '.') +
-           `<br><br>Réservé à la restauration d'une sauvegarde — « 💾 Sauvegarder d'abord » en cas de doute.`,
+           `<br><br>Réservé à la restauration d'une sauvegarde — « Sauvegarder d'abord » en cas de doute.`,
       okLabel: 'Remplacer tout'
     });
     if (!ok) return;
@@ -2016,10 +2024,10 @@ function bindEvents(){
     shareSelIds = new Set();
     $('#ioTA').value = ''; $('#ioPass').value = '';                /* B5 */
     syncIOPass();
-    logJ('♻️ Sauvegarde restaurée (' + companies.length + ' piste(s))');
+    logJ('Sauvegarde restaurée (' + companies.length + ' piste(s))');
     saveData(); renderAll();
     location.hash = '#/pistes';
-    showUndo('Restauration ✓ — ' + companies.length + ' piste(s)', '↩ Annuler le remplacement');
+    showUndo('Restauration terminée : ' + companies.length + ' piste(s)', 'Annuler le remplacement');
   }));
 
   /* barre de sélection */
@@ -2040,7 +2048,7 @@ function bindEvents(){
     $('#scopeSel').checked = true;
     updateShareCounts();
     openIO({ give: true });
-    toast(ids.length + ' piste(s) dans « Ma sélection » ✓ — prêtes à partager');
+    toast(ids.length + ' piste(s) dans « Ma sélection » — prêtes à partager.');
   };
   $('#selOk').addEventListener('click', shareSelection);
   $('#selShare').addEventListener('click', shareSelection);
@@ -2055,13 +2063,13 @@ function bindEvents(){
     if (!n){ toast('Sélectionne au moins une piste (ou ✕ Annuler)'); return; }
     const ok = await askConfirm({
       title: `Supprimer ${n} piste${n > 1 ? 's' : ''} ?`,
-      msg: `Suppression définitive, <b>suivi privé compris</b>.<br>En cas de doute : ✕ Annuler, puis « 💾 Sauvegarder d'abord » dans ⇅ Échanger.`,
+      msg: `Suppression définitive, <b>suivi privé compris</b>.<br>En cas de doute : Annuler, puis « Sauvegarder d'abord » dans la page « Échanger ».`,
       okLabel: 'Supprimer définitivement'
     });
     if (!ok) return;
     deleteMany(selectedIds);
     endSelect(false);
-    toast('🗑 ' + n + ' piste(s) supprimée(s)');
+    toast(n + ' piste(s) supprimée(s).');
   });
 
   /* filet de sécurité fusion/restauration */
@@ -2087,7 +2095,7 @@ function bindEvents(){
   $('#mailBody').addEventListener('input', updateMailto);
   $('#btnMailCopy').addEventListener('click', async () => {
     logMailPrep();
-    try { await navigator.clipboard.writeText($('#mailBody').value); toast('Message copié ✓'); }
+    try { await navigator.clipboard.writeText($('#mailBody').value); toast('Message copié.'); }
     catch (e) { $('#mailBody').focus(); $('#mailBody').select(); toast('Sélectionné — fais « Copier »'); }
   });
   $('#btnMailto').addEventListener('click', logMailPrep);
@@ -2097,15 +2105,15 @@ function bindEvents(){
     if (!c) return;
     const ct = currentCt();
     const who = ct ? (ct.name || ct.email) : '';
-    pushHist(c, '✉️ Email envoyé' + (who ? ' — ' + who : ''));
-    logJ('📤 Email envoyé : ' + c.name + (who ? ' (' + who + ')' : ''), c.id);
+    pushHist(c, 'Email envoyé' + (who ? ' — ' + who : ''));
+    logJ('Email envoyé : ' + c.name + (who ? ' (' + who + ')' : ''), c.id);
     if (c.status === 'todo') setStatus(c, 'sent');       /* on ne rétrograde jamais un statut plus avancé */
     if (!c.appliedAt) c.appliedAt = todayISO();
     c.updatedAt = Date.now();
     mailLogged = true;
     refreshCompany(c);
     if (pq) advanceQueue();
-    else toast('Noté ✓ — suivi mis à jour');
+    else toast('Noté — suivi mis à jour.');
   });
 
   /* fiche détaillée */
@@ -2153,7 +2161,7 @@ function bindEvents(){
     installEv = null;
     $('#miInstall').hidden = true;
   });
-  window.addEventListener('appinstalled', () => { $('#miInstall').hidden = true; toast('OpenContact est installé sur ton appareil ✓'); });
+  window.addEventListener('appinstalled', () => { $('#miInstall').hidden = true; toast('OpenContact est installé sur ton appareil.'); });
 
   /* B4 : la dernière frappe du profil n'est jamais perdue */
   window.addEventListener('beforeunload', flushProfile);
@@ -2168,6 +2176,7 @@ function bindEvents(){
 (async function init(){
   applyRoute();                                   /* B7 : la bonne vue immédiatement, avant les données */
   $('#appVer').textContent = APP_VERSION;
+  $('#sbVer').textContent = APP_VERSION;
   console.info('OpenContact', APP_VERSION);
   await kvInit();
 
@@ -2175,7 +2184,7 @@ function bindEvents(){
   theme = (t === 'light' || t === 'dark') ? t
     : (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   document.documentElement.dataset.theme = theme;
-  $('#metaTheme').content = (theme === 'dark') ? '#1A222B' : '#FFFFFF';
+  $('#metaTheme').content = (theme === 'dark') ? '#1E232B' : '#F7F6F1';
 
   const rawP = await kvGet(PROFILE_KEY);
   let parsedP = null;
@@ -2198,7 +2207,7 @@ function bindEvents(){
           if (arr.length){
             companies = arr.map(normalizeCompany);
             saveData();
-            setTimeout(() => toast('✓ Tes anciennes données ont été migrées vers OpenContact v4'), 800);
+            setTimeout(() => toast('Tes anciennes données ont été migrées vers la nouvelle version.'), 800);
             break;
           }
         } catch (e) {}
@@ -2243,7 +2252,7 @@ function bindEvents(){
         if (!w) return;
         w.addEventListener('statechange', () => {
           if (w.state === 'installed' && navigator.serviceWorker.controller)
-            toast('Nouvelle version prête ✓ — elle s’appliquera à la prochaine ouverture');
+            toast('Nouvelle version prête — elle s’appliquera à la prochaine ouverture.');
         });
       });
     }).catch(() => {});

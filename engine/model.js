@@ -7,7 +7,7 @@
    ============================================================ */
 import { uid, extractCity, todayISO } from './utils.js';
 
-export const APP_VERSION = '4.5.0';
+export const APP_VERSION = '5.0.0';
 
 export const DOMAINS = {
   esn:     { label:'ESN / Services IT',       color:'#4C9FD8' },
@@ -27,7 +27,7 @@ export const STATUSES = {
   followup:  { label:'Relance faite',       color:'#D89A3C' },
   interview: { label:'Entretien',           color:'#9B7FD4' },
   rejected:  { label:'Refus',               color:'#D96A74' },
-  won:       { label:'Décroché 🎉',         color:'#2FA070' }
+  won:       { label:'Décroché',            color:'#2FA070' }
 };
 export const POSITIONS = { stage:'Stage', alternance:'Alternance', cdi:'CDI', cdd:'CDD', freelance:'Freelance' };
 

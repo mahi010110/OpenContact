@@ -27,7 +27,7 @@ Source produit : ce dépôt (`mahi010110/OpenContact`) — le kit vit dans `desi
 
 ## Iconographie
 
-**pixelarticons** (MIT, halfmage) — 72 icônes copiées dans `assets/icons/` (racine du dépôt), grille 24px, `fill="currentColor"`. Tailles 16/24/32px, `image-rendering:pixelated`. Composant `Icon` (mask CSS) pour la teinte. Chevron/coche inlinés en data-URI dans Select/Checkbox. **Plus d'emoji dans l'interface** (l'app actuelle en use ; la nouvelle identité les remplace par ces icônes). Pas d'icônes dessinées à la main hors des 3 pistes de logo demandées.
+**pixelarticons** (MIT, halfmage) — 73 icônes copiées dans `assets/icons/` (racine du dépôt), grille 24px, `fill="currentColor"`. Tailles 16/24/32px, `image-rendering:pixelated`. Composant `Icon` (mask CSS) pour la teinte. Chevron/coche inlinés en data-URI dans Select/Checkbox. **Plus d'emoji dans l'interface** (l'app actuelle en use ; la nouvelle identité les remplace par ces icônes). Pas d'icônes dessinées à la main hors des 3 pistes de logo demandées.
 
 ## Contenu & ton
 

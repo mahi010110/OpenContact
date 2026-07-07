@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>OpenContact — trouve, enrichis et partage des contacts utiles</title>
 <meta name="description" content="OpenContact : l'outil communautaire pour trouver, enrichir et partager des pistes et contacts utiles dans ta recherche de stage, d'alternance ou d'emploi. Local-first, open source, sans compte.">
-<meta name="theme-color" id="metaTheme" content="#FFFFFF">
+<meta name="theme-color" id="metaTheme" content="#F7F6F1">
 <meta property="og:type" content="website">
 <meta property="og:title" content="OpenContact — pistes &amp; contacts partagés">
 <meta property="og:description" content="Trouve, enrichis et partage des pistes de stage, d'alternance ou d'emploi avec ta promo. Local-first, sans compte, open source.">
@@ -14,465 +14,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="OpenContact">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cline x1='9' y1='22' x2='16' y2='10' stroke='%231C6E5A' stroke-width='2.4'/%3E%3Cline x1='16' y1='10' x2='24' y2='20' stroke='%231C6E5A' stroke-width='2.4'/%3E%3Ccircle cx='16' cy='10' r='4.5' fill='%231C6E5A'/%3E%3Ccircle cx='9' cy='22' r='3.6' fill='white' stroke='%231C6E5A' stroke-width='2.2'/%3E%3Ccircle cx='24' cy='20' r='3.6' fill='white' stroke='%23D98324' stroke-width='2.2'/%3E%3C/svg%3E">
+<link rel="icon" href="assets/logo/piste-a-reseau.svg">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com">
-<!-- polices non bloquantes : la page s'affiche avec la pile système, la webfont prend le relais -->
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
-<style>
-/* ============ MARQUE & TOKENS (contrastes AA vérifiés) ============ */
-:root{
-  --radius:14px;
-  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
-  --sans:'Space Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
-  --nav-h:60px;
-}
-html[data-theme="light"]{
-  --bg:#F6F5F1; --panel:#FFFFFF; --panel-2:#EFEDE7;
-  --line:#E2DFD6; --ink:#22303B; --muted:#576879;
-  --primary:#1C6E5A; --on-primary:#FFFFFF;
-  --amber:#96570A; --danger:#BA3B46; --ok:#20795A;
-  --glass:rgba(255,255,255,.94); --shadow:0 10px 30px rgba(34,48,59,.12);
-  color-scheme:light;
-}
-html[data-theme="dark"]{
-  --bg:#12181E; --panel:#1A222B; --panel-2:#151C23;
-  --line:#2A353F; --ink:#EAF0F4; --muted:#95A6B3;
-  --primary:#46C39F; --on-primary:#08281E;
-  --amber:#EBA956; --danger:#F08585; --ok:#57CE97;
-  --glass:rgba(26,34,43,.94); --shadow:0 12px 34px rgba(0,0,0,.45);
-  color-scheme:dark;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
-[hidden]{display:none!important}
-button,a,label,select,summary,input{touch-action:manipulation}
-::selection{background:color-mix(in srgb,var(--primary) 24%,transparent)}
-/* focus clavier visible partout, sans encombrer la navigation tactile */
-a:focus-visible,summary:focus-visible,select:focus-visible,input[type="checkbox"]:focus-visible,input[type="radio"]:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px}
-.skip{position:fixed;top:-48px;left:10px;z-index:5000;background:var(--primary);color:var(--on-primary);font-weight:700;font-size:13px;padding:10px 14px;border-radius:0 0 10px 10px;text-decoration:none;transition:top .15s}
-.skip:focus{top:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;overflow:hidden;transition:background .2s,color .2s}
-button{font-family:inherit;cursor:pointer}
-input,select,textarea{font-family:inherit;color:var(--ink)}
-a{color:var(--primary)}
-.app{display:flex;flex-direction:column;height:100dvh}
-.main{flex:1;display:flex;min-height:0;position:relative}
-.view{flex:1;min-height:0;display:flex}
-.page{display:block;overflow-y:auto;padding:18px 16px 44px;width:100%}
-.page-inner{max-width:820px;margin:0 auto}
-.page h2{font-size:20px;margin-bottom:3px}
-.page .sub{font-size:12.5px;color:var(--muted);margin-bottom:18px}
-
-/* ============ HEADER ============ */
-.hdr{display:flex;align-items:center;gap:14px;padding:9px 14px;background:var(--panel);border-bottom:1px solid var(--line);z-index:1300}
-.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);flex:none}
-.logo{flex:none}
-.brand b{font-size:16.5px;letter-spacing:.01em}
-.brand small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
-.topnav{display:flex;gap:2px;align-items:center}
-.topnav a,.topnav button{
-  text-decoration:none;color:var(--muted);font-size:13.5px;font-weight:600;background:none;border:0;
-  padding:8px 12px;border-radius:10px;transition:color .15s,background .15s;
-}
-.topnav a:hover,.topnav button:hover{color:var(--ink);background:var(--panel-2)}
-.topnav a.on,.topnav button.on{color:var(--primary);background:color-mix(in srgb,var(--primary) 11%,transparent)}
-.hdr-actions{display:flex;gap:8px;margin-left:auto;align-items:center}
-
-/* ============ BOUTONS ============ */
-.btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:11px;padding:9px 14px;font-size:13.5px;font-weight:600;transition:filter .15s,transform .1s,box-shadow .15s;min-height:40px}
-.btn:hover{filter:brightness(.985);box-shadow:0 2px 8px rgba(0,0,0,.06)}
-html[data-theme="dark"] .btn:hover{filter:brightness(1.12)}
-.btn:active{transform:scale(.97)}
-.btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.btn:disabled{opacity:.45;pointer-events:none;box-shadow:none}
-.btn-primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
-.btn-ghost{background:transparent;border-color:transparent;color:var(--muted)}
-.btn-outline{background:transparent}
-.btn-danger{border-color:color-mix(in srgb,var(--danger) 50%,transparent);color:var(--danger);background:transparent}
-.btn-sm{padding:6px 11px;font-size:12.5px;border-radius:9px;min-height:34px}
-.icon-btn{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:16px}
-
-/* ============ BADGES ============ */
-.chips{display:flex;gap:5px;flex-wrap:wrap}
-.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;border:1px solid color-mix(in srgb,var(--cc,var(--line)) 55%,transparent);color:color-mix(in srgb,var(--cc,var(--muted)) 55%,var(--ink));background:color-mix(in srgb,var(--cc,var(--line)) 9%,transparent);white-space:nowrap}
-.score{font-family:var(--mono);font-size:12px;font-weight:500;padding:3px 9px;border-radius:99px;border:1px solid color-mix(in srgb,var(--sc) 55%,transparent);color:var(--sc);background:color-mix(in srgb,var(--sc) 9%,transparent);white-space:nowrap;cursor:pointer}
-button.score{min-height:0;line-height:1.2}
-.tag-share{font-size:11.5px;font-weight:700;color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent);border:1px solid color-mix(in srgb,var(--ok) 35%,transparent);border-radius:99px;padding:2px 8px;white-space:nowrap}
-.tag-priv{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:2px 8px;white-space:nowrap}
-
-/* ============ VUE PISTES : barre d'outils + tiroir filtres ============ */
-#view-pistes{flex-direction:column}
-.toolbar{display:flex;gap:8px;padding:10px 12px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap;z-index:1050}
-.search-wrap{flex:1;min-width:150px;position:relative;display:flex}
-.search{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:11px;padding:10px 40px 10px 13px;font-size:14px}
-.search::placeholder{color:var(--muted)}
-.search:focus{outline:2px solid var(--primary);outline-offset:-1px}
-.search::-webkit-search-cancel-button,.search::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
-.q-clear{position:absolute;right:2px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;background:none;color:var(--muted);font-size:17px;border-radius:9px;display:flex;align-items:center;justify-content:center}
-.q-clear:hover{color:var(--ink);background:color-mix(in srgb,var(--muted) 12%,transparent)}
-.bf-n{background:var(--primary);color:var(--on-primary);border-radius:99px;font-size:11px;font-weight:700;padding:1px 6px;margin-left:5px}
-.fdrawer{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.fdrawer select{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px;font-size:12.5px;max-width:170px;min-height:40px}
-.fdrawer .fpriv{display:flex;align-items:center;gap:5px}
-.btn-filters{display:none}
-.vswitch{display:flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;flex:none;background:var(--panel-2)}
-.vswitch button{background:transparent;border:0;color:var(--muted);font-size:12.5px;font-weight:600;padding:9px 12px;display:flex;gap:5px;align-items:center;min-height:40px}
-.vswitch button.on{background:var(--primary);color:var(--on-primary)}
-.count-line{font-size:12px;color:var(--muted);flex:none}
-
-/* ============ VUE PISTES : contenus ============ */
-.pistes-body{flex:1;min-height:0;position:relative;display:flex}
-.mode-carte{flex:1;display:flex;min-height:0}
-.results{width:390px;flex:none;background:var(--panel-2);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;z-index:1100}
-.list{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
-.map-wrap{flex:1;position:relative;min-width:0}
-#map{position:absolute;inset:0;background:var(--panel-2)}
-.mode-flat{flex:1;overflow-y:auto;padding:12px}
-.flat-inner{max-width:960px;margin:0 auto}
-.rows{display:flex;flex-direction:column;gap:7px}
-.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:10px}
-
-.card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c,var(--line));border-radius:var(--radius);padding:11px 13px;cursor:pointer;transition:box-shadow .15s,transform .08s;display:flex;gap:9px;align-items:flex-start}
-.card:hover{box-shadow:var(--shadow)}
-.card:active,.row-item:active{transform:scale(.985)}   /* retour tactile : le tap se sent */
-.card:focus-visible{outline:2px solid var(--primary)}
-.card .card-main{flex:1;min-width:0}
-.card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.card h3{font-size:14.5px;font-weight:700;line-height:1.25}
-.card .meta{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45;display:flex;gap:10px;flex-wrap:wrap}
-.card .chips{margin-top:8px}
-.row-item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:box-shadow .15s,transform .08s}
-.row-item:hover{box-shadow:var(--shadow)}
-.row-item .dotc{width:10px;height:10px;border-radius:50%;flex:none}
-.row-item .ri-main{flex:1;min-width:0;width:0}  /* width:0 : le texte nowrap ne doit jamais dicter la largeur de page (dézoom mobile) */
-.row-item h3{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row-item .ri-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row-item .ri-side{display:flex;gap:6px;align-items:center;flex:none}
-.empty-list{padding:26px 14px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
-
-/* sélection multiple */
-.sel-check{width:21px;height:21px;accent-color:var(--primary);flex:none;margin-top:2px;cursor:pointer}
-.card.selected,.row-item.selected{outline:2px solid var(--primary);outline-offset:-1px}
-.selbar{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 20px);max-width:560px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:2600;background:var(--ink);color:var(--bg);border-radius:14px;padding:10px 12px;display:none;flex-direction:column;gap:8px;box-shadow:var(--shadow);font-size:13px;font-weight:700}
-.selbar.on{display:flex}
-.selbar .sel-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.selbar .sel-actions .btn{flex:1}
-.selbar .grow{flex:1}
-.selbar .btn{background:transparent;color:var(--bg);border-color:color-mix(in srgb,var(--bg) 35%,transparent);min-height:36px}
-.selbar .btn-primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
-.selbar .btn-danger{color:#FFB3B9;border-color:rgba(255,179,185,.5)}
-body.selecting .fab{display:none!important}
-
-/* ============ CARTE LEAFLET ============ */
-.leaflet-container{font-family:var(--sans)}
-.leaflet-bar a{background:var(--panel)!important;color:var(--ink)!important;border-color:var(--line)!important}
-.leaflet-control-attribution{background:var(--glass)!important;color:var(--muted)!important;font-size:9px!important}
-.leaflet-control-attribution a{color:var(--muted)!important}
-.leaflet-popup-content-wrapper{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
-.leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
-.leaflet-popup-content{margin:13px 15px;font-size:13px;line-height:1.5}
-a.leaflet-popup-close-button{color:var(--muted)!important;font-size:20px!important;padding:6px!important;width:28px!important;height:28px!important}
-/* le point visuel fait 15px, mais la zone tactile du marqueur (iconSize) est élargie — le point est centré dedans */
-.pin{display:block;width:15px;height:15px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2.5px var(--panel),0 2px 6px rgba(0,0,0,.3);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
-.pin.ping::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--c);animation:ping 1s ease-out 3}
-@keyframes ping{0%{transform:scale(.6);opacity:1}100%{transform:scale(2.4);opacity:0}}
-.loc-btn{position:absolute;top:82px;left:10px;z-index:800;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:16px;box-shadow:0 1px 5px rgba(0,0,0,.15)}
-.legend{position:absolute;left:12px;bottom:12px;z-index:800;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:9px 11px;backdrop-filter:blur(4px);max-width:246px}
-.lg-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);cursor:pointer;user-select:none}
-.lg-toggle{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-left:auto}
-.lg-toggle button{background:transparent;border:0;color:var(--muted);font-size:11px;font-weight:700;padding:5px 9px;text-transform:uppercase;position:relative}
-.lg-toggle button::after{content:'';position:absolute;left:0;right:0;top:-6px;bottom:-6px}
-.lg-toggle button.on{background:var(--primary);color:var(--on-primary)}
-.lg-items{margin-top:8px;display:flex;flex-direction:column;gap:5px}
-.lg-items .it{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.lg-items .dot{width:10px;height:10px;border-radius:50%;flex:none}
-.legend.folded .lg-items,.legend.folded .lg-toggle{display:none}
-
-/* ============ ÉTAT VIDE / FAB ============ */
-.empty-map{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:900;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px 22px;max-width:400px;width:calc(100% - 36px);text-align:center;box-shadow:var(--shadow)}
-.empty-map h2{font-size:18px;margin-bottom:5px}
-.empty-map p{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:16px}
-.em-principle{display:flex;justify-content:center;gap:14px;margin-bottom:16px;font-size:12px;color:var(--muted);font-weight:600}
-.em-principle span{display:flex;flex-direction:column;gap:3px;align-items:center}
-.em-principle .i{font-size:21px}
-.em-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.em-actions .btn{padding:11px 8px;font-size:13px}
-.fab{position:absolute;z-index:1150;border-radius:16px;border:1px solid var(--line);padding:13px 17px;font-weight:700;font-size:14px;box-shadow:var(--shadow);display:none}
-.fab-add{right:14px;bottom:16px;background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
-.fab-list{left:14px;bottom:16px;background:var(--panel);color:var(--ink)}
-.fab-map{left:14px;bottom:16px;background:var(--panel);color:var(--ink)}
-
-/* ============ FICHE / CONTACTS ============ */
-.pp h3{font-size:15.5px;margin-bottom:2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.pp .desc{font-size:12.5px;color:var(--muted);margin-top:2px}
-.pp-loc{font-size:13px;color:var(--muted);margin:7px 0 2px;line-height:1.5}
-.pp-loc b{color:var(--ink);font-weight:600;word-break:break-word}
-.linklike{background:none;border:0;color:var(--primary);font-weight:700;font-size:12px;text-decoration:underline;padding:6px;margin:-6px 0;border-radius:8px}
-.linklike:focus-visible{outline:2px solid var(--primary)}
-.pp .chips{margin:7px 0 8px}
-.pp .row{display:flex;gap:7px;align-items:baseline;margin:3px 0;color:var(--muted);font-size:12.5px}
-.pp .row b{color:var(--ink);font-weight:500;word-break:break-word}
-.pp .row .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;flex:none;width:58px;color:var(--muted)}
-.ct-list{margin:8px 0 2px;display:flex;flex-direction:column;gap:6px}
-.ct{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px}
-.ct .ct-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
-.ct .ct-h b{font-weight:700}
-.ct .ct-role{color:var(--muted)}
-.ct .ct-links{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;font-size:12px}
-.ct .ct-note{font-size:12px;color:var(--muted);margin-top:4px;font-style:italic}
-.conf-ok{color:var(--ok);font-size:11.5px;font-weight:700}
-.conf-doubt{color:var(--amber);font-size:11.5px;font-weight:700}
-.pp details{margin-top:7px}
-.pp summary{cursor:pointer;font-size:12px;color:var(--primary);font-weight:700}
-.pp .notes{margin-top:6px;padding:7px 9px;background:var(--panel-2);border-radius:9px;font-size:12px;color:var(--muted);white-space:pre-wrap}
-.pp .pp-actions{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap;align-items:center}
-.pp select{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:6px 8px;font-size:12px;max-width:160px;min-height:34px}
-.priv-sep{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
-.priv-sep::after{content:'';flex:1;height:1px;background:var(--line)}
-
-/* ============ SUIVI ============ */
-.stats{display:flex;gap:7px;flex-wrap:wrap;font-size:12px;margin-bottom:16px}
-.stat{padding:6px 11px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--muted);font-weight:600}
-.stat b{color:var(--ink)}
-.stat.ok b{color:var(--ok)}
-.due-banner{background:color-mix(in srgb,var(--amber) 11%,transparent);border:1px solid color-mix(in srgb,var(--amber) 40%,transparent);color:var(--amber);border-radius:12px;padding:10px 13px;font-size:13px;margin-bottom:15px;line-height:1.5;font-weight:600}
-.tk-sec{margin-bottom:20px}
-.tk-h{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.tk-h .dot{width:9px;height:9px;border-radius:50%}
-.tk-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:8px}
-.tk-card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:var(--radius);padding:10px 12px}
-.tk-card h4{font-size:13.5px;margin-bottom:2px}
-.tk-dates{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px;margin:5px 0 8px}
-.tk-dates .late{color:var(--amber);font-weight:700}
-.tk-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.tk-actions select{background:var(--panel-2);border:1px solid var(--line);border-radius:9px;padding:6px 7px;font-size:11.5px;max-width:150px;min-height:34px}
-
-/* ============ PAGES ============ */
-.pcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px 16px;margin-bottom:12px}
-.pcard h3{font-size:14.5px;margin-bottom:4px}
-.pcard .pd{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:10px}
-.pcard details{margin-bottom:10px}
-.pcard summary{cursor:pointer;font-size:12px;color:var(--primary);font-weight:700}
-.pre{font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--muted);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px;white-space:pre-wrap;margin-top:8px;max-height:250px;overflow-y:auto}
-.field{margin-bottom:12px}
-.field label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
-.field input,.field select,.field textarea{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;min-height:40px}
-.field textarea{min-height:68px;resize:vertical}
-.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--primary);outline-offset:-1px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.checks{display:flex;gap:6px;flex-wrap:wrap}
-.checks label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:7px 12px;cursor:pointer;user-select:none}
-.checks input{accent-color:var(--primary)}
-.checks label:has(input:checked){border-color:var(--primary);color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,transparent)}
-.saved-flag{font-size:11px;color:var(--ok);font-weight:700}
-.guide h3{font-size:15px;margin:18px 0 6px;color:var(--ink)}
-.guide h3:first-of-type{margin-top:4px}
-.guide p,.guide li{font-size:13.5px;color:var(--muted);line-height:1.65}
-.guide ul{padding-left:19px;margin:5px 0}
-.guide b{color:var(--ink)}
-.callout{border:1px solid var(--line);border-left:4px solid var(--primary);background:var(--panel);border-radius:12px;padding:11px 13px;font-size:13px;color:var(--muted);line-height:1.6;margin:12px 0}
-.callout.warn{border-left-color:var(--amber)}
-
-/* ============ MODALES ============ */
-.overlay{position:fixed;inset:0;background:rgba(24,32,40,.45);z-index:3000;display:none;align-items:flex-end;justify-content:center}
-.overlay.open{display:flex}
-.modal{background:var(--panel);border:1px solid var(--line);width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:92dvh;display:flex;flex-direction:column}
-.modal-h{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line)}
-.modal-h h2{font-size:15.5px}
-.modal-b{padding:16px 18px;overflow-y:auto}
-.modal-f{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
-.x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;padding:8px;min-width:40px;min-height:40px}
-.fs{border:1px solid var(--line);border-radius:14px;margin-bottom:12px;background:var(--panel-2)}
-.fs summary{cursor:pointer;padding:12px 13px;font-size:13px;font-weight:700;color:var(--ink);list-style:none;display:flex;align-items:center;gap:8px;user-select:none}
-.fs summary::before{content:'▸';color:var(--primary);transition:transform .15s;flex:none}
-.fs[open] summary::before{transform:rotate(90deg)}
-.fs .fs-b{padding:4px 13px 13px}
-.fs .field input,.fs .field select,.fs .field textarea{background:var(--panel)}
-/* variante « danger » : la zone destructive a la même grammaire visuelle que le reste */
-.fs-danger{background:color-mix(in srgb,var(--danger) 5%,var(--panel-2));border-color:color-mix(in srgb,var(--danger) 30%,var(--line))}
-.fs-danger summary,.fs-danger summary::before{color:var(--danger)}
-.ct-edit{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px 4px;margin-bottom:9px;position:relative}
-.ct-edit .ct-del{position:absolute;top:7px;right:8px}
-.pos-box{background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:11px 12px;margin-bottom:12px}
-.pos-box .pos-val{font-size:12px;color:var(--muted);margin-bottom:9px}
-.pos-box .pos-val b{color:var(--primary)}
-.pos-btns{display:flex;gap:7px;flex-wrap:wrap}
-.hint{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
-.hint.warn{color:var(--amber)}
-.io-ta{width:100%;min-height:120px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:11px;font-family:var(--mono);font-size:12px;resize:vertical}
-.scope{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted);margin-bottom:9px}
-.scope label{display:flex;gap:5px;align-items:center;cursor:pointer;font-weight:600}
-.scope input{accent-color:var(--primary);width:16px;height:16px}
-.pw-row{display:flex;gap:7px;align-items:center;margin-bottom:8px}
-.pw-row input{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;min-height:40px}
-.enc-check{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--muted);font-weight:600;cursor:pointer;margin-bottom:9px}
-.enc-check input{accent-color:var(--primary);width:16px;height:16px}
-.stor-line{font-size:11.5px;color:var(--muted);margin-top:10px}
-.timeline{list-style:none;margin:4px 0 0;padding:0}
-.timeline li{font-size:12px;color:var(--muted);padding:4px 0;border-bottom:1px dashed var(--line);display:flex;gap:9px}
-.timeline li:last-child{border-bottom:0}
-.timeline .d{font-family:var(--mono);font-size:11.5px;color:var(--primary);flex:none;padding-top:2px}
-
-/* ============ ALERTE SAUVEGARDE ============ */
-.save-warn{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:3500;background:var(--danger);color:#fff;font-weight:700;font-size:13px;padding:10px 14px;border-radius:12px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow);max-width:calc(100% - 24px)}
-.save-warn button{background:rgba(255,255,255,.22);border:0;color:#fff;border-radius:8px;padding:6px 11px;font-weight:700;min-height:34px}
-
-/* ============ NAV BASSE / DIVERS ============ */
-.bottomnav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:1500;background:var(--panel);border-top:1px solid var(--line);padding:5px 4px calc(5px + env(safe-area-inset-bottom));align-items:center}
-.bottomnav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);font-size:11.5px;font-weight:700;padding:6px 0;border-radius:10px}
-.bottomnav a .i{font-size:18px}
-.bottomnav a.on{color:var(--primary)}
-.bn-add{flex:none;width:52px;height:52px;margin:-16px 6px 0;border-radius:50%;background:var(--primary);color:var(--on-primary);border:0;font-size:25px;font-weight:400;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 45%,transparent)}
-.moremenu{position:fixed;z-index:1600;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);display:none;flex-direction:column;min-width:215px;overflow:hidden}
-.moremenu.open{display:flex}
-.moremenu button,.moremenu a{background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);font-size:13.5px;font-weight:600;padding:13px 15px;text-align:left;text-decoration:none;display:block;width:100%}
-.moremenu :last-child{border-bottom:0}
-.place-banner{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:3200;background:var(--primary);color:var(--on-primary);font-weight:700;font-size:13.5px;padding:11px 15px;border-radius:12px;display:none;align-items:center;gap:11px;box-shadow:var(--shadow);max-width:calc(100% - 28px)}
-.place-banner.on{display:flex}
-.place-banner button{background:rgba(0,0,0,.16);border:0;border-radius:8px;padding:6px 11px;font-weight:700;color:var(--on-primary);font-size:12px;flex:none;min-height:34px}
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(12px);z-index:4000;background:var(--ink);color:var(--bg);font-weight:600;font-size:13px;padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 40px);text-align:center;line-height:1.5}
-.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.up{bottom:100px}
-/* norme : un message ne recouvre jamais les actions d'une modale — il passe en haut */
-body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inset-top) + 66px)}
-
-/* ============ ANNULATION (filet de sécurité fusion / restauration) ============ */
-.undo-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:2900;background:var(--ink);color:var(--bg);border-radius:14px;padding:9px 8px 9px 15px;display:flex;gap:8px;align-items:center;box-shadow:var(--shadow);font-size:13px;font-weight:600;line-height:1.45;max-width:calc(100% - 24px)}
-.undo-bar .btn{flex:none;background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
-.undo-bar .x{color:var(--bg);opacity:.75;flex:none}
-
-/* ============ ÉCHANGER (page) ============ */
-.io-seg{display:flex;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--panel);margin-bottom:14px}
-.io-seg button{flex:1;background:transparent;border:0;color:var(--muted);font-size:14px;font-weight:700;padding:11px;min-height:46px;transition:background .15s,color .15s}
-.io-seg button.on{background:var(--primary);color:var(--on-primary)}
-
-/* ============ OUTILS DE LISTE (compteur + sélection) ============ */
-.list-tools{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:1px 2px 4px;font-weight:600}
-.list-tools .grow{flex:1}
-
-/* ============ DOCUMENTS (CV / lettre) ============ */
-.doc-slot{display:flex;align-items:center;gap:9px;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;flex-wrap:wrap}
-.doc-slot .ds-main{flex:1;min-width:150px}
-.doc-slot .ds-name{font-size:13px;font-weight:700;word-break:break-word}
-.doc-slot .ds-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
-
-/* ============ ANIMATIONS (sobres : transform/opacity uniquement) ============ */
-@keyframes oc-fade{from{opacity:0}}
-@keyframes oc-up{from{opacity:0;transform:translateY(24px)}}
-@keyframes oc-pop{from{opacity:0;transform:scale(.97)}}
-@keyframes oc-down{from{opacity:0;transform:translateY(-6px)}}
-.overlay.open{animation:oc-fade .16s ease}
-.overlay.open .modal{animation:oc-up .22s cubic-bezier(.2,.8,.3,1)}
-.moremenu.open{animation:oc-pop .14s ease}
-.selbar.on{animation:oc-up .2s ease}
-.fdrawer.open{animation:oc-down .18s ease}
-.view:not([hidden]){animation:oc-fade .18s ease}
-.fs[open] .fs-b{animation:oc-down .16s ease}
-.undo-bar:not([hidden]){animation:oc-up .2s ease}
-
-/* ============ RESPONSIVE ============ */
-@media (min-width:901px){
-  .overlay{align-items:center;padding:22px}
-  .modal{border-radius:20px}
-  .overlay.open .modal{animation:oc-pop .18s ease}
-  .moremenu{top:56px;right:12px}
-}
-@media (max-width:900px){
-  .topnav{display:none}
-  .bottomnav{display:flex}
-  .app{padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom))}
-  .hdr .btn-cta{display:none}
-  .brand small{display:none}
-  .moremenu{bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom));right:10px}
-  .results{position:fixed;left:0;right:0;top:16dvh;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));width:auto;border-right:0;border-top:1px solid var(--line);border-radius:20px 20px 0 0;transform:translateY(110%);transition:transform .28s ease;z-index:1400}
-  .results.open{transform:translateY(0)}
-  .drag-zone{padding:8px 0 6px;cursor:grab;touch-action:none}
-  .drag{width:44px;height:5px;border-radius:5px;background:color-mix(in srgb,var(--muted) 40%,transparent);margin:0 auto}
-  .fab{display:block}
-  .legend{bottom:76px;max-width:196px}
-  .toast{bottom:calc(var(--nav-h) + 26px + env(safe-area-inset-bottom))}
-  .vswitch button span{display:none}
-  .count-line{display:none}
-  .btn-filters{display:inline-flex}
-  .fdrawer{display:none;width:100%;padding-top:8px}
-  .fdrawer.open{display:flex}
-  .fdrawer select{flex:1;max-width:none}
-  .em-actions{grid-template-columns:1fr}
-  .page{padding:16px 14px 30px}
-  .save-warn{top:58px}
-}
-@media (min-width:901px){.drag-zone{display:none}}
-
-/* ============ MOBILE-FIRST : cibles tactiles ≥ 44px, lisibilité, une seule ligne d'outils ============ */
-@media (max-width:900px){
-  /* pas de zoom iOS à la prise de focus + textes de saisie lisibles */
-  input,select,textarea{font-size:16px}
-  /* barre d'outils compacte : recherche + vues + filtres sur UNE ligne dès 320px */
-  .toolbar{gap:7px;padding:8px 10px}
-  .search-wrap{min-width:96px}
-  .search{min-height:44px;padding-right:44px}
-  .q-clear{width:44px;height:44px;right:0}
-  .vswitch button{min-height:44px;min-width:44px;justify-content:center}
-  .bf-txt{display:none}
-  #btnFilters{min-width:44px;justify-content:center;padding:6px 9px}
-  .bf-n{margin-left:3px}
-  .fdrawer select{min-height:44px;flex:1 1 46%;min-width:0}
-  .fdrawer .fpriv{flex:1 1 46%;min-width:0}
-  .fdrawer .fpriv select{flex:1}
-  /* cibles tactiles ≥ 44 × 44 px */
-  .field input,.field select,.field textarea,.pw-row input{min-height:44px}
-  .btn,.btn-sm{min-height:44px;min-width:44px}
-  .icon-btn{width:44px;height:44px}
-  .x{min-width:44px;min-height:44px}
-  .selbar .btn{min-height:44px}
-  .selbar{bottom:calc(var(--nav-h) + 10px + env(safe-area-inset-bottom))}
-  body.selecting .toast{bottom:calc(var(--nav-h) + 148px + env(safe-area-inset-bottom))}
-  /* safe-areas latérales (encoche en paysage) : rien ne se glisse sous le matériel */
-  .hdr{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
-  .toolbar{padding-left:calc(10px + env(safe-area-inset-left));padding-right:calc(10px + env(safe-area-inset-right))}
-  .bottomnav{padding-left:calc(4px + env(safe-area-inset-left));padding-right:calc(4px + env(safe-area-inset-right))}
-  .page{padding-left:calc(14px + env(safe-area-inset-left));padding-right:calc(14px + env(safe-area-inset-right))}
-  /* pieds de modale : boutons équilibrés (max 2 par rangée), jamais collés au bord bas */
-  .modal-f{padding-bottom:calc(13px + env(safe-area-inset-bottom))}
-  .modal-f .btn{flex:1 1 45%}
-  .place-banner button,.save-warn button{min-height:44px}
-  .pp select{min-height:44px;max-width:100%}
-  .tk-actions select{min-height:44px;max-width:none;flex:1 1 100%}
-  .tk-actions .btn{flex:1}
-  .checks label{min-height:44px;font-size:13.5px;padding:9px 14px}
-  .checks input{width:18px;height:18px}
-  .loc-btn{width:44px;height:44px;top:108px}
-  .leaflet-bar a{width:44px!important;height:44px!important;line-height:44px!important;font-size:20px!important}
-  a.leaflet-popup-close-button{width:44px!important;height:44px!important;font-size:24px!important;padding:10px!important}
-  .leaflet-popup-content .pp h3{padding-right:26px}
-  .lg-head{position:relative;padding:5px 0}
-  .lg-head::after{content:'';position:absolute;left:0;right:0;top:-8px;bottom:-8px}
-  .lg-toggle{position:relative;z-index:1}
-  .lg-toggle button{padding:8px 10px}
-  .lg-toggle button::after{top:-8px;bottom:-8px}
-  .drag-zone{padding:14px 0 10px;position:relative}
-  .drag-zone::after{content:'';position:absolute;left:0;right:0;top:-8px;bottom:-8px}
-  .score{position:relative}
-  .score::after{content:'';position:absolute;left:-6px;right:-6px;top:-11px;bottom:-11px}
-  .pcard details>summary,.modal-b details:not(.fs)>summary{padding:15px 0}
-  .linklike{display:inline-flex;align-items:center;min-height:44px;padding:0 8px;margin:-12px 0}
-  .ct .ct-links a,.pp .row a{display:inline-flex;align-items:center;min-height:44px;margin:-8px 0}
-  /* bascule Liste → Carte à portée du pouce (visible seulement en mode Liste/Grille, et s'il y a des pistes) */
-  .fab-map{display:none}
-  #modeFlat:not([hidden]) ~ .fab-map{display:block}
-  #emptyMap:not([hidden]) ~ .fab-map{display:none}
-  /* barre d'annulation au-dessus de la nav basse : message sur sa ligne, boutons dessous */
-  .undo-bar{left:10px;right:10px;transform:none;bottom:calc(var(--nav-h) + 14px + env(safe-area-inset-bottom));flex-wrap:wrap;padding:11px 12px}
-  .undo-bar #undoMsg{flex:1 1 100%}
-  .toast.up{bottom:calc(var(--nav-h) + 132px + env(safe-area-inset-bottom))}
-}
-@media (max-width:349px){.grid2{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-</style>
+<link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
 <noscript><div style="padding:20px;font-family:system-ui;text-align:center">OpenContact a besoin de JavaScript pour fonctionner — active-le dans ton navigateur.</div></noscript>
@@ -482,30 +28,23 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
   <!-- ============ HEADER ============ -->
   <header class="hdr">
     <a class="brand" href="#/pistes" aria-label="OpenContact — accueil">
-      <svg class="logo" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-        <line x1="9" y1="22" x2="16" y2="10" stroke="var(--primary)" stroke-width="2.2"/>
-        <line x1="16" y1="10" x2="24" y2="20" stroke="var(--primary)" stroke-width="2.2"/>
-        <line x1="9" y1="22" x2="24" y2="20" stroke="var(--line)" stroke-width="2.2"/>
-        <circle cx="16" cy="10" r="4.4" fill="var(--primary)"/>
-        <circle cx="9" cy="22" r="3.5" fill="var(--panel)" stroke="var(--primary)" stroke-width="2.2"/>
-        <circle cx="24" cy="20" r="3.5" fill="var(--panel)" stroke="var(--amber)" stroke-width="2.2"/>
-      </svg>
-      <span><b>OpenContact</b><small>pistes &amp; contacts partagés</small></span>
+      <img src="assets/logo/piste-a-reseau.svg" width="22" height="22" alt="">
+      <b>OPEN-CONTACT</b>
     </a>
     <nav class="topnav" aria-label="Navigation principale">
       <a href="#/pistes" data-r="pistes">Pistes</a>
       <a href="#/suivi" data-r="suivi">Mon suivi</a>
-      <a href="#/echanger" data-r="echanger">⇅ Échanger</a>
-      <button id="btnMoreTop" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu">Plus ▾</button>
+      <a href="#/echanger" data-r="echanger">Échanger</a>
+      <button id="btnMoreTop" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu">Plus <span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/chevron-down.svg);mask-image:url(assets/icons/chevron-down.svg)" aria-hidden="true"></span></button>
     </nav>
     <div class="hdr-actions">
-      <button class="btn btn-ghost icon-btn" id="btnTheme" aria-label="Thème clair ou sombre" title="Thème clair / sombre">🌓</button>
-      <button class="btn btn-primary btn-cta" id="btnCTA">➕ Ajouter une piste</button>
+      <button class="btn btn-ghost icon-btn" id="btnTheme" aria-label="Thème clair ou sombre" title="Thème clair / sombre"><span class="ic" style="-webkit-mask-image:url(assets/icons/invert.svg);mask-image:url(assets/icons/invert.svg)" aria-hidden="true"></span></button>
+      <button class="btn btn-primary btn-cta" id="btnCTA"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Ajouter une piste</button>
     </div>
   </header>
 
   <div class="save-warn" id="saveWarn" hidden role="alert">
-    <span>⚠ Sauvegarde impossible sur cet appareil — tes modifications seront perdues à la fermeture.</span>
+    <span>Sauvegarde impossible sur cet appareil — tes modifications seront perdues à la fermeture.</span>
     <button id="swExport">Exporter maintenant</button>
   </div>
 
@@ -519,22 +58,22 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
           <button class="q-clear" id="qClear" hidden aria-label="Effacer la recherche">✕</button>
         </div>
         <div class="vswitch" role="group" aria-label="Mode d'affichage">
-          <button data-vm="map" class="on" title="Carte" aria-label="Carte" aria-pressed="true">🗺️<span> Carte</span></button>
-          <button data-vm="list" title="Liste" aria-label="Liste" aria-pressed="false">☰<span> Liste</span></button>
-          <button data-vm="grid" title="Grille" aria-label="Grille" aria-pressed="false">▦<span> Grille</span></button>
+          <button data-vm="map" class="on" title="Carte" aria-label="Carte" aria-pressed="true"><span class="ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span><span> Carte</span></button>
+          <button data-vm="list" title="Liste" aria-label="Liste" aria-pressed="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/bulletlist.svg);mask-image:url(assets/icons/bulletlist.svg)" aria-hidden="true"></span><span> Liste</span></button>
+          <button data-vm="grid" title="Grille" aria-label="Grille" aria-pressed="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/grid-3x3.svg);mask-image:url(assets/icons/grid-3x3.svg)" aria-hidden="true"></span><span> Grille</span></button>
         </div>
-        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer" aria-label="Filtres">⚙️<span class="bf-txt"> Filtres</span><span class="bf-n" id="bfN" hidden></span></button>
+        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer" aria-label="Filtres"><span class="ic" style="-webkit-mask-image:url(assets/icons/settings-2.svg);mask-image:url(assets/icons/settings-2.svg)" aria-hidden="true"></span><span class="bf-txt"> Filtres</span><span class="bf-n" id="bfN" hidden></span></button>
         <span class="count-line" id="countLine"></span>
         <div class="fdrawer" id="fDrawer">
           <select id="fDomain" aria-label="Filtrer par domaine"><option value="">Domaine</option></select>
-          <span class="fpriv"><select id="fStatus" aria-label="Filtrer par statut privé"><option value="">Mon statut</option></select><span class="tag-priv">🔒</span></span>
+          <span class="fpriv"><select id="fStatus" aria-label="Filtrer par statut privé"><option value="">Mon statut</option></select><span class="tag-priv">Privé</span></span>
           <select id="fSort" aria-label="Trier les pistes">
             <option value="recent">Récentes</option>
             <option value="score">Complètes d'abord</option>
             <option value="az">A → Z</option>
-            <option value="dist">📍 Plus proches</option>
-            <option value="status">🔒 Par mon statut</option>
-            <option value="contacts">👤 Plus de contacts</option>
+            <option value="dist">Plus proches</option>
+            <option value="status">Par mon statut</option>
+            <option value="contacts">Plus de contacts</option>
           </select>
         </div>
       </div>
@@ -547,7 +86,7 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
           </aside>
           <div class="map-wrap">
             <div id="map" role="application" aria-label="Carte des pistes"></div>
-            <button class="loc-btn" id="locBtn" title="Centrer sur ma position (jamais enregistrée)" aria-label="Centrer la carte sur ma position">📍</button>
+            <button class="loc-btn" id="locBtn" title="Centrer sur ma position (jamais enregistrée)" aria-label="Centrer la carte sur ma position"><span class="ic" style="-webkit-mask-image:url(assets/icons/gps.svg);mask-image:url(assets/icons/gps.svg)" aria-hidden="true"></span></button>
             <div class="legend folded" id="legend">
               <div class="lg-head" id="lgHead" role="button" tabindex="0" aria-expanded="false">
                 <span>Légende</span>
@@ -558,8 +97,8 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
               </div>
               <div class="lg-items" id="lgItems"></div>
             </div>
-            <button class="fab fab-list" id="fabList">☰ Pistes</button>
-            <button class="fab fab-add" id="fabAdd" aria-label="Ajouter une piste">➕</button>
+            <button class="fab fab-list" id="fabList"><span class="ic" style="-webkit-mask-image:url(assets/icons/bulletlist.svg);mask-image:url(assets/icons/bulletlist.svg)" aria-hidden="true"></span> Pistes</button>
+            <button class="fab fab-add" id="fabAdd" aria-label="Ajouter une piste"><span class="ic" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Ajouter</button>
           </div>
         </div>
 
@@ -568,33 +107,36 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
         </div>
 
         <div class="empty-map" id="emptyMap" hidden>
-          <h2>Toutes les pistes utiles, au même endroit</h2>
-          <div class="em-principle">
-            <span><span class="i">🔎</span>Trouve</span>
-            <span><span class="i">➕</span>Contribue</span>
-            <span><span class="i">🤝</span>Partage</span>
-          </div>
-          <p>Entreprises, contacts, conseils : ce que chacun découvre profite à tous.</p>
-          <div class="em-actions">
-            <button class="btn btn-primary" id="btnAddEmpty">➕ Ajouter ma première piste</button>
-            <button class="btn" id="btnImportEmpty">⇅ Importer des pistes reçues</button>
-            <button class="btn" id="btnDemoEmpty">👀 Voir un exemple</button>
-            <button class="btn" id="btnLocEmpty">📍 Autour de moi</button>
+          <div class="em-bar">OpenContact</div>
+          <div class="em-body">
+            <h2>Toutes les pistes utiles, au même endroit</h2>
+            <div class="em-principle">
+              <span><span class="ic ic-24" style="-webkit-mask-image:url(assets/icons/search.svg);mask-image:url(assets/icons/search.svg)" aria-hidden="true"></span>Trouve</span>
+              <span><span class="ic ic-24" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span>Contribue</span>
+              <span><span class="ic ic-24" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span>Partage</span>
+            </div>
+            <p>Entreprises, contacts, conseils : ce que chacun découvre profite à tous.</p>
+            <div class="em-actions">
+              <button class="btn btn-primary" id="btnAddEmpty">Ajouter ma première piste</button>
+              <button class="btn" id="btnImportEmpty">Importer des pistes reçues</button>
+              <button class="btn" id="btnDemoEmpty">Voir un exemple</button>
+              <button class="btn" id="btnLocEmpty">Autour de moi</button>
+            </div>
           </div>
         </div>
-        <button class="fab fab-map" id="fabMap">🗺️ Carte</button>
+        <button class="fab fab-map" id="fabMap"><span class="ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span> Carte</button>
       </div>
     </section>
 
     <!-- ============ VUE SUIVI ============ -->
     <section class="view page" id="view-suivi" hidden>
       <div class="page-inner">
-        <h2>Mon suivi <span class="tag-priv">🔒 privé</span></h2>
+        <h2>Mon suivi <span class="tag-priv">Privé</span></h2>
         <div class="sub">Visible uniquement par toi, jamais partagé.</div>
         <div class="stats" id="stats"></div>
         <div class="due-banner" id="dueBanner" hidden></div>
         <details class="fs" id="jrWrap" hidden>
-          <summary>🕘 Mon journal — mes actions récentes</summary>
+          <summary>Mon journal — mes actions récentes</summary>
           <div class="fs-b"><ul class="timeline" id="jrList"></ul></div>
         </details>
         <div id="trackBody"></div>
@@ -608,42 +150,42 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
         <div class="sub">De la main à la main, par fichier ou copier-coller — ton suivi privé ne part jamais.</div>
 
         <div class="io-seg" role="tablist" aria-label="Recevoir ou donner">
-          <button id="segRecv" class="on" role="tab" aria-selected="true">📥 Recevoir</button>
-          <button id="segGive" role="tab" aria-selected="false">📤 Donner</button>
+          <button id="segRecv" class="on" role="tab" aria-selected="true"><span class="ic" style="-webkit-mask-image:url(assets/icons/inbox.svg);mask-image:url(assets/icons/inbox.svg)" aria-hidden="true"></span> Recevoir</button>
+          <button id="segGive" role="tab" aria-selected="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/upload.svg);mask-image:url(assets/icons/upload.svg)" aria-hidden="true"></span> Donner</button>
         </div>
 
         <div id="ioRecv">
           <div class="pcard">
-            <h3>📥 Recevoir des pistes</h3>
-            <p class="pd">On t'a envoyé un fichier <b>.oc</b> ou un texte ? Ouvre-le ici. La fusion <b>ajoute</b> les pistes et contacts inconnus et <b>complète</b> tes fiches — elle n'écrase jamais ce que tu as déjà, et un bouton « ↩ Annuler » reste affiché ~30 s.</p>
-            <div class="pos-btns"><button class="btn" id="btnOpenFile">📂 Ouvrir le fichier reçu</button></div>
+            <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/inbox.svg);mask-image:url(assets/icons/inbox.svg)" aria-hidden="true"></span> Recevoir des pistes</h3>
+            <p class="pd">On t'a envoyé un fichier <b>.oc</b> ou un texte ? Ouvre-le ici. La fusion <b>ajoute</b> les pistes et contacts inconnus et <b>complète</b> tes fiches — elle n'écrase jamais ce que tu as déjà, et un bouton « Annuler » reste affiché ~30 s.</p>
+            <div class="pos-btns"><button class="btn" id="btnOpenFile"><span class="ic" style="-webkit-mask-image:url(assets/icons/folder.svg);mask-image:url(assets/icons/folder.svg)" aria-hidden="true"></span> Ouvrir le fichier reçu</button></div>
             <input type="file" id="ioFile" accept=".oc,.json,.txt" hidden>
             <textarea class="io-ta" id="ioTA" spellcheck="false" style="margin-top:9px" placeholder="… ou colle ici le texte reçu" aria-label="Zone de réception"></textarea>
-            <div class="field" id="ioPassWrap" hidden style="margin:9px 0 0"><label for="ioPass">Mot de passe du fichier 🔐</label><input id="ioPass" type="password" autocomplete="off"></div>
-            <div class="pos-btns" style="margin-top:9px"><button class="btn btn-primary" id="btnMerge">➕ Fusionner dans mes pistes</button></div>
+            <div class="field" id="ioPassWrap" hidden style="margin:9px 0 0"><label for="ioPass">Mot de passe du fichier</label><input id="ioPass" type="password" autocomplete="off"></div>
+            <div class="pos-btns" style="margin-top:9px"><button class="btn btn-primary" id="btnMerge"><span class="ic" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Fusionner dans mes pistes</button></div>
           </div>
         </div>
 
         <div id="ioGive" hidden>
           <div class="pcard">
-            <h3>📤 Donner mes pistes</h3>
-            <p class="pd">Génère un fichier à envoyer à ta promo. <span class="tag-priv">🔒</span> Statut, notes, dates, journal, CV : jamais inclus.</p>
+            <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/upload.svg);mask-image:url(assets/icons/upload.svg)" aria-hidden="true"></span> Donner mes pistes</h3>
+            <p class="pd">Génère un fichier à envoyer à ta promo. <span class="tag-priv">Privé</span> Statut, notes, dates, journal, CV : jamais inclus.</p>
             <div class="scope" role="radiogroup" aria-label="Pistes à inclure">
               <label><input type="radio" name="shareScope" id="scopeAll" value="all" checked> Toutes (<span id="shareAllCount">0</span>)</label>
               <label><input type="radio" name="shareScope" id="scopeSel" value="sel"> Ma sélection (<span id="shareSelCount">0</span>)</label>
               <button class="btn btn-sm" id="btnPick">Choisir les pistes…</button>
             </div>
             <div class="pos-btns">
-              <button class="btn btn-primary" id="btnDownload">⬇ Télécharger le fichier .oc</button>
-              <button class="btn" id="btnCopy">📋 Copier</button>
+              <button class="btn btn-primary" id="btnDownload"><span class="ic" style="-webkit-mask-image:url(assets/icons/download.svg);mask-image:url(assets/icons/download.svg)" aria-hidden="true"></span> Télécharger le fichier .oc</button>
+              <button class="btn" id="btnCopy"><span class="ic" style="-webkit-mask-image:url(assets/icons/copy.svg);mask-image:url(assets/icons/copy.svg)" aria-hidden="true"></span> Copier</button>
             </div>
             <div class="hint" id="giveHint">Sans mot de passe, le fichier est lisible par quiconque le reçoit.</div>
             <details class="fs" id="fsPass" style="margin-top:11px">
-              <summary>🔐 Mot de passe de groupe (optionnel)</summary>
+              <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> Mot de passe de groupe (optionnel)</summary>
               <div class="fs-b">
                 <div class="pw-row">
                   <input id="sharePass" type="password" placeholder="Mot de passe de groupe" autocomplete="new-password" aria-label="Mot de passe de groupe">
-                  <button class="btn icon-btn" id="btnEye" aria-label="Afficher ou masquer le mot de passe" aria-pressed="false">👁</button>
+                  <button class="btn icon-btn" id="btnEye" aria-label="Afficher ou masquer le mot de passe" aria-pressed="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/eye.svg);mask-image:url(assets/icons/eye.svg)" aria-hidden="true"></span></button>
                 </div>
                 <div class="pw-row" id="pass2Row" hidden>
                   <input id="sharePass2" type="password" placeholder="Confirme le mot de passe" autocomplete="new-password" aria-label="Confirmation du mot de passe">
@@ -653,25 +195,25 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
             </details>
           </div>
           <div class="pcard">
-            <h3>💾 Ma sauvegarde <span class="tag-priv">🔒 privé inclus</span></h3>
+            <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> Ma sauvegarde <span class="tag-priv">Privé inclus</span></h3>
             <p class="pd">Pour changer d'appareil, ou dormir tranquille. À refaire régulièrement.</p>
-            <label class="enc-check"><input type="checkbox" id="backupEnc"> 🔐 Chiffrer avec le mot de passe de groupe ci-dessus</label>
-            <div class="pos-btns"><button class="btn" id="btnExport">💾 Télécharger ma sauvegarde</button></div>
+            <label class="enc-check"><input type="checkbox" id="backupEnc"> Chiffrer avec le mot de passe de groupe ci-dessus</label>
+            <div class="pos-btns"><button class="btn" id="btnExport"><span class="ic" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> Télécharger ma sauvegarde</button></div>
             <div class="stor-line" id="storLine"></div>
           </div>
         </div>
 
         <details class="fs fs-danger" style="margin-top:4px">
-          <summary>⚠️ Zone avancée — actions destructives</summary>
+          <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/square-alert.svg);mask-image:url(assets/icons/square-alert.svg)" aria-hidden="true"></span> Zone avancée — actions destructives</summary>
           <div class="fs-b">
             <div class="hint" style="margin:4px 0 8px">Fais toujours une copie de sécurité avant :</div>
             <div class="pos-btns">
-              <button class="btn btn-sm" id="btnBackupNow">💾 Sauvegarder d'abord</button>
-              <button class="btn btn-sm" id="btnSelDelete">🗑 Choisir des pistes à supprimer</button>
+              <button class="btn btn-sm" id="btnBackupNow"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> Sauvegarder d'abord</button>
+              <button class="btn btn-sm" id="btnSelDelete"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/trash.svg);mask-image:url(assets/icons/trash.svg)" aria-hidden="true"></span> Choisir des pistes à supprimer</button>
               <button class="btn btn-sm btn-danger" id="btnDeleteAll">Tout supprimer</button>
               <button class="btn btn-sm btn-danger" id="btnImport">Remplacer tout</button>
             </div>
-            <div class="hint" style="margin-top:8px">« Remplacer tout » restaure une sauvegarde : colle-la (ou ouvre-la) d'abord dans 📥 Recevoir.</div>
+            <div class="hint" style="margin-top:8px">« Remplacer tout » restaure une sauvegarde : colle-la (ou ouvre-la) d'abord dans « Recevoir ».</div>
           </div>
         </details>
       </div>
@@ -680,10 +222,10 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
     <!-- ============ VUE MES DOCS ============ -->
     <section class="view page" id="view-docs" hidden>
       <div class="page-inner">
-        <h2>Mon profil, mes docs &amp; mes modèles <span class="tag-priv">🔒 privé</span></h2>
+        <h2>Mon profil, mes docs &amp; mes modèles <span class="tag-priv">Privé</span></h2>
         <div class="sub">Pour générer tes emails en un clic. <span class="saved-flag" id="docsSaved"></span></div>
         <div class="pcard">
-          <h3>👤 Mon profil</h3>
+          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/user.svg);mask-image:url(assets/icons/user.svg)" aria-hidden="true"></span> Mon profil</h3>
           <p class="pd">Remplit automatiquement <b>{{moi}}</b>, <b>{{formation}}</b>, <b>{{tel}}</b>, <b>{{email}}</b>, <b>{{cv}}</b>, <b>{{portfolio}}</b> dans tes modèles.</p>
           <div class="grid2">
             <div class="field"><label for="pName">Nom complet</label><input id="pName" data-p="name" placeholder="Prénom Nom"></div>
@@ -695,17 +237,17 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
           </div>
         </div>
         <div class="pcard">
-          <h3>📎 Mon CV &amp; ma lettre (PDF)</h3>
-          <p class="pd">Toujours sous la main au moment d'écrire un email (bouton ✉️ d'une piste). Stockés <b>à part de tes pistes</b> : même lourds, ils ne peuvent ni les bloquer ni les faire perdre — et ils ne partent <b>jamais</b> dans un fichier partagé.</p>
+          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/attachment.svg);mask-image:url(assets/icons/attachment.svg)" aria-hidden="true"></span> Mon CV &amp; ma lettre (PDF)</h3>
+          <p class="pd">Toujours sous la main au moment d'écrire un email (bouton « Écrire » d'une piste). Stockés <b>à part de tes pistes</b> : même lourds, ils ne peuvent ni les bloquer ni les faire perdre — et ils ne partent <b>jamais</b> dans un fichier partagé.</p>
           <div id="docSlots"></div>
         </div>
         <div class="pcard">
-          <h3>📝 Lettre de motivation type</h3>
+          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/note.svg);mask-image:url(assets/icons/note.svg)" aria-hidden="true"></span> Lettre de motivation type</h3>
           <div class="field"><textarea id="pLetter" data-p="letter" style="min-height:140px" placeholder="Madame, Monsieur, …" aria-label="Lettre de motivation type"></textarea></div>
         </div>
         <div class="pcard">
-          <h3>✉️ Modèles d'emails</h3>
-          <p class="pd">Utilisables depuis n'importe quelle piste (bouton ✉️). Variables : <b>{{entreprise}}</b>, <b>{{contact}}</b>, <b>{{ville}}</b>.</p>
+          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/mail.svg);mask-image:url(assets/icons/mail.svg)" aria-hidden="true"></span> Modèles d'emails</h3>
+          <p class="pd">Utilisables depuis n'importe quelle piste (bouton « Écrire »). Variables : <b>{{entreprise}}</b>, <b>{{contact}}</b>, <b>{{ville}}</b>.</p>
           <div id="tplList"></div>
           <button class="btn btn-sm" id="btnAddTpl">+ Nouveau modèle</button>
         </div>
@@ -718,7 +260,7 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
         <h2>Prompts IA</h2>
         <div class="sub">ChatGPT · Claude · Gemini · Mistral… — pour collecter et formater des pistes propres.</div>
         <div id="promptList"></div>
-        <div class="callout warn">⚠ Une IA peut inventer. Vérifie emails, téléphones et noms avant de contacter — un champ vide vaut mieux qu'un champ faux.</div>
+        <div class="callout warn">Une IA peut inventer. Vérifie emails, téléphones et noms avant de contacter — un champ vide vaut mieux qu'un champ faux.</div>
       </div>
     </section>
 
@@ -729,10 +271,10 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
         <div class="sub">Les réponses aux questions fréquentes — le reste s'apprend en utilisant.</div>
 
         <h3>Comment ça marche ?</h3>
-        <p><b>1.</b> Cherche une entreprise, un contact ou une ville. <b>2.</b> Consulte les pistes (carte, liste ou grille) — depuis une fiche : ✉️ écrire, 🧭 itinéraire. <b>3.</b> Contribue en ajoutant une piste utile. <b>4.</b> Échange tes pistes avec ta promo (⇅ Échanger) — par fichier ou copier-coller. <b>5.</b> Pour candidater en série : ☑ Sélectionner dans la liste, puis ✉️ Prospecter — les pistes défilent une par une, chaque email reste personnel. <b>6.</b> Ton suivi et ton journal restent privés.</p>
+        <p><b>1.</b> Cherche une entreprise, un contact ou une ville. <b>2.</b> Consulte les pistes (carte, liste ou grille) — depuis une fiche : « Écrire », « Itinéraire ». <b>3.</b> Contribue en ajoutant une piste utile. <b>4.</b> Échange tes pistes avec ta promo (page « Échanger ») — par fichier ou copier-coller. <b>5.</b> Pour candidater en série : « Sélectionner » dans la liste, puis « Prospecter » — les pistes défilent une par une, chaque email reste personnel. <b>6.</b> Ton suivi et ton journal restent privés.</p>
 
         <h3>Qu'est-ce qui est partagé, qu'est-ce qui reste privé ?</h3>
-        <p><span class="tag-share">🤝 partagé</span> : entreprise, ville, contacts professionnels, technos, types de postes, process, conseils.<br><span class="tag-priv">🔒 privé</span> : ton statut, tes notes, tes dates, ton historique, ton journal, ton CV et ta lettre — jamais inclus dans un fichier « à partager ». Tu peux aussi choisir précisément <b>quelles pistes</b> partent dans le fichier (« Ma sélection »).</p>
+        <p><span class="tag-share">Partagé</span> : entreprise, ville, contacts professionnels, technos, types de postes, process, conseils.<br><span class="tag-priv">Privé</span> : ton statut, tes notes, tes dates, ton historique, ton journal, ton CV et ta lettre — jamais inclus dans un fichier « à partager ». Tu peux aussi choisir précisément <b>quelles pistes</b> partent dans le fichier (« Ma sélection »).</p>
 
         <h3>Le mot de passe de groupe, comment ça marche ?</h3>
         <p>Si tu en choisis un au moment d'exporter, le fichier est <b>réellement chiffré</b> (AES) : illisible sans ce mot de passe, y compris par nous — il n'existe aucune clé cachée dans le site. Il t'est demandé <b>deux fois</b> pour éviter la faute de frappe, car si le groupe le perd, personne ne peut récupérer le contenu. Et soyons honnêtes : une personne qui possède le mot de passe peut évidemment copier les données une fois le fichier ouvert — aucun outil ne peut l'empêcher.</p>
@@ -741,17 +283,17 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
         <p>Le petit chiffre sur chaque fiche mesure si elle est <b>complète, récente et confirmée</b> (bouton « ✓ J'ai vérifié ces infos »). Touche le chiffre pour voir le détail. C'est un indicateur d'entretien de la fiche, <b>pas une garantie d'exactitude</b>.</p>
 
         <h3>Services tiers (transparence)</h3>
-        <p>OpenContact ne possède aucun serveur, mais trois services externes sont utilisés : les <b>fonds de carte</b> (CARTO / OpenStreetMap), le <b>géocodage</b> — l'adresse que tu tapes est envoyée à Nominatim (OpenStreetMap) uniquement quand tu cliques « 🔍 Depuis l'adresse » — et les <b>polices</b> (Google Fonts, transmission d'adresse IP). Ta position GPS, elle, ne quitte jamais ton appareil.</p>
+        <p>OpenContact ne possède aucun serveur, mais trois services externes sont utilisés : les <b>fonds de carte</b> (CARTO / OpenStreetMap), le <b>géocodage</b> — l'adresse que tu tapes est envoyée à Nominatim (OpenStreetMap) uniquement quand tu cliques « Depuis l'adresse » — et les <b>polices</b> (Google Fonts, transmission d'adresse IP). Ta position GPS, elle, ne quitte jamais ton appareil.</p>
 
         <h3>Questions fréquentes</h3>
         <ul>
-          <li><b>Où sont mes données ?</b> Dans ton navigateur, sur cet appareil. Pas de serveur, pas de compte. Fais une sauvegarde (⇅) régulièrement et pour changer d'appareil — le bouton ⬇ télécharge un fichier <code>.oc</code>.</li>
+          <li><b>Où sont mes données ?</b> Dans ton navigateur, sur cet appareil. Pas de serveur, pas de compte. Fais une sauvegarde (page « Échanger ») régulièrement et pour changer d'appareil — le bouton « Télécharger » crée un fichier <code>.oc</code>.</li>
           <li><b>Hors-ligne ? Installer l'app ?</b> Après ta première visite, OpenContact fonctionne <b>sans connexion</b> (seuls la carte et le géocodage ont besoin du réseau). Tu peux aussi l'installer comme une app : menu du navigateur → « Ajouter à l'écran d'accueil » / « Installer ».</li>
-          <li><b>La fusion peut-elle écraser mes pistes ?</b> Non : elle ajoute les nouveautés, complète les champs vides, ajoute les contacts inconnus — et ne touche jamais à ce que tu as déjà. Les informations divergentes sont comptées, pas importées. Et juste après une fusion, un bouton <b>« ↩ Annuler »</b> reste affiché ~30 secondes pour revenir en arrière.</li>
+          <li><b>La fusion peut-elle écraser mes pistes ?</b> Non : elle ajoute les nouveautés, complète les champs vides, ajoute les contacts inconnus — et ne touche jamais à ce que tu as déjà. Les informations divergentes sont comptées, pas importées. Et juste après une fusion, un bouton <b>« Annuler »</b> reste affiché ~30 secondes pour revenir en arrière.</li>
           <li><b>Une piste sans position sur la carte ?</b> Elle reste pleinement visible en Liste et en Grille.</li>
-          <li><b>Me rendre sur place ?</b> Ouvre la fiche d'une piste qui a une adresse ou une position → <b>🧭 Itinéraire</b> : ton application de navigation (Plans, Google Maps, Waze…) prend le relais.</li>
-          <li><b>L'historique d'une piste ?</b> Il garde les 40 derniers événements (création, statuts, emails préparés, notes, contacts…) — les plus anciens s'effacent d'eux-mêmes. Le journal 🕘 de « Mon suivi » regroupe, lui, tes actions récentes toutes pistes confondues.</li>
-          <li><b>Supprimer plusieurs pistes ?</b> Dans la liste : ☑ Sélectionner → 🗑. Ou « Tout supprimer » dans la zone avancée de ⇅ Échanger (après sauvegarde !).</li>
+          <li><b>Me rendre sur place ?</b> Ouvre la fiche d'une piste qui a une adresse ou une position → <b>Itinéraire</b> : ton application de navigation (Plans, Google Maps, Waze…) prend le relais.</li>
+          <li><b>L'historique d'une piste ?</b> Il garde les 40 derniers événements (création, statuts, emails préparés, notes, contacts…) — les plus anciens s'effacent d'eux-mêmes. Le journal de « Mon suivi » regroupe, lui, tes actions récentes toutes pistes confondues.</li>
+          <li><b>Supprimer plusieurs pistes ?</b> Dans la liste : « Sélectionner », puis « Supprimer ». Ou « Tout supprimer » dans la zone avancée de la page « Échanger » (après sauvegarde !).</li>
         </ul>
       </div>
     </section>
@@ -772,25 +314,32 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
           <li><b>Honnête</b> : pas de pub, pas de tracking, pas de promesses techniques impossibles.</li>
           <li><b>Open source</b> : code lisible et améliorable par tous — <b>[lien de ton dépôt GitHub]</b>. Auto-tests intégrés : ajoute <code>?test</code> à l'URL.</li>
         </ul>
-        <div class="callout">📬 Contact : <b>[ton email ou LinkedIn]</b> — retours et idées bienvenus. Licence suggérée : MIT.</div>
+        <div class="callout">Contact : <b>[ton email ou LinkedIn]</b> — retours et idées bienvenus. Licence suggérée : MIT.</div>
       </div>
     </section>
   </main>
 
+  <footer class="statusbar">
+    <span><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> données locales — jamais de serveur</span>
+    <span><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> suivi privé, jamais partagé</span>
+    <span class="grow"></span>
+    <span>OpenContact <span id="sbVer"></span> · fichier .oc</span>
+  </footer>
+
   <!-- ============ NAV BASSE (mobile) ============ -->
   <nav class="bottomnav" aria-label="Navigation mobile">
-    <a href="#/pistes" data-r="pistes"><span class="i" aria-hidden="true">🧭</span>Pistes</a>
-    <a href="#/suivi" data-r="suivi"><span class="i" aria-hidden="true">📋</span>Suivi</a>
-    <button class="bn-add" id="bnAdd" aria-label="Ajouter une piste">＋</button>
-    <a href="#/echanger" data-r="echanger"><span class="i" aria-hidden="true">🤝</span>Échanger</a>
-    <a href="#" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"><span class="i" aria-hidden="true">⋯</span>Plus</a>
+    <a href="#/pistes" data-r="pistes"><span class="ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span>Pistes</a>
+    <a href="#/suivi" data-r="suivi"><span class="ic" style="-webkit-mask-image:url(assets/icons/clipboard.svg);mask-image:url(assets/icons/clipboard.svg)" aria-hidden="true"></span>Suivi</a>
+    <button class="bn-add" id="bnAdd" aria-label="Ajouter une piste"><span class="ic ic-20" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span></button>
+    <a href="#/echanger" data-r="echanger"><span class="ic" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span>Échanger</a>
+    <a href="#" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"><span class="ic" style="-webkit-mask-image:url(assets/icons/more-horizontal.svg);mask-image:url(assets/icons/more-horizontal.svg)" aria-hidden="true"></span>Plus</a>
   </nav>
   <div class="moremenu" id="moreMenu" role="menu">
-    <a href="#/docs" role="menuitem">👤 Mon profil, docs &amp; modèles</a>
-    <a href="#/prompts" role="menuitem">✨ Prompts IA</a>
-    <a href="#/guide" role="menuitem">❓ Aide</a>
-    <a href="#/apropos" role="menuitem">ℹ️ À propos</a>
-    <button id="miInstall" role="menuitem" hidden>📲 Installer l'app</button>
+    <a href="#/docs" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/user.svg);mask-image:url(assets/icons/user.svg)" aria-hidden="true"></span> Mon profil, docs &amp; modèles</a>
+    <a href="#/prompts" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/sparkles.svg);mask-image:url(assets/icons/sparkles.svg)" aria-hidden="true"></span> Prompts IA</a>
+    <a href="#/guide" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/book-open.svg);mask-image:url(assets/icons/book-open.svg)" aria-hidden="true"></span> Aide</a>
+    <a href="#/apropos" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/info-box.svg);mask-image:url(assets/icons/info-box.svg)" aria-hidden="true"></span> À propos</a>
+    <button id="miInstall" role="menuitem" hidden><span class="ic" style="-webkit-mask-image:url(assets/icons/download.svg);mask-image:url(assets/icons/download.svg)" aria-hidden="true"></span> Installer l'app</button>
   </div>
 
   <!-- ============ BARRE DE SÉLECTION ============ -->
@@ -803,10 +352,10 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
       <button class="btn btn-sm" id="selCancel" aria-label="Annuler la sélection">✕</button>
     </div>
     <div class="sel-row sel-actions">
-      <button class="btn btn-sm btn-primary" id="selOk">✅ Valider ma sélection</button>
-      <button class="btn btn-sm btn-primary" id="selQueue" hidden>✉️ Prospecter</button>
-      <button class="btn btn-sm" id="selShare" hidden>🤝 Partager</button>
-      <button class="btn btn-sm btn-danger" id="selDel" hidden>🗑 Supprimer</button>
+      <button class="btn btn-sm btn-primary" id="selOk"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/check.svg);mask-image:url(assets/icons/check.svg)" aria-hidden="true"></span> Valider ma sélection</button>
+      <button class="btn btn-sm btn-primary" id="selQueue" hidden><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/mail.svg);mask-image:url(assets/icons/mail.svg)" aria-hidden="true"></span> Prospecter</button>
+      <button class="btn btn-sm" id="selShare" hidden><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span> Partager</button>
+      <button class="btn btn-sm btn-danger" id="selDel" hidden><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/trash.svg);mask-image:url(assets/icons/trash.svg)" aria-hidden="true"></span> Supprimer</button>
     </div>
   </div>
 
@@ -823,10 +372,10 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
         <div class="field"><label for="fCity">Ville</label><input id="fCity" placeholder="Ex : Lille"></div>
         <div class="field"><label for="fDom">Domaine</label><select id="fDom"></select></div>
       </div>
-      <div class="hint" style="margin:-4px 0 13px">👍 Ça suffit pour enregistrer — le reste se complète quand tu veux (ou par quelqu'un d'autre).</div>
+      <div class="hint" style="margin:-4px 0 13px">Ça suffit pour enregistrer — le reste se complète quand tu veux (ou par quelqu'un d'autre).</div>
 
       <details class="fs" id="fsContacts">
-        <summary>📇 Contacts <span class="bf-n" id="fsCtN" hidden></span> <span class="tag-share">🤝 partagé</span></summary>
+        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/contact.svg);mask-image:url(assets/icons/contact.svg)" aria-hidden="true"></span> Contacts <span class="bf-n" id="fsCtN" hidden></span> <span class="tag-share">Partagé</span></summary>
         <div class="fs-b">
           <div id="contactsBox"></div>
           <button class="btn btn-sm" id="btnAddContact">+ Ajouter un contact</button>
@@ -835,15 +384,15 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
       </details>
 
       <details class="fs" id="fsPlace">
-        <summary>📍 Adresse &amp; carte <span class="tag-share">🤝 partagé</span></summary>
+        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span> Adresse &amp; carte <span class="tag-share">Partagé</span></summary>
         <div class="fs-b">
           <div class="field"><label for="fAddr">Adresse complète</label><input id="fAddr" placeholder="N°, rue, code postal, ville"></div>
           <div class="pos-box">
             <div class="pos-val" id="posVal">Pas de position — la piste restera visible en Liste et Grille.</div>
             <div class="pos-btns">
-              <button class="btn btn-sm" id="btnGeo">🔍 Depuis l'adresse</button>
-              <button class="btn btn-sm" id="btnPlace">🗺️ Placer sur la carte</button>
-              <button class="btn btn-sm" id="btnMyPos">📍 Ma position</button>
+              <button class="btn btn-sm" id="btnGeo"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/search.svg);mask-image:url(assets/icons/search.svg)" aria-hidden="true"></span> Depuis l'adresse</button>
+              <button class="btn btn-sm" id="btnPlace"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span> Placer sur la carte</button>
+              <button class="btn btn-sm" id="btnMyPos"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/gps.svg);mask-image:url(assets/icons/gps.svg)" aria-hidden="true"></span> Ma position</button>
               <button class="btn btn-sm btn-ghost" id="btnClearPos">Effacer</button>
             </div>
             <div class="hint" id="posHint"></div>
@@ -852,7 +401,7 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
       </details>
 
       <details class="fs" id="fsDetails">
-        <summary>ℹ️ Plus de détails <span class="tag-share">🤝 partagé</span></summary>
+        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/info-box.svg);mask-image:url(assets/icons/info-box.svg)" aria-hidden="true"></span> Plus de détails <span class="tag-share">Partagé</span></summary>
         <div class="fs-b">
           <div class="field"><label for="fDesc">Activité en une phrase</label><input id="fDesc" placeholder="Ex : ESN infra & sécurité, ~200 salariés"></div>
           <div class="field">
@@ -868,7 +417,7 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
       </details>
 
       <details class="fs" id="fsSuivi">
-        <summary>🔒 Mon suivi <span class="tag-priv">privé, jamais partagé</span></summary>
+        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> Mon suivi <span class="tag-priv">Privé, jamais partagé</span></summary>
         <div class="fs-b">
           <div class="grid2">
             <div class="field"><label for="fSta">Statut</label><select id="fSta"></select></div>
@@ -901,7 +450,7 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
 <!-- ============ MODALE EMAIL ============ -->
 <div class="overlay" id="ovMail">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mailTitle">
-    <div class="modal-h"><h2 id="mailTitle">✉️ Écrire</h2><button class="x" id="xMail" aria-label="Fermer">✕</button></div>
+    <div class="modal-h"><h2 id="mailTitle">Écrire</h2><button class="x" id="xMail" aria-label="Fermer">✕</button></div>
     <div class="modal-b">
       <div class="grid2">
         <div class="field"><label for="mailTo">Destinataire</label><select id="mailTo"></select></div>
@@ -916,7 +465,7 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
       <button class="btn btn-ghost" id="btnMailSkip" hidden>Passer →</button>
       <button class="btn" id="btnMailCopy">Copier</button>
       <a class="btn btn-primary" id="btnMailto" href="#" style="text-decoration:none">Ouvrir dans Mail</a>
-      <button class="btn" id="btnMailSent">📤 Envoyée ✓</button>
+      <button class="btn" id="btnMailSent">Envoyée</button>
     </div>
   </div>
 </div>
@@ -940,13 +489,13 @@ body:has(.overlay.open) .toast{bottom:auto!important;top:calc(env(safe-area-inse
 </div>
 
 <div class="place-banner" id="placeBanner">
-  <span>🎯 Touche la carte pour placer la piste</span>
+  <span>Touche la carte pour placer la piste</span>
   <button id="btnCancelPlace">Annuler</button>
 </div>
 
 <div class="undo-bar" id="undoBar" hidden>
   <span id="undoMsg" role="status" aria-live="polite"></span>
-  <button class="btn btn-sm" id="btnUndo">↩ Annuler</button>
+  <button class="btn btn-sm" id="btnUndo">Annuler</button>
   <button class="x" id="undoX" aria-label="Fermer sans annuler">✕</button>
 </div>
 

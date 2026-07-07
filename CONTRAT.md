@@ -36,8 +36,8 @@ On ne renomme jamais ; si le format d'une clé doit évoluer, on crée une
 ### L'enveloppe (JSON)
 
 ```json
-{ "v": 4, "app": "4.5.0", "kind": "share", "companies": [] }
-{ "v": 4, "app": "4.5.0", "kind": "full",  "profile": {}, "companies": [] }
+{ "v": 4, "app": "5.0.0", "kind": "share", "companies": [] }
+{ "v": 4, "app": "5.0.0", "kind": "full",  "profile": {}, "companies": [] }
 ```
 
 - `v` : version du **format** (4). `app` : version de l'application émettrice
