@@ -1,0 +1,211 @@
+<!-- @dsCard group="App OpenContact" viewport="390x844" subtitle="Vue Pistes mobile — nav basse, tiroir, modale plein écran, cibles 44px" name="Écran Pistes (mobile)" -->
+<!-- @startingPoint section="Écrans" subtitle="Vue Pistes mobile complète (carte + tiroir + modale plein écran)" viewport="390x844" -->
+<!DOCTYPE html>
+<html lang="fr" data-theme="light"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>OpenContact — Pistes mobile (maquette)</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="../../vendor/react.production.min.js"></script>
+<script src="../../vendor/react-dom.production.min.js"></script>
+<script src="../../vendor/babel.min.js"></script>
+<script src="../../_kit_loader.js"></script>
+<style>
+html,body{height:100%}
+/* Surcouche mobile — c'est exactement ce que fera la media query de
+   production : cibles 44px, saisie a 16px (pas de zoom iOS force).
+   Selecteurs doubles : les styles des composants sont injectes apres
+   cette page, la surcouche doit gagner la cascade. */
+.oc-input.oc-input,.oc-select.oc-select{height:var(--control-h-touch);font-size:16px}
+.oc-btn.oc-btn{min-height:var(--control-h-touch)}
+.oc-btn--sm.oc-btn--sm{min-height:36px}
+.oc-iconbtn.oc-iconbtn{width:var(--control-h-touch);height:var(--control-h-touch)}
+/* Fenetre plein ecran (modale mobile) : le corps devient une colonne
+   flexible — motif repris tel quel en production. */
+.oc-fullscreen{position:fixed;inset:0;z-index:3000;background:var(--surface-desktop)}
+.oc-fullscreen .oc-window{height:100%;border:0;box-shadow:none}
+.oc-fullscreen .oc-window__body{flex:1;min-height:0;display:flex;flex-direction:column;padding:0}
+</style>
+</head>
+<body style="margin:0">
+<div id="root" style="height:100%"></div>
+<script type="text/babel">
+const NS = window.OC || {};
+const { Button, IconButton, Input, Select, Field, Fieldset, Window, Sheet, Badge, Chip, Toast, Icon, BottomNav, Score } = NS;
+const B = '../../../assets/icons/';
+
+const DOMS = {
+  'Cybersécurité': 'var(--teal)',
+  'Infra & réseau': 'var(--navy)',
+  'ESN / services': 'var(--amber)',
+  'Cloud': 'var(--green)',
+};
+const PISTES = [
+  { id:1, nom:'Orange Cyberdefense', ville:'Lille', dom:'Cybersécurité', contacts:2, score:82, badge:['shared','Partagé'], x:58, y:26 },
+  { id:2, nom:'Damart — DSI', ville:'Roubaix', dom:'Infra & réseau', contacts:1, score:45, badge:['warn','Relance due'], x:74, y:18 },
+  { id:3, nom:'Cegedim Cloud', ville:'Villeneuve-d’Ascq', dom:'Cloud', contacts:3, score:76, badge:['shared','Partagé'], x:68, y:44 },
+  { id:4, nom:'Advens', ville:'Lille', dom:'Cybersécurité', contacts:2, score:64, badge:['accent','Nouveau'], x:42, y:34 },
+  { id:5, nom:'Capgemini — infra', ville:'Lille', dom:'ESN / services', contacts:1, score:31, badge:['private','Privé'], x:30, y:52 },
+  { id:6, nom:'Decathlon Tech', ville:'Villeneuve-d’Ascq', dom:'Infra & réseau', contacts:2, score:58, badge:['shared','Partagé'], x:80, y:58 },
+];
+const NAV_H = 53; /* nav basse : 44px de cible + 2x4px + bordure */
+
+function Header({onTheme}){
+  return (
+    <header style={{flex:'none', display:'flex', alignItems:'center', gap:8, height:46, padding:'0 6px 0 12px',
+      background:'var(--surface-window)', borderBottom:'1px solid var(--border-strong)'}}>
+      <img src="../../../assets/logo/piste-a-reseau.svg" width="22" height="22" style={{imageRendering:'pixelated'}} alt="" />
+      <span style={{fontFamily:'var(--font-pixel)', fontSize:16, letterSpacing:'.02em', flex:1, minWidth:0}}>OPEN-CONTACT</span>
+      <IconButton icon="invert" iconBase={B} variant="ghost" aria-label="Thème clair ou sombre" onClick={onTheme} />
+    </header>
+  );
+}
+
+function Toolbar({vue, setVue}){
+  return (
+    <div style={{flex:'none', display:'flex', gap:6, alignItems:'center', padding:'6px 8px',
+      background:'var(--surface-chrome)', borderBottom:'1px solid var(--border-strong)'}}>
+      <div style={{flex:1, minWidth:0}}><Input placeholder="Chercher…" aria-label="Rechercher une piste" /></div>
+      <IconButton icon="settings-2" iconBase={B} aria-label="Filtres" />
+      <div style={{display:'flex'}}>
+        {[['map-pin','Carte'],['bulletlist','Liste']].map(([ic,lbl],i)=>(
+          <button key={lbl} onClick={()=>setVue(i)} aria-pressed={vue===i} aria-label={lbl} title={lbl} style={{
+            display:'inline-flex', alignItems:'center', justifyContent:'center',
+            width:'var(--control-h-touch)', height:'var(--control-h-touch)',
+            border:'1px solid var(--border-strong)', marginLeft: i? -1 : 0, cursor:'pointer', borderRadius:2,
+            background: vue===i ? 'var(--accent)' : 'var(--surface-chrome)',
+            color: vue===i ? 'var(--on-accent)' : 'var(--text-body)',
+            boxShadow: vue===i ? 'var(--bevel-down)' : 'var(--bevel-up)',
+          }}><Icon name={ic} base={B} size={16} /></button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Carte({sel, onSel}){
+  return (
+    <div style={{position:'absolute', inset:0, background:'var(--surface-chrome)',
+      backgroundImage:'repeating-linear-gradient(0deg, var(--border-soft) 0 1px, transparent 1px 44px), repeating-linear-gradient(90deg, var(--border-soft) 0 1px, transparent 1px 44px)'}}>
+      <span style={{position:'absolute', top:8, right:10, fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)'}}>
+        fond CARTO — placeholder
+      </span>
+      <div style={{position:'absolute', top:8, left:8}}>
+        <IconButton icon="gps" iconBase={B} aria-label="Centrer sur ma position" />
+      </div>
+      {PISTES.map(p=>(
+        /* cible tactile 44px, point visuel 14px centre dedans */
+        <button key={p.id} onClick={()=>onSel(p.id)} title={p.nom} aria-label={p.nom} style={{
+          position:'absolute', left:p.x+'%', top:p.y+'%', width:44, height:44, margin:'-22px 0 0 -22px',
+          padding:0, background:'transparent', border:0, cursor:'pointer',
+          display:'inline-flex', alignItems:'center', justifyContent:'center',
+        }}>
+          <span style={{width:14, height:14, background:DOMS[p.dom], border:'1px solid var(--border-strong)', borderRadius:2,
+            boxShadow: sel===p.id ? '0 0 0 2px var(--select-bg), 2px 2px 0 0 rgba(0,0,0,.3)' : '2px 2px 0 0 rgba(0,0,0,.25)'}} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PisteRow({p, sel, onSel}){
+  return (
+    <div onClick={onSel} tabIndex={0} style={{
+      minHeight:'var(--control-h-touch)',
+      background: sel ? 'var(--select-bg)' : 'var(--surface-window)',
+      color: sel ? 'var(--select-text)' : 'var(--text-body)',
+      borderBottom:'1px solid var(--border-soft)',
+      padding:'10px 12px', cursor:'pointer', userSelect:'none',
+    }}>
+      <div style={{display:'flex', alignItems:'center', gap:8}}>
+        <span style={{width:8, height:8, background:DOMS[p.dom], border:'1px solid var(--border-strong)', flex:'none'}} />
+        <b style={{fontSize:14, fontWeight:600, flex:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>{p.nom}</b>
+        <Score value={p.score} />
+        <Badge tone={p.badge[0]}>{p.badge[1]}</Badge>
+      </div>
+      <div style={{fontFamily:'var(--font-mono)', fontSize:11.5, marginTop:3,
+        color: sel ? 'var(--select-text)' : 'var(--text-muted)', opacity: sel ? .85 : 1}}>
+        {p.ville} · {p.dom} · {p.contacts} contact{p.contacts>1?'s':''}
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [dark, setDark] = React.useState(false);
+  const [vue, setVue] = React.useState(0);
+  const [sel, setSel] = React.useState(1);
+  const [sheet, setSheet] = React.useState(true);   /* true = mi-hauteur, false = poignée seule */
+  const [modal, setModal] = React.useState(false);
+  const [toast, setToast] = React.useState(null);
+  React.useEffect(()=>{ document.documentElement.dataset.theme = dark ? 'dark' : 'light'; }, [dark]);
+  const save = () => { setModal(false); setToast('Piste enregistrée.'); setTimeout(()=>setToast(null), 3200); };
+  return (
+    <div style={{height:'100%', display:'flex', flexDirection:'column', background:'var(--surface-desktop)'}}>
+      <Header onTheme={()=>setDark(d=>!d)} />
+      <Toolbar vue={vue} setVue={setVue} />
+      <main style={{flex:1, minHeight:0, position:'relative'}}>
+        <Carte sel={sel} onSel={id=>{ setSel(id); setSheet(true); }} />
+      </main>
+
+      {/* Tiroir de résultats : poignée toujours visible (28px), tap = mi-hauteur */}
+      <Sheet open title="Pistes" count={PISTES.length} flush
+             onClose={()=>setSheet(s=>!s)}
+             style={{ bottom:NAV_H, maxHeight: sheet ? '52dvh' : 28 }}>
+        {PISTES.map(p=> <PisteRow key={p.id} p={p} sel={sel===p.id} onSel={()=>setSel(p.id)} />)}
+        <div style={{display:'flex', gap:14, alignItems:'center', padding:'7px 12px',
+          fontFamily:'var(--font-mono)', fontSize:11, color:'var(--text-muted)'}}>
+          <span style={{display:'inline-flex', alignItems:'center', gap:5}}><Icon name="save" base={B} size={12} /> données locales</span>
+          <span style={{display:'inline-flex', alignItems:'center', gap:5}}><Icon name="lock" base={B} size={12} /> suivi privé</span>
+        </div>
+      </Sheet>
+
+      <BottomNav
+        iconBase={B}
+        items={[
+          { icon:'map-pin', label:'Pistes', active:true },
+          { icon:'clipboard', label:'Suivi' },
+          { icon:'share', label:'Partager' },
+          { icon:'user', label:'Profil' },
+        ]}
+        onAdd={()=>setModal(true)}
+      />
+
+      {toast && <div style={{position:'fixed', bottom:NAV_H+12, left:'50%', transform:'translateX(-50%)', zIndex:4000, whiteSpace:'nowrap'}}>
+        <Toast tone="ok">{toast}</Toast>
+      </div>}
+
+      {/* Modale plein écran : la fenêtre occupe tout, pied d'actions fixe au pouce */}
+      {modal && (
+        <div className="oc-fullscreen">
+          <Window title="Ajouter une piste" icon="plus" iconBase={B} variant="accent"
+                  onClose={()=>setModal(false)}>
+            <div style={{flex:1, minHeight:0, overflowY:'auto', padding:'16px 14px', display:'flex', flexDirection:'column', gap:12}}>
+              <Field label="Entreprise / structure" hint="Ça suffit pour enregistrer — le reste se complète quand tu veux.">
+                <Input placeholder="Ex : Orange Cyberdefense" />
+              </Field>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+                <Field label="Ville"><Input placeholder="Ex : Lille" /></Field>
+                <Field label="Domaine"><Select options={Object.keys(DOMS)} /></Field>
+              </div>
+              <Fieldset legend="Mon suivi — privé, jamais partagé">
+                <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                  <Field label="Statut"><Select options={['À contacter','Candidature envoyée','Relancé','Entretien']} /></Field>
+                  <Field label="Prochaine action"><Input type="date" /></Field>
+                </div>
+              </Fieldset>
+            </div>
+            <div style={{flex:'none', display:'flex', gap:8, padding:'10px 14px calc(10px + env(safe-area-inset-bottom))',
+              background:'var(--surface-chrome)', borderTop:'1px solid var(--border-strong)',
+              margin:'0'}}>
+              <Button variant="ghost" onClick={()=>setModal(false)} style={{flex:1}}>Annuler</Button>
+              <Button variant="primary" onClick={save} style={{flex:2}}>Enregistrer la piste</Button>
+            </div>
+          </Window>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body></html>
