@@ -1,0 +1,55 @@
+<!-- @dsCard group="Components" viewport="700x330" subtitle="Boutons, champs, cases, radio, interrupteur" name="Formulaires" -->
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="../../vendor/react.production.min.js"></script>
+<script src="../../vendor/react-dom.production.min.js"></script>
+<script src="../../vendor/babel.min.js"></script>
+<script src="../../_kit_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-window)">
+<div id="root"></div>
+<script type="text/babel">
+const NS = window.OC || {};
+const { Button, IconButton, Input, Select, Checkbox, Radio, Switch, Field } = NS;
+const B = '../../../assets/icons/';
+
+function Demo(){
+  const [chk, setChk] = React.useState(true);
+  const [sw, setSw] = React.useState(true);
+  return (
+    <div style={{padding:'16px 22px', display:'flex', flexDirection:'column', gap:14}}>
+      <div style={{display:'flex', gap:8, alignItems:'center', flexWrap:'wrap'}}>
+        <Button variant="primary">Enregistrer la piste</Button>
+        <Button>Annuler</Button>
+        <Button variant="danger">Supprimer</Button>
+        <Button variant="ghost">Passer</Button>
+        <Button disabled>Indisponible</Button>
+        <Button size="sm">Petit</Button>
+        <IconButton icon="search" iconBase={B} aria-label="Rechercher" />
+        <IconButton icon="plus" iconBase={B} aria-label="Ajouter" />
+        <IconButton icon="moon" iconBase={B} variant="ghost" aria-label="Thème" />
+      </div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:12, maxWidth:640}}>
+        <Field label="Entreprise" hint="Ça suffit pour enregistrer.">
+          <Input placeholder="Ex : Orange Cyberdefense" />
+        </Field>
+        <Field label="Trier">
+          <Select options={['Récentes','Complètes d\u2019abord','A → Z','Plus proches']} />
+        </Field>
+        <Field label="Site web" error="URL invalide.">
+          <Input mono defaultValue="htp://oups" />
+        </Field>
+      </div>
+      <div style={{display:'flex', gap:20, alignItems:'center', flexWrap:'wrap'}}>
+        <Checkbox label="Chiffrer le fichier" checked={chk} onChange={e=>setChk(e.target.checked)} />
+        <Radio name="sc" label="Toutes (12)" defaultChecked />
+        <Radio name="sc" label="Ma sélection (3)" />
+        <Switch label="Mode sombre" checked={sw} onChange={e=>setSw(e.target.checked)} />
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body></html>

@@ -1,0 +1,57 @@
+/* OpenContact — polices auto-hébergées (OFL, licences dans assets/fonts/) */
+
+/* Public Sans — UI & texte. Variable 100–900. */
+@font-face{
+  font-family:'Public Sans';
+  src:url('../../assets/fonts/PublicSans%5Bwght%5D.woff2') format('woff2');
+  font-weight:100 900;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:'Public Sans';
+  src:url('../../assets/fonts/PublicSans-Italic%5Bwght%5D.woff2') format('woff2');
+  font-weight:100 900;
+  font-style:italic;
+  font-display:swap;
+}
+
+/* IBM Plex Mono — données, valeurs, code. */
+@font-face{
+  font-family:'IBM Plex Mono';
+  src:url('../../assets/fonts/IBMPlexMono-Regular.woff2') format('woff2');
+  font-weight:400;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:'IBM Plex Mono';
+  src:url('../../assets/fonts/IBMPlexMono-Medium.woff2') format('woff2');
+  font-weight:500;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:'IBM Plex Mono';
+  src:url('../../assets/fonts/IBMPlexMono-SemiBold.woff2') format('woff2');
+  font-weight:600;
+  font-style:normal;
+  font-display:swap;
+}
+
+/* Silkscreen — accent pixel (wordmark, barres de titre, badges système).
+   Dessinée sur grille : l'utiliser à 8px, 16px ou 24px exactement, jamais entre. */
+@font-face{
+  font-family:'Silkscreen';
+  src:url('../../assets/fonts/Silkscreen-Regular.woff2') format('woff2');
+  font-weight:400;
+  font-style:normal;
+  font-display:swap;
+}
+@font-face{
+  font-family:'Silkscreen';
+  src:url('../../assets/fonts/Silkscreen-Bold.woff2') format('woff2');
+  font-weight:700;
+  font-style:normal;
+  font-display:swap;
+}

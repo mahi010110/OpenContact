@@ -1,0 +1,52 @@
+/* ============================================================
+   OpenContact — Socle global
+   Resets + comportements transverses (sélection, focus, liens,
+   ascenseurs carrés). Tout le reste est porté par les composants.
+   ============================================================ */
+
+*,*::before,*::after{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--surface-desktop);
+  color:var(--text-body);
+  font-family:var(--font-ui);
+  font-size:var(--text-14);
+  line-height:var(--leading-ui);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Sélection : marine, texte blanc — la signature 98 */
+::selection{background:var(--select-bg);color:var(--select-text)}
+
+/* Focus clavier : pointillé, partout pareil */
+:focus-visible{outline:var(--focus-outline);outline-offset:var(--focus-offset)}
+
+a{color:var(--text-link);text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px}
+a:hover{color:var(--text-link-hover)}
+
+code,kbd,samp{font-family:var(--font-mono);font-size:0.92em}
+kbd{
+  font-family:var(--font-pixel);font-size:var(--pixel-8);
+  padding:2px 5px 1px;border:1px solid var(--border-strong);
+  border-radius:var(--radius-1);background:var(--surface-chrome);
+  box-shadow:var(--bevel-up), 0 1px 0 0 var(--border-strong);
+  text-transform:uppercase;letter-spacing:.04em;vertical-align:1px;
+}
+
+hr{border:0;border-top:1px solid var(--border-soft);margin:var(--space-5) 0}
+
+/* Ascenseurs carrés, chromés */
+::-webkit-scrollbar{width:14px;height:14px}
+::-webkit-scrollbar-track{background:var(--surface-chrome)}
+::-webkit-scrollbar-thumb{
+  background:var(--surface-window);
+  border:1px solid var(--border-strong);
+  box-shadow:var(--bevel-up);
+}
+::-webkit-scrollbar-thumb:hover{background:var(--gray-2)}
+::-webkit-scrollbar-corner{background:var(--surface-chrome)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}

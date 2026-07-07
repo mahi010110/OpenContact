@@ -1,0 +1,127 @@
+/* ============================================================
+   OpenContact — Couleurs
+   « Utilitaire 98 » : gris système chauds, encre franche,
+   teal profond (pont entre le teal Win98 et le vert OpenContact),
+   marine réservé à la sélection et aux barres de titre actives.
+   Contrastes AA vérifiés sur les paires texte/fond.
+   ============================================================ */
+
+:root{
+  /* --- Base (thème clair par défaut) --- */
+  --gray-0:#FFFFFF;        /* champs, surfaces en creux */
+  --gray-1:#F7F6F1;        /* face des fenêtres, cartes */
+  --gray-2:#ECEAE2;        /* chrome : barres d'outils, fonds de section */
+  --gray-3:#DDDACE;        /* chrome appuyé, séparations larges */
+  --gray-desktop:#E7E5DD;  /* fond de page « bureau » */
+
+  --ink:#1D242C;           /* encre : texte, bordures fortes */
+  --ink-2:#5C6672;         /* texte secondaire */
+  --ink-3:#8B94A0;         /* texte désactivé, placeholders */
+
+  --teal:#0B7268;          /* accent principal — interactif */
+  --teal-hover:#085A52;     /* hover / enfoncé */
+  --teal-wash:#E3EFED;     /* fond teinté léger */
+  --on-teal:#FFFFFF;
+
+  --navy:#27337F;          /* sélection, barre de titre active */
+  --navy-wash:#E6E9F6;
+  --on-navy:#FFFFFF;
+
+  --amber:#8F5A00;         /* avertissement (texte) */
+  --amber-wash:#F6ECD9;
+  --red:#B3261E;           /* danger */
+  --red-wash:#F8E5E3;
+  --green:#37702F;         /* succès */
+  --green-wash:#E5F0E1;
+
+  /* --- Sémantique : surfaces --- */
+  --surface-desktop:var(--gray-desktop);
+  --surface-window:var(--gray-1);
+  --surface-chrome:var(--gray-2);
+  --surface-field:var(--gray-0);
+  --surface-raised:var(--gray-1);
+
+  /* --- Sémantique : texte --- */
+  --text-body:var(--ink);
+  --text-muted:var(--ink-2);
+  --text-disabled:var(--ink-3);
+  --text-link:var(--teal);
+  --text-link-hover:var(--teal-hover);
+
+  /* --- Sémantique : bordures --- */
+  --border-strong:var(--ink);           /* contour des fenêtres, boutons, champs */
+  --border-soft:#C9C6BA;                /* séparateurs internes */
+  --border-field:var(--ink);
+
+  /* --- Sémantique : interaction --- */
+  --accent:var(--teal);
+  --on-accent:var(--on-teal);
+  --accent-hover:var(--teal-hover);
+  --select-bg:var(--navy);
+  --select-text:var(--on-navy);
+  --focus-ring:var(--ink);
+
+  /* --- Barres de titre --- */
+  --titlebar-bg:var(--ink);
+  --titlebar-text:#F7F6F1;
+  --titlebar-accent-bg:var(--navy);
+  --titlebar-inactive-bg:var(--gray-3);
+  --titlebar-inactive-text:var(--ink-2);
+
+  /* --- Statuts métier (pins carte, chips domaine) --- */
+  --status-warn:var(--amber);
+  --status-warn-wash:var(--amber-wash);
+  --status-danger:var(--red);
+  --status-danger-wash:var(--red-wash);
+  --status-ok:var(--green);
+  --status-ok-wash:var(--green-wash);
+
+  color-scheme:light;
+}
+
+/* ============ MODE SOMBRE ============
+   Anthracite doux, encre claire, teal lumineux.
+   Les bordures fortes passent en gris clair : l'effet « filaire »
+   remplace les à-plats — cohérent, pas une simple inversion. */
+html[data-theme="dark"]{
+  --gray-0:#12151A;
+  --gray-1:#1E232B;
+  --gray-2:#262C35;
+  --gray-3:#313947;
+  --gray-desktop:#15181D;
+
+  --ink:#E9ECEF;
+  --ink-2:#9AA4B0;
+  --ink-3:#657080;
+
+  --teal:#3BC9BA;
+  --teal-hover:#63DACD;
+  --teal-wash:#12332F;
+  --on-teal:#06251F;
+
+  --navy:#4A5BC4;
+  --navy-wash:#1D2340;
+  --on-navy:#FFFFFF;
+
+  --amber:#E3A648;
+  --amber-wash:#332812;
+  --red:#EF7B71;
+  --red-wash:#3A1815;
+  --green:#7CBF6B;
+  --green-wash:#1B2E16;
+
+  --surface-field:var(--gray-0);
+  --border-soft:#3C4550;
+  --border-strong:#9AA4B0;
+  --border-field:#7E8894;
+
+  --titlebar-bg:#0C0E12;
+  --titlebar-text:#E9ECEF;
+  --titlebar-accent-bg:#333F8F;
+  --titlebar-inactive-bg:var(--gray-3);
+  --titlebar-inactive-text:var(--ink-2);
+
+  --focus-ring:var(--teal);
+
+  color-scheme:dark;
+}

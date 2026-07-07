@@ -1,0 +1,49 @@
+/* ============================================================
+   OpenContact — Effets
+   Le relief 98, réinterprété : biseaux 1px discrets,
+   ombres dures décalées SANS flou, trames dither en accent.
+   Jamais de flou, jamais de dégradé doux, jamais de glow.
+   ============================================================ */
+
+:root{
+  /* Biseau moderne : 1px de lumière en haut/gauche, 1px d'ombre en bas/droite */
+  --bevel-up:inset 1px 1px 0 rgba(255,255,255,.7), inset -1px -1px 0 rgba(29,36,44,.14);
+  --bevel-down:inset 1px 1px 0 rgba(29,36,44,.18), inset -1px -1px 0 rgba(255,255,255,.5);
+  --bevel-field:inset 1px 1px 0 rgba(29,36,44,.08);
+
+  /* Ombres dures — décalage net, zéro flou */
+  --shadow-raised:2px 2px 0 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  --shadow-window:4px 4px 0 0 color-mix(in srgb, var(--ink) 16%, transparent);
+  --shadow-modal:6px 6px 0 0 color-mix(in srgb, var(--ink) 22%, transparent);
+
+  /* Trame dither (damier 2px) — texture d'accent, à utiliser avec parcimonie :
+     fonds de barre inactive, zones « en creux », fins séparateurs décoratifs. */
+  --dither:repeating-conic-gradient(color-mix(in srgb, var(--ink) 14%, transparent) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px;
+  --dither-strong:repeating-conic-gradient(color-mix(in srgb, var(--ink) 28%, transparent) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px;
+  --scanlines:repeating-linear-gradient(0deg, color-mix(in srgb, var(--ink) 6%, transparent) 0 1px, transparent 1px 3px);
+
+  /* Focus clavier : pointillé 98, lisible partout */
+  --focus-outline:1px dotted var(--focus-ring);
+  --focus-offset:2px;
+
+  /* Mouvement : instantané ou presque. Pas d'easing spectaculaire. */
+  --dur-1:0ms;      /* changements d'état : immédiats, comme à l'époque */
+  --dur-2:120ms;    /* apparitions (menus, toasts) */
+  --dur-3:180ms;    /* modales */
+  --ease-steps:steps(2, end);
+  --ease-out:cubic-bezier(.2,.9,.3,1);
+}
+
+html[data-theme="dark"]{
+  --bevel-up:inset 1px 1px 0 rgba(255,255,255,.10), inset -1px -1px 0 rgba(0,0,0,.45);
+  --bevel-down:inset 1px 1px 0 rgba(0,0,0,.5), inset -1px -1px 0 rgba(255,255,255,.08);
+  --bevel-field:inset 1px 1px 0 rgba(0,0,0,.4);
+
+  --shadow-raised:2px 2px 0 0 rgba(0,0,0,.5);
+  --shadow-window:4px 4px 0 0 rgba(0,0,0,.55);
+  --shadow-modal:6px 6px 0 0 rgba(0,0,0,.65);
+
+  --dither:repeating-conic-gradient(rgba(233,236,239,.10) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px;
+  --dither-strong:repeating-conic-gradient(rgba(233,236,239,.20) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px;
+  --scanlines:repeating-linear-gradient(0deg, rgba(0,0,0,.25) 0 1px, transparent 1px 3px);
+}

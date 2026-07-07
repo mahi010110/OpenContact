@@ -1,0 +1,48 @@
+<!-- @dsCard group="Components" viewport="700x360" subtitle="Fenêtres, group box, modale" name="Surfaces" -->
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="../../vendor/react.production.min.js"></script>
+<script src="../../vendor/react-dom.production.min.js"></script>
+<script src="../../vendor/babel.min.js"></script>
+<script src="../../_kit_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-desktop)">
+<div id="root"></div>
+<script type="text/babel">
+const NS = window.OC || {};
+const { Window, Fieldset, Field, Input, Select, Button, Badge } = NS;
+const B = '../../../assets/icons/';
+
+function Demo(){
+  return (
+    <div style={{padding:'20px 22px', display:'flex', gap:18, alignItems:'flex-start'}}>
+      <Window title="Orange Cyberdefense" icon="building" iconBase={B} onClose={()=>{}}
+              statusBar={<span>2 contacts — maj. 04/07/2026</span>} style={{width:300}}>
+        <div style={{fontSize:13, lineHeight:1.55}}>
+          ESN infra &amp; sécurité, ~200 salariés.
+          <div style={{marginTop:8, display:'flex', gap:6}}>
+            <Badge tone="shared">Partagé</Badge>
+            <Badge tone="warn">Relance due</Badge>
+          </div>
+        </div>
+      </Window>
+      <div style={{display:'flex', flexDirection:'column', gap:14, width:320}}>
+        <Window title="Fenêtre inactive" variant="inactive" style={{width:'100%'}}>
+          <div style={{fontSize:12.5, color:'var(--text-muted)'}}>Barre grise tramée : présente, pas prioritaire.</div>
+        </Window>
+        <Window variant="accent" title="Mon suivi — privé" icon="lock" iconBase={B} style={{width:'100%'}}>
+          <Fieldset legend="Statut">
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
+              <Field label="Statut"><Select options={['À contacter','Relancé','Entretien']} /></Field>
+              <Field label="Prochaine action"><Input type="date" defaultValue="2026-07-10" /></Field>
+            </div>
+          </Fieldset>
+        </Window>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body></html>

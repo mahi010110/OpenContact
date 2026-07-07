@@ -1,0 +1,40 @@
+/* ============================================================
+   OpenContact — Typographie
+   Public Sans : voix principale (utilitaire, neutre, intemporelle).
+   IBM Plex Mono : données, valeurs, chiffres, code.
+   Silkscreen : accent pixel — UNIQUEMENT à 8 / 16 / 24 px.
+   ============================================================ */
+
+:root{
+  --font-ui:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  --font-pixel:'Silkscreen',var(--font-mono);
+
+  /* Échelle (px) — resserrée, utilitaire */
+  --text-11:11px;   /* micro-étiquettes, mentions */
+  --text-12:12px;   /* légendes, meta */
+  --text-13:13px;   /* UI secondaire, boutons compacts */
+  --text-14:14px;   /* UI par défaut, corps dense */
+  --text-15:15px;   /* corps de lecture */
+  --text-16:16px;   /* sous-titres */
+  --text-20:20px;   /* titres de page */
+  --text-26:26px;   /* grands titres */
+  --text-34:34px;   /* affichage (rare) */
+
+  /* Silkscreen : tailles autorisées */
+  --pixel-8:8px;
+  --pixel-16:16px;
+  --pixel-24:24px;
+
+  --leading-tight:1.2;
+  --leading-ui:1.35;
+  --leading-body:1.55;
+
+  --tracking-tight:-0.01em;
+  --tracking-wide:0.06em;   /* petites capitales d'étiquettes */
+
+  --weight-regular:400;
+  --weight-medium:500;
+  --weight-semibold:600;
+  --weight-bold:700;
+}

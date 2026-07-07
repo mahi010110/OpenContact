@@ -1,0 +1,82 @@
+<!-- @dsCard group="Components" viewport="700x560" subtitle="Motifs propres à l'application : score, annulation, sélection, état vide, nav basse" name="Application" -->
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="../../vendor/react.production.min.js"></script>
+<script src="../../vendor/react-dom.production.min.js"></script>
+<script src="../../vendor/babel.min.js"></script>
+<script src="../../_kit_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-window)">
+<div id="root"></div>
+<script type="text/babel">
+const NS = window.OC || {};
+const { Button, IconButton, Score, UndoBar, SelectionBar, EmptyState, BottomNav } = NS;
+const B = '../../../assets/icons/';
+
+function Demo(){
+  return (
+    <div style={{padding:20, paddingBottom:76, display:'flex', flexDirection:'column', gap:18, maxWidth:560}}>
+
+      <div style={{display:'flex', alignItems:'center', gap:10}}>
+        <span style={{fontFamily:'var(--font-mono)', fontSize:12, color:'var(--text-muted)'}}>Indice de complétude :</span>
+        <Score value={82} onClick={()=>{}} />
+        <Score value={45} />
+        <Score value={12} />
+      </div>
+
+      <UndoBar
+        message="Fusion terminée : 4 ajouts, 2 fiches complétées, 0 écrasement."
+        actionLabel="Annuler la fusion"
+        onAction={()=>{}}
+        onDismiss={()=>{}}
+        iconBase={B}
+      />
+
+      <SelectionBar
+        count={3}
+        tools={<>
+          <Button size="sm">Tout</Button>
+          <Button size="sm">Aucune</Button>
+          <IconButton icon="close" iconBase={B} size="sm" variant="ghost" aria-label="Annuler la sélection" />
+        </>}
+        actions={<>
+          <Button size="sm" variant="primary">Prospecter</Button>
+          <Button size="sm">Partager</Button>
+          <Button size="sm" variant="danger">Supprimer</Button>
+        </>}
+      />
+
+      <EmptyState
+        heading="Toutes les pistes utiles, au même endroit"
+        description="Entreprises, contacts, conseils : ce que chacun découvre profite à tous."
+        principles={[
+          { icon: 'search', label: 'Trouve' },
+          { icon: 'plus', label: 'Contribue' },
+          { icon: 'share', label: 'Partage' },
+        ]}
+        actions={<>
+          <Button variant="primary">Ajouter ma première piste</Button>
+          <Button>Importer des pistes reçues</Button>
+        </>}
+        iconBase={B}
+        style={{margin:'0 auto'}}
+      />
+
+      <BottomNav
+        iconBase={B}
+        items={[
+          { icon: 'map-pin', label: 'Pistes', active: true },
+          { icon: 'clipboard', label: 'Suivi' },
+          { icon: 'share', label: 'Partager' },
+          { icon: 'user', label: 'Profil' },
+        ]}
+        onAdd={()=>{}}
+        style={{position:'absolute'}}
+      />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body></html>

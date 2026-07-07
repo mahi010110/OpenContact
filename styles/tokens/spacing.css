@@ -1,0 +1,28 @@
+/* ============================================================
+   OpenContact — Espacement & géométrie
+   Grille 4px. Coins carrés : le rayon n'existe qu'en 0 ou 2px.
+   ============================================================ */
+
+:root{
+  --space-1:2px;
+  --space-2:4px;
+  --space-3:8px;
+  --space-4:12px;
+  --space-5:16px;
+  --space-6:24px;
+  --space-7:32px;
+  --space-8:48px;
+
+  /* Coins : carrés. 2px seulement pour adoucir les très petits éléments. */
+  --radius-0:0px;
+  --radius-1:2px;
+
+  /* Hauteurs de contrôle */
+  --control-h:32px;        /* desktop par défaut */
+  --control-h-lg:40px;
+  --control-h-touch:44px;  /* mobile */
+
+  --titlebar-h:28px;
+  --border-w:1px;
+  --border-w-strong:2px;
+}

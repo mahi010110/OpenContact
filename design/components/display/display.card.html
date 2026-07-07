@@ -1,0 +1,54 @@
+<!-- @dsCard group="Components" viewport="700x340" subtitle="Badges pixel, chips mono, onglets dossier, messages système" name="Affichage" -->
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="../../vendor/react.production.min.js"></script>
+<script src="../../vendor/react-dom.production.min.js"></script>
+<script src="../../vendor/babel.min.js"></script>
+<script src="../../_kit_loader.js"></script>
+</head>
+<body style="margin:0;background:var(--surface-window)">
+<div id="root"></div>
+<script type="text/babel">
+const NS = window.OC || {};
+const { Badge, Chip, Tabs, Toast, Icon, Score } = NS;
+const B = '../../../assets/icons/';
+
+function Demo(){
+  const [tab, setTab] = React.useState(0);
+  return (
+    <div style={{padding:'16px 22px', display:'flex', flexDirection:'column', gap:14}}>
+      <div style={{display:'flex', gap:6, alignItems:'center', flexWrap:'wrap'}}>
+        <Badge tone="shared">Partagé</Badge>
+        <Badge tone="private">Privé</Badge>
+        <Badge tone="accent">Nouveau</Badge>
+        <Badge tone="info">Sélection</Badge>
+        <Badge tone="warn">Relance due</Badge>
+        <Badge tone="danger">Zone avancée</Badge>
+        <span style={{width:14}} />
+        <Chip>Fortinet</Chip>
+        <Chip dot dotColor="var(--amber)">Lille</Chip>
+        <Chip onRemove={()=>{}}>Azure</Chip>
+        <Chip dot>Alternance</Chip>
+      </div>
+      <Tabs tabs={['Recevoir','Donner']} active={tab} onChange={setTab}>
+        <div style={{fontSize:13, color:'var(--text-muted)'}}>On t'a envoyé un fichier .oc ? Ouvre-le ici — la fusion n'écrase jamais ce que tu as déjà.</div>
+        <div style={{fontSize:13, color:'var(--text-muted)'}}>Génère un fichier à envoyer à ta promo. Ton suivi privé ne part jamais.</div>
+      </Tabs>
+      <div style={{display:'flex', gap:10, flexWrap:'wrap'}}>
+        <Toast tone="ok">Piste enregistrée.</Toast>
+        <Toast tone="info" icon="inbox" iconBase={B}>Fusion terminée : 4 ajouts, 0 écrasement.</Toast>
+        <Toast tone="error">Sauvegarde impossible sur cet appareil.</Toast>
+      </div>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginTop:12}}>
+        <span style={{fontFamily:'var(--font-mono)', fontSize:12, color:'var(--text-muted)'}}>Score :</span>
+        <Score value={82} onClick={()=>{}} />
+        <Score value={45} />
+        <Score value={12} />
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+</body></html>
