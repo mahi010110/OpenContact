@@ -280,7 +280,7 @@
         <p>Si tu en choisis un au moment d'exporter, le fichier est <b>réellement chiffré</b> (AES) : illisible sans ce mot de passe, y compris par nous — il n'existe aucune clé cachée dans le site. Il t'est demandé <b>deux fois</b> pour éviter la faute de frappe, car si le groupe le perd, personne ne peut récupérer le contenu. Et soyons honnêtes : une personne qui possède le mot de passe peut évidemment copier les données une fois le fichier ouvert — aucun outil ne peut l'empêcher.</p>
 
         <h3>L'indice de complétude, c'est quoi ?</h3>
-        <p>Le petit chiffre sur chaque fiche mesure si elle est <b>complète, récente et confirmée</b> (bouton « ✓ J'ai vérifié ces infos »). Touche le chiffre pour voir le détail. C'est un indicateur d'entretien de la fiche, <b>pas une garantie d'exactitude</b>.</p>
+        <p>Le petit chiffre sur chaque fiche mesure si elle est <b>complète, récente et confirmée</b> (bouton « J'ai vérifié ces infos »). Touche le chiffre pour voir le détail. C'est un indicateur d'entretien de la fiche, <b>pas une garantie d'exactitude</b>.</p>
 
         <h3>Services tiers (transparence)</h3>
         <p>OpenContact ne possède aucun serveur, mais trois services externes sont utilisés : les <b>fonds de carte</b> (CARTO / OpenStreetMap), le <b>géocodage</b> — l'adresse que tu tapes est envoyée à Nominatim (OpenStreetMap) uniquement quand tu cliques « Depuis l'adresse » — et les <b>polices</b> (Google Fonts, transmission d'adresse IP). Ta position GPS, elle, ne quitte jamais ton appareil.</p>
@@ -466,6 +466,38 @@
       <button class="btn" id="btnMailCopy">Copier</button>
       <a class="btn btn-primary" id="btnMailto" href="#" style="text-decoration:none">Ouvrir dans Mail</a>
       <button class="btn" id="btnMailSent">Envoyée</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BIENVENUE (premier lancement uniquement) ============ -->
+<div class="overlay" id="ovWelcome">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="obTitle" style="max-width:430px">
+    <div class="modal-h"><h2 id="obTitle">Bienvenue</h2><button class="x" id="obX" aria-label="Fermer">✕</button></div>
+    <div class="modal-b">
+      <div class="ob-step" data-ob="0">
+        <span class="ic ic-32 ob-ic" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span>
+        <h3 class="ob-h">Tes données restent chez toi</h3>
+        <p class="ob-p">Pas de compte, pas de serveur : tout vit dans ce navigateur. Pense à la sauvegarde (page « Échanger ») pour changer d'appareil.</p>
+      </div>
+      <div class="ob-step" data-ob="1" hidden>
+        <span class="ic ic-32 ob-ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span>
+        <h3 class="ob-h">Trouve et enrichis des pistes</h3>
+        <p class="ob-p">Entreprises, contacts, conseils — sur la carte ou en liste. Un nom et une ville suffisent pour commencer ; chaque fiche se complète avec le temps.</p>
+      </div>
+      <div class="ob-step" data-ob="2" hidden>
+        <span class="ic ic-32 ob-ic" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span>
+        <h3 class="ob-h">Partage avec ta promo</h3>
+        <p class="ob-p">Tes pistes circulent par fichiers .oc, de la main à la main. Ton suivi — statuts, notes, dates — reste privé : il ne part jamais dans un partage.</p>
+      </div>
+      <div class="ob-nav">
+        <span class="ob-dots" id="obDots" aria-hidden="true"></span>
+        <span class="ob-count" id="obCount">1/3</span>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-ghost" id="obSkip">Passer</button>
+      <button class="btn btn-primary" id="obNext">Suivant</button>
     </div>
   </div>
 </div>

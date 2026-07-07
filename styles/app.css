@@ -582,6 +582,18 @@ html[data-theme="dark"] .checks label:has(input:checked){color:var(--teal)}
 .timeline li:last-child{border-bottom:0}
 .timeline .d{font-family:var(--font-mono);font-size:var(--text-11);color:var(--accent);flex:none;padding-top:2px}
 
+/* ============ BIENVENUE (premier lancement) ============ */
+.ob-step{text-align:center;padding:10px 6px 4px}
+.ob-ic{color:var(--accent);margin-bottom:10px}
+.ic-32{width:32px;height:32px}
+.ob-h{font-size:var(--text-16);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight);margin-bottom:5px}
+.ob-p{font-size:var(--text-13);color:var(--text-muted);line-height:var(--leading-body);max-width:340px;margin:0 auto}
+.ob-nav{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px}
+.ob-dots{display:inline-flex;gap:6px}
+.ob-dots i{width:8px;height:8px;background:var(--surface-chrome);border:1px solid var(--border-strong)}
+.ob-dots i.on{background:var(--accent)}
+.ob-count{font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted)}
+
 /* ============ ALERTE SAUVEGARDE ============ */
 .save-warn{
   position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:3500;

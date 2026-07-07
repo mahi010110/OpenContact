@@ -1690,6 +1690,31 @@ function syncIOPass(){
   else if (!$('#ioPass').value) $('#ioPassWrap').hidden = true;
 }
 
+/* ---------- bienvenue : trois écrans au tout premier lancement ----------
+   Jamais montré à qui possède déjà des pistes (mise à jour transparente) ;
+   le drapeau vit dans profile.flags, comme confirmTaught. */
+let obStep = 0;
+const OB_STEPS = 3;
+function renderWelcome(){
+  document.querySelectorAll('.ob-step').forEach(el => { el.hidden = (+el.dataset.ob !== obStep); });
+  $('#obDots').innerHTML = Array.from({ length: OB_STEPS },
+    (_, i) => `<i class="${i === obStep ? 'on' : ''}"></i>`).join('');
+  $('#obCount').textContent = (obStep + 1) + '/' + OB_STEPS;
+  $('#obNext').textContent = obStep === OB_STEPS - 1 ? 'Commencer' : 'Suivant';
+}
+function openWelcome(){
+  obStep = 0;
+  renderWelcome();
+  openOverlay('ovWelcome', '#obNext');
+}
+function closeWelcome(){
+  closeOverlay('ovWelcome');
+  if (!profile.flags.onboarded){
+    profile.flags.onboarded = 1;
+    saveProfile();
+  }
+}
+
 /* confirmation modale pour les actions destructives */
 let confirmResolve = null;
 function askConfirm(o){
@@ -1746,6 +1771,7 @@ function updateFilterBtn(){
 }
 const OV_CLOSERS = {
   ovForm: () => closeForm(),
+  ovWelcome: () => closeWelcome(),
   ovMail: () => closeMail(),
   ovCard: () => closeCard(),
   ovConfirm: () => settleConfirm(false)
@@ -2076,6 +2102,15 @@ function bindEvents(){
   $('#btnUndo').addEventListener('click', undoRestore);
   $('#undoX').addEventListener('click', hideUndo);
 
+  /* bienvenue */
+  $('#obX').addEventListener('click', closeWelcome);
+  $('#obSkip').addEventListener('click', closeWelcome);
+  $('#obNext').addEventListener('click', () => {
+    if (obStep >= OB_STEPS - 1){ closeWelcome(); return; }
+    obStep++;
+    renderWelcome();
+  });
+
   /* modale de confirmation */
   $('#cfOk').addEventListener('click', () => settleConfirm(true));
   $('#cfCancel').addEventListener('click', () => settleConfirm(false));
@@ -2256,6 +2291,12 @@ function bindEvents(){
         });
       });
     }).catch(() => {});
+  }
+
+  /* premier lancement : la promesse du produit en trois écrans */
+  if (!companies.length && !profile.flags.onboarded &&
+      !new URLSearchParams(location.search).has('test')){
+    openWelcome();
   }
 
   if (new URLSearchParams(location.search).has('test')){
