@@ -19,7 +19,7 @@ doit être repensée, pas forcée.
 | `oc_data_v3` | Les pistes (partagé + suivi privé) | JSON : tableau de pistes |
 | `oc_profile_v1` | Profil, modèles d'emails, fiches confirmées, flags | JSON : objet profil |
 | `oc_journal_v1` | Journal privé des actions (200 max) | JSON : tableau `{t, txt, cid}` |
-| `oc_orphans_v1` | Contacts « à rattacher » (sans entreprise) | JSON : tableau de contacts |
+| `oc_orphans_v1` | Contacts « à rattacher » (sans entreprise) — l'indice d'entreprise saisi par l'utilisateur voyage dans `extra.company` (D3), consommé au rattachement | JSON : tableau de contacts |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |

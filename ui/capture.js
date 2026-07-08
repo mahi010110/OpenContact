@@ -12,17 +12,21 @@ import { S, bus, saveData, logJ } from './state.js';
 import { openSheet, toast, btn, ic } from './dom.js';
 import { askNextAction } from './actions.js';
 import { openFiche } from './fiche.js';
+import { openContactEditor } from './contact.js';
 
 export function openCapture(prefill){
   prefill = prefill || {};
-  const sh = openSheet({ title: 'Nouvelle piste', icon: 'plus', focus: '#cpName' });
+  const sh = openSheet({ title: prefill.website ? 'Piste reçue du partage' : 'Nouvelle piste', icon: 'plus', focus: '#cpName' });
   sh.body.innerHTML =
     `<div class="field"><label for="cpName">Entreprise / structure</label>
        <input id="cpName" value="${esc(prefill.name || '')}" placeholder="Ex : Orange Cyberdefense" autocomplete="off"></div>
      <div class="field"><label for="cpCity">Ville <span class="lbl-soft">— optionnelle</span></label>
        <input id="cpCity" value="${esc(prefill.city || '')}" placeholder="Ex : Lille" autocomplete="off"></div>
+     ${prefill.website ? `<div class="cp-carry">${ic('link', 'ic-14')} <span>${esc(prefill.website)}</span></div>
+       <p class="hint">Le lien sera rangé dans la fiche.</p>` : ''}
      <div class="dup-note" id="cpDup" hidden></div>
-     <p class="hint">Ça suffit pour enregistrer — le reste (contacts, détails) se complète quand tu veux, depuis la fiche.</p>`;
+     <p class="hint">Ça suffit pour enregistrer — le reste (contacts, détails) se complète quand tu veux, depuis la fiche.</p>
+     <button class="linklike" id="cpOrph">C’est une personne, pas une entreprise ? Ajouter un contact seul</button>`;
   const q = s => sh.body.querySelector(s);
 
   let dup = null;
@@ -46,8 +50,12 @@ export function openCapture(prefill){
     const name = q('#cpName').value.trim();
     if (!name){ toast('Le nom de la structure est obligatoire.'); q('#cpName').focus(); return; }
     const city = q('#cpCity').value.trim();
-    const c = normalizeCompany({ id: uid(), name, city, createdAt: Date.now() });
-    c.history = [{ d: todayISO(), t: 'Piste créée' }];
+    const c = normalizeCompany({
+      id: uid(), name, city,
+      website: prefill.website || '', desc: prefill.desc || '',
+      createdAt: Date.now()
+    });
+    c.history = [{ d: todayISO(), t: prefill.website ? 'Piste reçue du partage' : 'Piste créée' }];
     S.companies.push(c);
     saveData();
     logJ('Piste créée : ' + c.name, c.id);
@@ -55,6 +63,7 @@ export function openCapture(prefill){
     bus.refresh();
     askNextAction(c, { title: 'Enregistrée ✓ — prochaine action ?', preset: 'Contacter', laterLabel: 'Plus tard' });
   });
+  q('#cpOrph').addEventListener('click', () => { sh.close(); openContactEditor({}); });
   q('#cpName').addEventListener('input', debounce(checkDup, 250));
   q('#cpCity').addEventListener('input', debounce(checkDup, 250));
   q('#cpName').addEventListener('keydown', e => { if (e.key === 'Enter') bSave.click(); });

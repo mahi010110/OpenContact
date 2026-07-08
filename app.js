@@ -76,6 +76,22 @@ function applyTheme(t, persist){
 
   applyRoute();
 
+  /* partage entrant (PWA share_target) : « Partager » depuis LinkedIn ou
+     le navigateur → capture pré-remplie ; les params sont consommés puis
+     retirés de l'URL pour ne pas rejouer au rechargement */
+  const sp = new URLSearchParams(location.search);
+  if (sp.has('title') || sp.has('text') || sp.has('url')){
+    const text = sp.get('text') || '';
+    const website = sp.get('url') || (text.match(/https?:\/\/\S+/) || [''])[0];
+    let name = (sp.get('title') || '')
+      .replace(/\s*[|–—-]\s*(LinkedIn|Indeed|Glassdoor|Welcome to the Jungle|HelloWork).*$/i, '').trim();
+    if (!name) name = text.replace(website, '').trim().split('\n')[0].slice(0, 80).trim();
+    const desc = text.replace(website, '').trim().slice(0, 300);
+    ['title', 'text', 'url'].forEach(k => sp.delete(k));
+    history.replaceState(null, '', location.pathname + (sp.toString() ? '?' + sp : '') + location.hash);
+    openCapture({ name, website, desc: desc !== name ? desc : '' });
+  }
+
   /* PWA : hors-ligne après la première visite — enregistré en dernier,
      zéro impact sur le démarrage */
   if ('serviceWorker' in navigator){

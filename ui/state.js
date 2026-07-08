@@ -8,6 +8,7 @@
 import { todayISO, fmtDate, uid } from '../engine/utils.js';
 import { STATUSES, CLOSE_REASONS, normalizeCompany, normalizeContact,
          normalizeProfile, pushHist } from '../engine/model.js';
+import { contactKey } from '../engine/merge.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, THEME_KEY,
          OLD_V2, OLD_V1, kvInit, kvGet, kvSet, getBackend } from '../engine/storage.js';
 
@@ -109,6 +110,41 @@ export function reopenPiste(c){
   pushHist(c, 'Rouverte');
   logJ('Rouverte : ' + c.name, c.id);
   saveData();
+}
+
+/* ---------- contacts : orphelins & rattachement ---------- */
+export const ctLabel = ct => ct.name || ct.email || ct.phone || 'contact';
+
+export function addOrphan(raw){
+  const ct = normalizeContact(raw);
+  S.orphans.push(ct);
+  saveOrphans();
+  logJ('Contact à rattacher : ' + ctLabel(ct));
+  return ct;
+}
+export function removeOrphan(id){
+  S.orphans = S.orphans.filter(o => o.id !== id);
+  saveOrphans();
+}
+/* range un contact dans une piste — complète sans jamais écraser si la
+   même personne (email / téléphone / nom+rôle) y est déjà */
+export function attachContact(c, raw){
+  const ct = normalizeContact(raw);
+  if (ct.extra){ delete ct.extra.company; if (!Object.keys(ct.extra).length) delete ct.extra; }
+  const k = contactKey(ct);
+  const known = k ? (c.contacts || []).find(t => contactKey(t) === k) : null;
+  if (known){
+    for (const f of ['name','role','email','phone','link','note'])
+      if (!known[f] && ct[f]) known[f] = ct[f];
+    pushHist(c, 'Contact complété : ' + ctLabel(ct));
+  } else {
+    (c.contacts = c.contacts || []).push(ct);
+    pushHist(c, 'Contact ajouté : ' + ctLabel(ct));
+  }
+  c.updatedAt = Date.now();
+  logJ('Contact ' + (known ? 'complété' : 'ajouté') + ' : ' + ctLabel(ct) + ' → ' + c.name, c.id);
+  saveData();
+  return known ? 'merged' : 'added';
 }
 
 /* ---------- pistes d'exemple (supprimables d'un tap) ---------- */

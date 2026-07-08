@@ -1,27 +1,40 @@
 /* ============================================================
    OpenContact — interface · fiche piste (version quotidienne)
    Ce qu'il faut pour agir : statut 3 crans, prochaine action,
-   contacts joignables en un tap, notes privées, clôture/réouverture,
-   itinéraire. L'édition complète des champs partagés arrive avec
-   l'écran « Mes pistes » (étape 2).
+   contacts joignables en un tap (appel, SMS, WhatsApp, email),
+   notes privées, clôture/réouverture, itinéraire — et l'édition
+   complète des champs partagés (feuille « Modifier »).
    ============================================================ */
 import { esc, fmtDate, isLate, debounce, directionsUrl } from '../engine/utils.js';
-import { STATUSES, CLOSE_REASONS, DOMAINS } from '../engine/model.js';
+import { STATUSES, CLOSE_REASONS, DOMAINS, POSITIONS } from '../engine/model.js';
+import { scoreOf } from '../engine/score.js';
 import { bus, isClosed, setStatus, saveData, reopenPiste } from './state.js';
 import { openSheet, toast, btn, ic } from './dom.js';
 import { frDate, relLabel } from './dates.js';
 import { askNextAction, askClose } from './actions.js';
 import { openMail } from './mail.js';
+import { openEditPiste } from './edit.js';
+import { openContactEditor, telHref, smsHref, waHref } from './contact.js';
+
+const webHref = w => /^https?:\/\//i.test(w) ? w : 'https://' + w;
+const webLabel = w => w.replace(/^https?:\/\//i, '').replace(/\/$/, '');
 
 export function openFiche(c){
   const sh = openSheet({ title: c.name, icon: 'briefcase', className: 'modal-fiche' });
   const render = () => {
     const closed = isClosed(c);
     const dirs = directionsUrl(c);
+    const score = scoreOf(c);
     const subBits = [c.city, c.domain !== 'autre' ? (DOMAINS[c.domain] || DOMAINS.autre).label : ''].filter(Boolean);
+    const know = c.website || c.techs || (c.positions || []).length || c.process || c.tips;
+    sh.setTitle(c.name);
     sh.body.innerHTML =
       `${subBits.length ? `<div class="fi-sub">${subBits.map(esc).join(' · ')}</div>` : ''}
        ${c.desc ? `<p class="fi-desc">${esc(c.desc)}</p>` : ''}
+       <div class="fi-tools">
+         <span class="fi-score${score < 50 ? ' low' : ''}">fiche complète à ${score} %</span>
+         <button class="btn btn-sm" id="fiEdit">${ic('pencil', 'ic-14')} ${score < 60 ? 'Compléter' : 'Modifier'}</button>
+       </div>
        ${closed ? `
          <div class="fi-closed" style="--c:${CLOSE_REASONS[c.closedReason].color}">
            ${ic('archive', 'ic-14')} Clôturée — <b>${CLOSE_REASONS[c.closedReason].label}</b>${c.closedAt ? ' · ' + esc(fmtDate(c.closedAt)) : ''}
@@ -43,20 +56,38 @@ export function openFiche(c){
                   <button class="btn btn-sm btn-primary" id="fiNa">Planifier</button>`}
            </div>
          </div>`}
-       ${(c.contacts || []).length ? `
-         <div class="field"><label>Contacts</label>
-           <div class="ct-list">${c.contacts.map(t => `
-             <div class="ct">
-               <div class="ct-h"><b>${esc(t.name || t.email || t.phone)}</b>
-                 ${t.role ? `<span class="ct-role">${esc(t.role)}</span>` : ''}
-                 ${t.conf === 'ok' ? '<span class="conf-ok">vérifié ✓</span>' : t.conf === 'doubt' ? '<span class="conf-doubt">à confirmer ?</span>' : ''}</div>
-               <div class="ct-links">
-                 ${t.email ? `<a href="mailto:${esc(t.email)}">${ic('mail', 'ic-14')} ${esc(t.email)}</a>` : ''}
-                 ${t.phone ? `<a href="tel:${esc(t.phone.replace(/\s/g, ''))}">${ic('phone', 'ic-14')} ${esc(t.phone)}</a>` : ''}
-                 ${t.link ? `<a href="${esc(t.link)}" target="_blank" rel="noopener">${ic('link', 'ic-14')} profil</a>` : ''}
-               </div>
-               ${t.note ? `<div class="ct-note">${esc(t.note)}</div>` : ''}
-             </div>`).join('')}</div>
+       <div class="field">
+         <div class="lbl-row"><label>Contacts</label>
+           <button class="btn btn-sm" id="fiCtAdd">${ic('plus', 'ic-14')} Ajouter</button></div>
+         ${(c.contacts || []).length ? `
+         <div class="ct-list">${c.contacts.map(t => `
+           <div class="ct">
+             <div class="ct-h"><b>${esc(t.name || t.email || t.phone)}</b>
+               ${t.role ? `<span class="ct-role">${esc(t.role)}</span>` : ''}
+               ${t.conf === 'ok' ? '<span class="conf-ok">vérifié ✓</span>' : t.conf === 'doubt' ? '<span class="conf-doubt">à confirmer ?</span>' : ''}
+               <button class="abtn abtn-sm" data-ct="${t.id}" aria-label="Modifier ${esc(t.name || 'le contact')}" title="Modifier">${ic('pencil', 'ic-14')}</button></div>
+             <div class="ct-links">
+               ${t.email ? `<a href="mailto:${esc(t.email)}">${ic('mail', 'ic-14')} ${esc(t.email)}</a>` : ''}
+               ${t.phone ? `<a href="${esc(telHref(t.phone))}">${ic('phone', 'ic-14')} ${esc(t.phone)}</a>
+                            <a href="${esc(smsHref(t.phone))}">${ic('message-text', 'ic-14')} SMS</a>
+                            <a href="${esc(waHref(t.phone))}" target="_blank" rel="noopener">${ic('message-text', 'ic-14')} WhatsApp</a>` : ''}
+               ${t.link ? `<a href="${esc(t.link)}" target="_blank" rel="noopener">${ic('link', 'ic-14')} profil</a>` : ''}
+             </div>
+             ${t.note ? `<div class="ct-note">${esc(t.note)}</div>` : ''}
+           </div>`).join('')}</div>` :
+         '<p class="hint" style="margin:0">Personne pour l’instant — un nom et un email augmentent tes chances de réponse.</p>'}
+       </div>
+       ${know ? `
+         <div class="field"><label>À savoir</label>
+           <div class="fi-know">
+             ${c.website ? `<div class="fk"><span class="fk-l">Site</span>
+                <a class="fk-v" href="${esc(webHref(c.website))}" target="_blank" rel="noopener">${esc(webLabel(c.website))} ${ic('external-link', 'ic-14')}</a></div>` : ''}
+             ${c.techs ? `<div class="fk"><span class="fk-l">Technos</span><span class="fk-v">${esc(c.techs)}</span></div>` : ''}
+             ${(c.positions || []).length ? `<div class="fk"><span class="fk-l">Postes</span>
+                <span class="fk-v fk-tags">${c.positions.map(p => `<span class="fk-tag">${POSITIONS[p]}</span>`).join('')}</span></div>` : ''}
+             ${c.process ? `<div class="fk"><span class="fk-l">Process</span><span class="fk-v">${esc(c.process)}</span></div>` : ''}
+             ${c.tips ? `<div class="fk"><span class="fk-l">Conseils</span><span class="fk-v">${esc(c.tips)}</span></div>` : ''}
+           </div>
          </div>` : ''}
        ${(c.address || dirs) ? `
          <div class="fi-row">${ic('map-pin', 'ic-14')} <span>${esc(c.address || c.city)}</span>
@@ -71,6 +102,12 @@ export function openFiche(c){
          </details>` : ''}`;
 
     /* branchements */
+    sh.body.querySelector('#fiEdit').addEventListener('click', () => openEditPiste(c, render));
+    sh.body.querySelector('#fiCtAdd').addEventListener('click', () =>
+      openContactEditor({ company: c, onDone: render }));
+    sh.body.querySelectorAll('[data-ct]').forEach(b =>
+      b.addEventListener('click', () =>
+        openContactEditor({ company: c, contact: c.contacts.find(t => t.id === b.dataset.ct), onDone: render })));
     sh.body.querySelectorAll('.seg').forEach(b =>
       b.addEventListener('click', () => { setStatus(c, b.dataset.st); render(); bus.refresh(); }));
     const na = sh.body.querySelector('#fiNa');

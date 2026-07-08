@@ -10,11 +10,20 @@ import { S, bus, saveData, logJ } from './state.js';
 import { openSheet, toast, btn } from './dom.js';
 import { askNextAction } from './actions.js';
 
-export function openMail(c){
+export function openMail(c, opts){
+  opts = opts || {};
   const cts = (c.contacts || []).filter(t => t.email);
   const tpls = S.profile.templates;
   let logged = false;
-  const sh = openSheet({ title: 'Écrire — ' + c.name, icon: 'mail', focus: cts.length ? '#mSubj' : '#mBody' });
+  /* en série (Prospecter) : prévenir la suite exactement une fois,
+     que la feuille soit envoyée, passée ou fermée */
+  let chained = false;
+  const finish = () => { if (opts.onDone){ const f = opts.onDone; opts.onDone = null; f(); } };
+  const sh = openSheet({
+    title: 'Écrire — ' + c.name + (opts.progress ? '  ·  ' + opts.progress : ''),
+    icon: 'mail', focus: cts.length ? '#mSubj' : '#mBody',
+    onClose: () => { if (!chained) finish(); }
+  });
   sh.body.innerHTML =
     `<div class="grid2">
        <div class="field"><label for="mTo">Destinataire</label>
@@ -95,10 +104,19 @@ export function openMail(c){
       if (!c.appliedAt) c.appliedAt = todayISO();
       c.updatedAt = Date.now();
       saveData();
+      chained = true;
       sh.close();
       bus.refresh();
-      askNextAction(c, { title: 'Envoyé ✓ — et ensuite ?', preset: 'Relancer' + (who ? ' ' + who : '') });
+      askNextAction(c, {
+        title: 'Envoyé ✓ — et ensuite ?',
+        preset: 'Relancer' + (who ? ' ' + who : ''),
+        onDone: finish
+      });
     })
   ]);
+  if (opts.onDone){
+    const skip = btn('Passer →', 'btn-ghost', () => sh.close());
+    sh.ov.querySelector('.modal-f').prepend(skip);
+  }
   fill();
 }
