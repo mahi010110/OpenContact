@@ -18,10 +18,18 @@ Le vrai défaut de la version actuelle, ce n'est pas l'esthétique — c'est **�
 
 ## Ce qui existe et que tu GARDES (ne le réinvente pas)
 
-- **Le moteur `engine/`** (modèle de données, fusion, chiffrement AES, stockage, score) : logique éprouvée, réutilise-la telle quelle. Respecte le contrat de données de `CONTRAT.md` et les auto-tests (`?test`).
+- **Le moteur `engine/`** (modèle de données, fusion, chiffrement AES, stockage, score) : logique éprouvée, c'est ta fondation — réutilise-la et préserve ses garanties. Tu as le droit de l'**agrandir** là où le nouveau modèle l'exige (voir la section « Le moteur : tu peux l'agrandir, pas le casser »), mais sans le réécrire ni le casser.
 - **L'identité visuelle « Utilitaire 98 »** et les tokens de `styles/tokens/` : c'est une identité distinctive, rare, à conserver. Tu refonds l'architecture et les parcours, **pas la peau**.
 - **La techno** : JavaScript pur, modules ES, **sans framework, sans build**, PWA. Reste là-dessus — c'est cohérent avec le local-first et l'hébergement statique.
 - **Les excellentes idées à préserver** : le mode « Prospecter » (candidatures en série, chaque email reste perso) ; la fusion qui **n'écrase jamais** + « Annuler » ~30 s ; le privé qui ne part **jamais** dans un partage ; l'indice de complétude ; les modèles d'emails à variables ; le chiffrement avec ses limites annoncées honnêtement ; l'aide-prompts IA (mais **rétrogradée** en coup de pouce contextuel, plus un onglet).
+
+## Le moteur : tu peux l'agrandir, pas le casser
+
+Plusieurs nouveautés (la « prochaine action », les nouveaux statuts, la clôture, un contact sans entreprise, l'échange par QR) ont besoin de **stocker des infos que le moteur ne connaît pas encore**. Tu as donc le droit — et le besoin — de l'**agrandir**. Ce n'est pas interdit ; ce qui est interdit, c'est de le **réécrire** ou de casser ses garanties.
+
+- ✅ **Tu peux ajouter** ce que le nouveau modèle exige : un champ *prochaine action + date* sur la piste ; les nouvelles valeurs de *statut* et l'état de *clôture/archive* ; la possibilité d'un *contact sans entreprise* ; un *encodage compact pour le QR* dans `exchange.js`, à côté du format `.oc` ; et réutiliser le *rapprochement anti-doublon* déjà présent dans `merge.js` pour la capture.
+- ❌ **Tu ne réécris pas** le moteur et tu ne casses pas ses garanties : la fusion qui **n'écrase jamais**, le **chiffrement**, et la règle **à sens unique** (le moteur ne touche jamais l'écran).
+- ⚠️ **Rétrocompatibilité obligatoire** : les données déjà enregistrées et les anciens fichiers `.oc` doivent continuer à se charger. Tout nouveau champ est **optionnel** — s'il manque, le moteur ne plante pas. Fais évoluer `CONTRAT.md` et les auto-tests **délibérément** pour coller au nouveau modèle, et garde-les au vert.
 
 ## La refonte — la vision cible
 
@@ -63,7 +71,7 @@ Le vrai défaut de la version actuelle, ce n'est pas l'esthétique — c'est **�
 
 - Ne reconstruis pas la carte, ne réintroduis pas Leaflet.
 - N'ajoute pas de tableau de bord d'analytics, de statistiques, de graphes.
-- Ne touche pas à la logique du moteur ni au contrat de données ; ne casse pas les auto-tests.
+- Ne **réécris** pas le moteur et ne casse pas ses garanties (fusion sans écrasement, chiffrement, sens unique) ; tu peux l'**agrandir** — voir la section « Le moteur : tu peux l'agrandir, pas le casser ». Garde les auto-tests au vert.
 - Ne repars pas de zéro « pour bien faire » : réutilise le moteur, les tokens, le skin.
 - N'ajoute pas de framework, de build, de dépendance externe, ni d'appel réseau au-delà de ce qui existe déjà (géocodage, fonds de carte si tu en gardes une trace, polices auto-hébergées).
 - Ne sur-conçois pas : pas d'abstractions spéculatives, pas de gestion d'erreurs pour des cas qui ne peuvent pas arriver, pas de multi-domaine (on reste mono-domaine). Fais la chose la plus simple qui marche bien.
