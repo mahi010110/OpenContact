@@ -67,7 +67,7 @@ input,select,textarea{font-family:inherit;color:var(--text-body)}
   background:var(--surface-window);border-bottom:1px solid var(--border-strong);
 }
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--text-body);flex:none}
-.brand img{image-rendering:pixelated;display:block}
+.brand img,.brand svg{image-rendering:pixelated;display:block}
 .brand b{
   font-family:var(--font-pixel);font-weight:400;font-size:var(--pixel-16);
   letter-spacing:.02em;text-transform:uppercase;

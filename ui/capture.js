@@ -39,7 +39,17 @@ export function openCapture(prefill){
       box.innerHTML =
         `${ic('square-alert', 'ic-14')} Tu as déjà <b>${esc(dup.name)}</b>${dup.city ? ' (' + esc(dup.city) + ')' : ''} — c’est la même entreprise ?
          <button class="btn btn-sm" id="cpOpen">Ouvrir sa fiche</button>`;
-      box.querySelector('#cpOpen').addEventListener('click', () => { sh.close(); openFiche(dup); });
+      box.querySelector('#cpOpen').addEventListener('click', () => {
+        /* le lien reçu du partage complète la fiche existante (jamais d'écrasement) */
+        if (prefill.website && !dup.website){
+          dup.website = prefill.website;
+          dup.updatedAt = Date.now();
+          saveData();
+          toast('Lien reçu rangé dans la fiche.');
+        }
+        sh.close();
+        openFiche(dup);
+      });
       bSave.textContent = 'Créer quand même';
     } else {
       box.hidden = true;
