@@ -10,6 +10,7 @@
 export const DATA_KEY = 'oc_data_v3';
 export const PROFILE_KEY = 'oc_profile_v1';
 export const JOURNAL_KEY = 'oc_journal_v1';
+export const ORPHANS_KEY = 'oc_orphans_v1';   /* contacts « à rattacher » (sans entreprise) */
 export const THEME_KEY = 'oc_theme';
 export const VIEW_KEY = 'oc_view';
 export const OLD_V2 = 'oc_data_v2';

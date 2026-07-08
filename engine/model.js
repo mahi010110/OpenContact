@@ -7,7 +7,7 @@
    ============================================================ */
 import { uid, extractCity, todayISO } from './utils.js';
 
-export const APP_VERSION = '5.0.0';
+export const APP_VERSION = '6.0.0';
 
 export const DOMAINS = {
   esn:     { label:'ESN / Services IT',       color:'#4C9FD8' },
@@ -21,13 +21,20 @@ export const DOMAINS = {
   sante:   { label:'Santé / Social',          color:'#43A047' },
   autre:   { label:'Autre',                   color:'#8A99A6' }
 };
+/* statut vivant à 3 crans (v6) — les anciens statuts v5 sont migrés à la
+   normalisation : sent/followup → active, interview → reply, won/rejected
+   → piste clôturée (closedReason) */
 export const STATUSES = {
-  todo:      { label:'À contacter',         color:'#8A99A6' },
-  sent:      { label:'Candidature envoyée', color:'#4C9FD8' },
-  followup:  { label:'Relance faite',       color:'#D89A3C' },
-  interview: { label:'Entretien',           color:'#9B7FD4' },
-  rejected:  { label:'Refus',               color:'#D96A74' },
-  won:       { label:'Décroché',            color:'#2FA070' }
+  todo:   { label:'À contacter', color:'#8A99A6' },
+  active: { label:'En cours',    color:'#4C9FD8' },
+  reply:  { label:'Réponse',     color:'#9B7FD4' }
+};
+export const LEGACY_STATUSES = { sent:'active', followup:'active', interview:'reply' };
+/* clôture (privée) : la piste quitte le quotidien, reste dans la liste */
+export const CLOSE_REASONS = {
+  won:      { label:'Décroché',  color:'#2FA070' },
+  rejected: { label:'Refusé',    color:'#D96A74' },
+  dropped:  { label:'Abandonné', color:'#8A99A6' }
 };
 export const POSITIONS = { stage:'Stage', alternance:'Alternance', cdi:'CDI', cdd:'CDD', freelance:'Freelance' };
 
@@ -37,6 +44,7 @@ export const POSITIONS = { stage:'Stage', alternance:'Alternance', cdi:'CDI', cd
 const KNOWN_CT = ['id','name','role','email','phone','link','note','conf','extra'];
 const KNOWN_C  = ['id','name','city','domain','desc','address','website','techs','positions',
   'process','tips','contacts','lat','lng','status','notes','appliedAt','nextAction',
+  'nextActionText','closedAt','closedReason',
   'history','verifiedAt','confirmations','demo','createdAt','updatedAt','extra',
   'contact','email','phone'];   /* les 3 derniers : héritage v1, absorbés dans contacts */
 function keepExtra(x, known){
@@ -68,6 +76,15 @@ export function normalizeCompany(x){
     contacts = [normalizeContact({ name: x.contact, email: x.email, phone: x.phone })];
   }
   contacts = contacts.filter(contactHasData);
+  /* migration des statuts v5 : terminaux → clôture, intermédiaires → 3 crans */
+  let status = x.status;
+  let closedAt = x.closedAt || '';
+  let closedReason = CLOSE_REASONS[x.closedReason] ? x.closedReason : '';
+  if (status === 'won' || status === 'rejected'){
+    if (!closedReason) closedReason = status === 'won' ? 'won' : 'rejected';
+    if (!closedAt) closedAt = x.updatedAt ? new Date(x.updatedAt).toISOString().slice(0,10) : todayISO();
+    status = 'reply';
+  } else if (LEGACY_STATUSES[status]) status = LEGACY_STATUSES[status];
   const out = {
     id: x.id || uid(),
     name: String(x.name || '').trim(),
@@ -83,8 +100,10 @@ export function normalizeCompany(x){
     contacts,
     lat: (typeof x.lat === 'number') ? x.lat : null,
     lng: (typeof x.lng === 'number') ? x.lng : null,
-    status: STATUSES[x.status] ? x.status : 'todo',
+    status: STATUSES[status] ? status : 'todo',
     notes: x.notes || '', appliedAt: x.appliedAt || '', nextAction: x.nextAction || '',
+    nextActionText: String(x.nextActionText || '').trim(),
+    closedAt, closedReason,
     history: Array.isArray(x.history) ? x.history.slice(-40) : [],
     verifiedAt: x.verifiedAt || '',
     confirmations: Number(x.confirmations) || 0,

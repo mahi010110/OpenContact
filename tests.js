@@ -10,11 +10,12 @@ import { KDF_ITER, encryptOC2, decryptOC2, deriveKey, bytesToB64,
          fnv, ocKeystream, unsealOC1 } from './engine/crypto.js';
 import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
          pushHist, fillTpl } from './engine/model.js';
-import { communityView, parseInput, sharePayload, fullPayload } from './engine/exchange.js';
+import { communityView, parseInput, sharePayload, fullPayload,
+         encodeOCQ } from './engine/exchange.js';
 import { findMatch, mergeIncoming, contactKey } from './engine/merge.js';
 import { filterCompanies } from './engine/filter.js';
 import { scoreOf } from './engine/score.js';
-import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, THEME_KEY, VIEW_KEY,
+import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, THEME_KEY, VIEW_KEY,
          OLD_V2, OLD_V1 } from './engine/storage.js';
 
 export async function runSelfTests(){
@@ -69,11 +70,27 @@ export async function runSelfTests(){
     },
     'communityView : aucune fuite privée': () => {
       const v = communityView(normalizeCompany({
-        name: 'X', status: 'sent', notes: 'secret',
-        appliedAt: '2026-01-01', nextAction: '2026-02-01',
+        name: 'X', status: 'active', notes: 'secret',
+        appliedAt: '2026-01-01', nextAction: '2026-02-01', nextActionText: 'Relancer',
+        closedAt: '2026-03-01', closedReason: 'dropped',
         history: [{ d: '2026-01-01', t: 'x' }]
       }));
-      for (const k of ['status', 'notes', 'appliedAt', 'nextAction', 'history', 'id', 'demo']) ok(!(k in v));
+      for (const k of ['status', 'notes', 'appliedAt', 'nextAction', 'nextActionText',
+                       'closedAt', 'closedReason', 'history', 'id', 'demo']) ok(!(k in v));
+    },
+    'statuts : migration v5 → 3 crans + clôture': () => {
+      eq(normalizeCompany({ name: 'X', status: 'sent' }).status, 'active');
+      eq(normalizeCompany({ name: 'X', status: 'followup' }).status, 'active');
+      eq(normalizeCompany({ name: 'X', status: 'interview' }).status, 'reply');
+      eq(normalizeCompany({ name: 'X', status: 'inconnu' }).status, 'todo');
+      const won = normalizeCompany({ name: 'X', status: 'won', updatedAt: Date.UTC(2026, 0, 15) });
+      eq(won.closedReason, 'won'); eq(won.closedAt, '2026-01-15'); eq(won.status, 'reply');
+      const rej = normalizeCompany({ name: 'X', status: 'rejected' });
+      eq(rej.closedReason, 'rejected'); ok(!!rej.closedAt);
+      /* les nouvelles valeurs passent inchangées */
+      const c = normalizeCompany({ name: 'X', status: 'active', closedReason: 'dropped', closedAt: '2026-02-02' });
+      eq(c.status, 'active'); eq(c.closedReason, 'dropped'); eq(c.closedAt, '2026-02-02');
+      eq(normalizeCompany({ name: 'X', closedReason: 'zzz' }).closedReason, '');
     },
     'findMatch : même ville = fusion, ville ≠ = nouvelle': () => {
       const comps = [normalizeCompany({ name: 'Capgemini', city: 'Lille' })];
@@ -100,7 +117,8 @@ export async function runSelfTests(){
             { name: 'Ana Dupont', email: 'ana@x.fr', phone: '0601', conf: 'ok' },
             { name: 'Rémi', email: 'remi@x.fr', conf: 'ok' }
           ] },
-        { name: 'Beta', status: 'won', notes: 'privé du voisin' }
+        { name: 'Beta', status: 'won', notes: 'privé du voisin',
+          nextActionText: 'Relancer', nextAction: '2026-01-01', closedReason: 'dropped' }
       ], comps);
       const a = comps[0], b = comps[1];
       eq(st.addedC, 1); eq(st.enriched, 1); eq(st.addedCt, 1); eq(st.conflicts, 2);
@@ -108,6 +126,8 @@ export async function runSelfTests(){
       eq(a.contacts[0].name, 'Ana'); eq(a.contacts[0].phone, '0601');
       eq(a.contacts[0].conf, 'doubt'); eq(a.contacts[1].conf, 'doubt');
       eq(b.status, 'todo'); eq(b.notes, '');
+      eq(b.nextAction, ''); eq(b.nextActionText, '');
+      eq(b.closedAt, ''); eq(b.closedReason, '');
     },
     'parseInput : garde-fous de taille (D4)': async () => {
       try { await parseInput('x'.repeat(4000001)); throw new Error('accepté !'); }
@@ -122,26 +142,30 @@ export async function runSelfTests(){
       eq(DATA_KEY, 'oc_data_v3');
       eq(PROFILE_KEY, 'oc_profile_v1');
       eq(JOURNAL_KEY, 'oc_journal_v1');
+      eq(ORPHANS_KEY, 'oc_orphans_v1');
       eq(THEME_KEY, 'oc_theme');
       eq(VIEW_KEY, 'oc_view');
       eq(OLD_V2, 'oc_data_v2');
       eq(OLD_V1, 'ais_stage_targets_v1');
     },
-    'contrat : schéma d’une piste normalisée (24 champs exacts)': () => {
+    'contrat : schéma d’une piste normalisée (27 champs exacts)': () => {
       eq(Object.keys(normalizeCompany({ name: 'X' })).sort(),
-         ['address','appliedAt','city','confirmations','contacts','createdAt','demo',
-          'desc','domain','history','id','lat','lng','name','nextAction','notes',
-          'positions','process','status','techs','tips','updatedAt','verifiedAt','website'].sort());
+         ['address','appliedAt','city','closedAt','closedReason','confirmations','contacts',
+          'createdAt','demo','desc','domain','history','id','lat','lng','name','nextAction',
+          'nextActionText','notes','positions','process','status','techs','tips',
+          'updatedAt','verifiedAt','website'].sort());
     },
     'contrat : schéma d’un contact normalisé (8 champs exacts)': () => {
       eq(Object.keys(normalizeContact({ name: 'A' })).sort(),
          ['conf','email','id','link','name','note','phone','role'].sort());
     },
     'contrat : enveloppe « share » — v4, sans profil ni champ privé': () => {
-      const p = sharePayload([normalizeCompany({ name: 'X', status: 'sent', notes: 'privé', appliedAt: '2026-01-01' })]);
+      const p = sharePayload([normalizeCompany({ name: 'X', status: 'active', notes: 'privé',
+        appliedAt: '2026-01-01', nextActionText: 'Relancer', closedReason: 'dropped' })]);
       eq(p.v, 4); eq(p.kind, 'share'); eq(p.app, APP_VERSION);
       ok(!('profile' in p));
-      for (const k of ['status','notes','appliedAt','nextAction','history','id','demo']) ok(!(k in p.companies[0]));
+      for (const k of ['status','notes','appliedAt','nextAction','nextActionText',
+                       'closedAt','closedReason','history','id','demo']) ok(!(k in p.companies[0]));
     },
     'contrat : enveloppe « full » — v4, avec profil (sauvegarde complète)': () => {
       const prof = normalizeProfile({ name: 'Moi' });
@@ -149,6 +173,24 @@ export async function runSelfTests(){
       eq(p.v, 4); eq(p.kind, 'full'); eq(p.app, APP_VERSION);
       ok(p.profile === prof);
       eq(p.companies[0].notes, 'privé');   /* la sauvegarde, elle, garde le privé */
+      ok(!('orphans' in p));               /* champ optionnel : absent si vide */
+      const o = [normalizeContact({ name: 'Léo', email: 'leo@x.fr' })];
+      eq(fullPayload([], prof, o).orphans, o);
+    },
+    'contrat : OCQ1 — aller-retour compact (QR), sans privé': async () => {
+      if (typeof CompressionStream === 'undefined') return;   /* API absente : repli fichier assuré par l’UI */
+      const src = normalizeCompany({ name: 'Oméga', city: 'Arras', techs: 'PfSense',
+        status: 'active', notes: 'privé', contacts: [{ name: 'Zoé', email: 'z@x.fr' }] });
+      const txt = await encodeOCQ([src]);
+      ok(txt.startsWith('OCQ1.'));
+      ok(!txt.includes('+') && !txt.includes('/') && !txt.includes('='));   /* base64url pur */
+      const obj = await parseInput(txt);
+      eq(obj.kind, 'share');
+      eq(obj.companies[0].name, 'Oméga'); eq(obj.companies[0].techs, 'PfSense');
+      ok(!('notes' in obj.companies[0]) && !('status' in obj.companies[0]));
+      const dest = [];
+      mergeIncoming(obj.companies, dest);
+      eq(dest[0].contacts[0].email, 'z@x.fr');
     },
     'contrat : partage → réception, aller-retour sans perte (clair)': async () => {
       const src = normalizeCompany({ name: 'Gamma', city: 'Lyon', domain: 'cloud',
@@ -211,12 +253,12 @@ export async function runSelfTests(){
     },
     'filtres : q / domaine / statut + tri A→Z (sans lire l’écran)': () => {
       const list = [
-        normalizeCompany({ name: 'Bravo', city: 'Paris', domain: 'cyber', status: 'sent', techs: 'Azure' }),
+        normalizeCompany({ name: 'Bravo', city: 'Paris', domain: 'cyber', status: 'active', techs: 'Azure' }),
         normalizeCompany({ name: 'Alpha', city: 'Lille', domain: 'esn' })
       ];
       eq(filterCompanies(list, { q: 'azure' }).map(c => c.name), ['Bravo']);
       eq(filterCompanies(list, { domain: 'esn' }).map(c => c.name), ['Alpha']);
-      eq(filterCompanies(list, { status: 'sent' }).map(c => c.name), ['Bravo']);
+      eq(filterCompanies(list, { status: 'active' }).map(c => c.name), ['Bravo']);
       eq(filterCompanies(list, { sort: 'az' }).map(c => c.name), ['Alpha', 'Bravo']);
     },
     'historique : pushHist plafonne à 40 entrées': () => {

@@ -19,8 +19,9 @@ doit être repensée, pas forcée.
 | `oc_data_v3` | Les pistes (partagé + suivi privé) | JSON : tableau de pistes |
 | `oc_profile_v1` | Profil, modèles d'emails, fiches confirmées, flags | JSON : objet profil |
 | `oc_journal_v1` | Journal privé des actions (200 max) | JSON : tableau `{t, txt, cid}` |
+| `oc_orphans_v1` | Contacts « à rattacher » (sans entreprise) | JSON : tableau de contacts |
 | `oc_theme` | `light` ou `dark` | chaîne |
-| `oc_view` | `map`, `list` ou `grid` | chaîne |
+| `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
 
 Les PDF (CV, lettre) vivent dans **IndexedDB** : base `oc_docs_v1`, magasin
@@ -45,8 +46,21 @@ On ne renomme jamais ; si le format d'une clé doit évoluer, on crée une
 - `kind: "share"` : pistes en **vue communautaire** (voir §3) — jamais de
   champ privé, jamais de profil.
 - `kind: "full"` : sauvegarde personnelle complète — pistes avec suivi privé,
-  plus le profil.
+  plus le profil, plus le champ **optionnel** `orphans` (contacts « à
+  rattacher ») s'il y en a. Un lecteur qui ignore `orphans` charge quand même
+  le reste sans erreur.
 - Tolérance à la lecture : un simple tableau JSON de pistes est aussi accepté.
+
+### Compact — OCQ1 (échange par QR)
+
+```
+OCQ1.<payload share compressé deflate-raw, en base64url>
+```
+
+Une enveloppe `kind:"share"` (jamais de privé), compressée par l'API native
+`CompressionStream` puis encodée base64url. Lu par `parseInput` comme les
+autres formats. Si l'API manque (très vieux navigateur), l'émetteur replie
+vers le fichier `.oc` — le format ne change pas.
 
 ### Chiffré — OC2 (format actuel)
 
@@ -80,7 +94,8 @@ Une piste normalisée a exactement ces champs :
 `confirmations`, `updatedAt` (+ `extra` si présent).
 
 **Privé** — ne part **jamais** dans un partage :
-`status`, `notes`, `appliedAt`, `nextAction`, `history[]` (40 entrées max).
+`status`, `notes`, `appliedAt`, `nextAction`, `nextActionText`, `closedAt`,
+`closedReason`, `history[]` (40 entrées max).
 Ni `id`, ni `demo`, ni `createdAt` ne circulent non plus.
 
 **Un contact** : `id`, `name`, `role`, `email`, `phone`, `link`, `note`,
@@ -89,9 +104,18 @@ Ni `id`, ni `demo`, ni `createdAt` ne circulent non plus.
 **Vocabulaires fermés** :
 - `domain` : `esn`, `cyber`, `cloud`, `dsi`, `public`, `startup`,
   `industrie`, `commerce`, `sante`, `autre` — valeur inconnue → `autre` ;
-- `status` : `todo`, `sent`, `followup`, `interview`, `rejected`, `won` —
-  valeur inconnue → `todo` ;
+- `status` : `todo`, `active`, `reply` — valeur inconnue → `todo`.
+  **Migration v5** (lecture seule, jamais réécrite en sortie) : `sent` et
+  `followup` → `active` ; `interview` → `reply` ; `won` / `rejected` →
+  piste **clôturée** (`closedReason` correspondant, `closedAt` déduit de
+  `updatedAt`) avec `status: reply` ;
+- `closedReason` : `""` (piste vivante), `won`, `rejected`, `dropped` ;
 - `positions` : `stage`, `alternance`, `cdi`, `cdd`, `freelance`.
+
+**La prochaine action** (privée) : `nextAction` porte la **date** (ISO,
+champ historique inchangé — les anciennes données restent valides),
+`nextActionText` porte le **verbe** (« Relancer le RH »). Les deux sont
+optionnels et indépendants.
 
 **Champs inconnus** (venus d'une version future) : conservés dans `extra`,
 jamais perdus silencieusement.
@@ -103,7 +127,8 @@ jamais perdus silencieusement.
 2. Deux valeurs non vides différentes = divergence **comptée et signalée**,
    pas importée.
 3. Le privé ne s'importe jamais : statut remis à `todo`, notes/dates vidées,
-   historique remplacé par « Reçue via partage ».
+   prochaine action (verbe et date) et clôture vidées, historique remplacé
+   par « Reçue via partage ».
 4. Un contact reçu avec `conf:"ok"` redevient `"doubt"` : la confiance ne se
    transmet pas, elle se re-vérifie.
 5. Déduplication des pistes : même nom **et** même ville (ou positions à

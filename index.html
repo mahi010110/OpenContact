@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
-<title>OpenContact — trouve, enrichis et partage des contacts utiles</title>
-<meta name="description" content="OpenContact : l'outil communautaire pour trouver, enrichir et partager des pistes et contacts utiles dans ta recherche de stage, d'alternance ou d'emploi. Local-first, open source, sans compte.">
+<title>OpenContact — le fil de ta recherche, partagé avec ta promo</title>
+<meta name="description" content="OpenContact répond à « je fais quoi maintenant ? » dans ta recherche de stage, d'alternance ou d'emploi — et fait circuler les bonnes pistes dans ta promo. Local-first, sans compte, open source.">
 <meta name="theme-color" id="metaTheme" content="#F7F6F1">
 <meta property="og:type" content="website">
 <meta property="og:title" content="OpenContact — pistes &amp; contacts partagés">
@@ -16,8 +16,6 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo/piste-a-reseau.svg">
 <link rel="apple-touch-icon" href="icon.svg">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-<link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com">
 <link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
@@ -25,21 +23,20 @@
 <a class="skip" href="#main">Aller au contenu</a>
 <div class="app">
 
-  <!-- ============ HEADER ============ -->
   <header class="hdr">
-    <a class="brand" href="#/pistes" aria-label="OpenContact — accueil">
+    <a class="brand" href="#/aujourdhui" aria-label="OpenContact — accueil">
       <img src="assets/logo/piste-a-reseau.svg" width="22" height="22" alt="">
       <b>OPEN-CONTACT</b>
     </a>
     <nav class="topnav" aria-label="Navigation principale">
-      <a href="#/pistes" data-r="pistes">Pistes</a>
-      <a href="#/suivi" data-r="suivi">Mon suivi</a>
+      <a href="#/aujourdhui" data-r="aujourdhui">Aujourd’hui</a>
+      <a href="#/pistes" data-r="pistes">Mes pistes</a>
       <a href="#/echanger" data-r="echanger">Échanger</a>
-      <button id="btnMoreTop" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu">Plus <span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/chevron-down.svg);mask-image:url(assets/icons/chevron-down.svg)" aria-hidden="true"></span></button>
+      <a href="#/moi" data-r="moi">Moi</a>
     </nav>
     <div class="hdr-actions">
       <button class="btn btn-ghost icon-btn" id="btnTheme" aria-label="Thème clair ou sombre" title="Thème clair / sombre"><span class="ic" style="-webkit-mask-image:url(assets/icons/invert.svg);mask-image:url(assets/icons/invert.svg)" aria-hidden="true"></span></button>
-      <button class="btn btn-primary btn-cta" id="btnCTA"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Ajouter une piste</button>
+      <button class="btn btn-primary btn-cta" id="btnAddTop"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Ajouter une piste</button>
     </div>
   </header>
 
@@ -49,274 +46,10 @@
   </div>
 
   <main class="main" id="main">
-
-    <!-- ============ VUE PISTES ============ -->
-    <section class="view" id="view-pistes">
-      <div class="toolbar">
-        <div class="search-wrap">
-          <input class="search" id="q" type="search" placeholder="Chercher : entreprise, contact, ville, techno…" aria-label="Rechercher une piste" title="Astuce : la touche / amène directement ici">
-          <button class="q-clear" id="qClear" hidden aria-label="Effacer la recherche">✕</button>
-        </div>
-        <div class="vswitch" role="group" aria-label="Mode d'affichage">
-          <button data-vm="map" class="on" title="Carte" aria-label="Carte" aria-pressed="true"><span class="ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span><span> Carte</span></button>
-          <button data-vm="list" title="Liste" aria-label="Liste" aria-pressed="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/bulletlist.svg);mask-image:url(assets/icons/bulletlist.svg)" aria-hidden="true"></span><span> Liste</span></button>
-          <button data-vm="grid" title="Grille" aria-label="Grille" aria-pressed="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/grid-3x3.svg);mask-image:url(assets/icons/grid-3x3.svg)" aria-hidden="true"></span><span> Grille</span></button>
-        </div>
-        <button class="btn btn-sm btn-filters" id="btnFilters" aria-expanded="false" aria-controls="fDrawer" aria-label="Filtres"><span class="ic" style="-webkit-mask-image:url(assets/icons/settings-2.svg);mask-image:url(assets/icons/settings-2.svg)" aria-hidden="true"></span><span class="bf-txt"> Filtres</span><span class="bf-n" id="bfN" hidden></span></button>
-        <span class="count-line" id="countLine"></span>
-        <div class="fdrawer" id="fDrawer">
-          <select id="fDomain" aria-label="Filtrer par domaine"><option value="">Domaine</option></select>
-          <span class="fpriv"><select id="fStatus" aria-label="Filtrer par statut privé"><option value="">Mon statut</option></select><span class="tag-priv">Privé</span></span>
-          <select id="fSort" aria-label="Trier les pistes">
-            <option value="recent">Récentes</option>
-            <option value="score">Complètes d'abord</option>
-            <option value="az">A → Z</option>
-            <option value="dist">Plus proches</option>
-            <option value="status">Par mon statut</option>
-            <option value="contacts">Plus de contacts</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="pistes-body">
-        <div class="mode-carte" id="modeCarte">
-          <aside class="results" id="results">
-            <div class="drag-zone" id="dragZone" role="button" tabindex="0" aria-label="Fermer la liste"><div class="drag" aria-hidden="true"></div></div>
-            <div class="list" id="list"></div>
-          </aside>
-          <div class="map-wrap">
-            <div id="map" role="application" aria-label="Carte des pistes"></div>
-            <button class="loc-btn" id="locBtn" title="Centrer sur ma position (jamais enregistrée)" aria-label="Centrer la carte sur ma position"><span class="ic" style="-webkit-mask-image:url(assets/icons/gps.svg);mask-image:url(assets/icons/gps.svg)" aria-hidden="true"></span></button>
-            <div class="legend folded" id="legend">
-              <div class="lg-head" id="lgHead" role="button" tabindex="0" aria-expanded="false">
-                <span>Légende</span>
-                <div class="lg-toggle" id="lgToggle">
-                  <button data-mode="domain" class="on" aria-pressed="true">Domaine</button>
-                  <button data-mode="status" aria-pressed="false">Statut</button>
-                </div>
-              </div>
-              <div class="lg-items" id="lgItems"></div>
-            </div>
-            <button class="fab fab-list" id="fabList"><span class="ic" style="-webkit-mask-image:url(assets/icons/bulletlist.svg);mask-image:url(assets/icons/bulletlist.svg)" aria-hidden="true"></span> Pistes</button>
-            <button class="fab fab-add" id="fabAdd" aria-label="Ajouter une piste"><span class="ic" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Ajouter</button>
-          </div>
-        </div>
-
-        <div class="mode-flat" id="modeFlat" hidden>
-          <div class="flat-inner" id="flatInner"></div>
-        </div>
-
-        <div class="empty-map" id="emptyMap" hidden>
-          <div class="em-bar">OpenContact</div>
-          <div class="em-body">
-            <h2>Toutes les pistes utiles, au même endroit</h2>
-            <div class="em-principle">
-              <span><span class="ic ic-24" style="-webkit-mask-image:url(assets/icons/search.svg);mask-image:url(assets/icons/search.svg)" aria-hidden="true"></span>Trouve</span>
-              <span><span class="ic ic-24" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span>Contribue</span>
-              <span><span class="ic ic-24" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span>Partage</span>
-            </div>
-            <p>Entreprises, contacts, conseils : ce que chacun découvre profite à tous.</p>
-            <div class="em-actions">
-              <button class="btn btn-primary" id="btnAddEmpty">Ajouter ma première piste</button>
-              <button class="btn" id="btnImportEmpty">Importer des pistes reçues</button>
-              <button class="btn" id="btnDemoEmpty">Voir un exemple</button>
-              <button class="btn" id="btnLocEmpty">Autour de moi</button>
-            </div>
-          </div>
-        </div>
-        <button class="fab fab-map" id="fabMap"><span class="ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span> Carte</button>
-      </div>
-    </section>
-
-    <!-- ============ VUE SUIVI ============ -->
-    <section class="view page" id="view-suivi" hidden>
-      <div class="page-inner">
-        <h2>Mon suivi <span class="tag-priv">Privé</span></h2>
-        <div class="sub">Visible uniquement par toi, jamais partagé.</div>
-        <div class="stats" id="stats"></div>
-        <div class="due-banner" id="dueBanner" hidden></div>
-        <details class="fs" id="jrWrap" hidden>
-          <summary>Mon journal — mes actions récentes</summary>
-          <div class="fs-b"><ul class="timeline" id="jrList"></ul></div>
-        </details>
-        <div id="trackBody"></div>
-      </div>
-    </section>
-
-    <!-- ============ VUE ÉCHANGER ============ -->
-    <section class="view page" id="view-echanger" hidden>
-      <div class="page-inner">
-        <h2>Échanger des pistes</h2>
-        <div class="sub">De la main à la main, par fichier ou copier-coller — ton suivi privé ne part jamais.</div>
-
-        <div class="io-seg" role="tablist" aria-label="Recevoir ou donner">
-          <button id="segRecv" class="on" role="tab" aria-selected="true"><span class="ic" style="-webkit-mask-image:url(assets/icons/inbox.svg);mask-image:url(assets/icons/inbox.svg)" aria-hidden="true"></span> Recevoir</button>
-          <button id="segGive" role="tab" aria-selected="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/upload.svg);mask-image:url(assets/icons/upload.svg)" aria-hidden="true"></span> Donner</button>
-        </div>
-
-        <div id="ioRecv">
-          <div class="pcard">
-            <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/inbox.svg);mask-image:url(assets/icons/inbox.svg)" aria-hidden="true"></span> Recevoir des pistes</h3>
-            <p class="pd">On t'a envoyé un fichier <b>.oc</b> ou un texte ? Ouvre-le ici. La fusion <b>ajoute</b> les pistes et contacts inconnus et <b>complète</b> tes fiches — elle n'écrase jamais ce que tu as déjà, et un bouton « Annuler » reste affiché ~30 s.</p>
-            <div class="pos-btns"><button class="btn" id="btnOpenFile"><span class="ic" style="-webkit-mask-image:url(assets/icons/folder.svg);mask-image:url(assets/icons/folder.svg)" aria-hidden="true"></span> Ouvrir le fichier reçu</button></div>
-            <input type="file" id="ioFile" accept=".oc,.json,.txt" hidden>
-            <textarea class="io-ta" id="ioTA" spellcheck="false" style="margin-top:9px" placeholder="… ou colle ici le texte reçu" aria-label="Zone de réception"></textarea>
-            <div class="field" id="ioPassWrap" hidden style="margin:9px 0 0"><label for="ioPass">Mot de passe du fichier</label><input id="ioPass" type="password" autocomplete="off"></div>
-            <div class="pos-btns" style="margin-top:9px"><button class="btn btn-primary" id="btnMerge"><span class="ic" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span> Fusionner dans mes pistes</button></div>
-          </div>
-        </div>
-
-        <div id="ioGive" hidden>
-          <div class="pcard">
-            <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/upload.svg);mask-image:url(assets/icons/upload.svg)" aria-hidden="true"></span> Donner mes pistes</h3>
-            <p class="pd">Génère un fichier à envoyer à ta promo. <span class="tag-priv">Privé</span> Statut, notes, dates, journal, CV : jamais inclus.</p>
-            <div class="scope" role="radiogroup" aria-label="Pistes à inclure">
-              <label><input type="radio" name="shareScope" id="scopeAll" value="all" checked> Toutes (<span id="shareAllCount">0</span>)</label>
-              <label><input type="radio" name="shareScope" id="scopeSel" value="sel"> Ma sélection (<span id="shareSelCount">0</span>)</label>
-              <button class="btn btn-sm" id="btnPick">Choisir les pistes…</button>
-            </div>
-            <div class="pos-btns">
-              <button class="btn btn-primary" id="btnDownload"><span class="ic" style="-webkit-mask-image:url(assets/icons/download.svg);mask-image:url(assets/icons/download.svg)" aria-hidden="true"></span> Télécharger le fichier .oc</button>
-              <button class="btn" id="btnCopy"><span class="ic" style="-webkit-mask-image:url(assets/icons/copy.svg);mask-image:url(assets/icons/copy.svg)" aria-hidden="true"></span> Copier</button>
-            </div>
-            <div class="hint" id="giveHint">Sans mot de passe, le fichier est lisible par quiconque le reçoit.</div>
-            <details class="fs" id="fsPass" style="margin-top:11px">
-              <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> Mot de passe de groupe (optionnel)</summary>
-              <div class="fs-b">
-                <div class="pw-row">
-                  <input id="sharePass" type="password" placeholder="Mot de passe de groupe" autocomplete="new-password" aria-label="Mot de passe de groupe">
-                  <button class="btn icon-btn" id="btnEye" aria-label="Afficher ou masquer le mot de passe" aria-pressed="false"><span class="ic" style="-webkit-mask-image:url(assets/icons/eye.svg);mask-image:url(assets/icons/eye.svg)" aria-hidden="true"></span></button>
-                </div>
-                <div class="pw-row" id="pass2Row" hidden>
-                  <input id="sharePass2" type="password" placeholder="Confirme le mot de passe" autocomplete="new-password" aria-label="Confirmation du mot de passe">
-                </div>
-                <div class="hint">Fichier réellement chiffré (AES) : illisible sans ce mot de passe — perdu = irrécupérable, aucune clé cachée dans le site.</div>
-              </div>
-            </details>
-          </div>
-          <div class="pcard">
-            <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> Ma sauvegarde <span class="tag-priv">Privé inclus</span></h3>
-            <p class="pd">Pour changer d'appareil, ou dormir tranquille. À refaire régulièrement.</p>
-            <label class="enc-check"><input type="checkbox" id="backupEnc"> Chiffrer avec le mot de passe de groupe ci-dessus</label>
-            <div class="pos-btns"><button class="btn" id="btnExport"><span class="ic" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> Télécharger ma sauvegarde</button></div>
-            <div class="stor-line" id="storLine"></div>
-          </div>
-        </div>
-
-        <details class="fs fs-danger" style="margin-top:4px">
-          <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/square-alert.svg);mask-image:url(assets/icons/square-alert.svg)" aria-hidden="true"></span> Zone avancée — actions destructives</summary>
-          <div class="fs-b">
-            <div class="hint" style="margin:4px 0 8px">Fais toujours une copie de sécurité avant :</div>
-            <div class="pos-btns">
-              <button class="btn btn-sm" id="btnBackupNow"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> Sauvegarder d'abord</button>
-              <button class="btn btn-sm" id="btnSelDelete"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/trash.svg);mask-image:url(assets/icons/trash.svg)" aria-hidden="true"></span> Choisir des pistes à supprimer</button>
-              <button class="btn btn-sm btn-danger" id="btnDeleteAll">Tout supprimer</button>
-              <button class="btn btn-sm btn-danger" id="btnImport">Remplacer tout</button>
-            </div>
-            <div class="hint" style="margin-top:8px">« Remplacer tout » restaure une sauvegarde : colle-la (ou ouvre-la) d'abord dans « Recevoir ».</div>
-          </div>
-        </details>
-      </div>
-    </section>
-
-    <!-- ============ VUE MES DOCS ============ -->
-    <section class="view page" id="view-docs" hidden>
-      <div class="page-inner">
-        <h2>Mon profil, mes docs &amp; mes modèles <span class="tag-priv">Privé</span></h2>
-        <div class="sub">Pour générer tes emails en un clic. <span class="saved-flag" id="docsSaved"></span></div>
-        <div class="pcard">
-          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/user.svg);mask-image:url(assets/icons/user.svg)" aria-hidden="true"></span> Mon profil</h3>
-          <p class="pd">Remplit automatiquement <b>{{moi}}</b>, <b>{{formation}}</b>, <b>{{tel}}</b>, <b>{{email}}</b>, <b>{{cv}}</b>, <b>{{portfolio}}</b> dans tes modèles.</p>
-          <div class="grid2">
-            <div class="field"><label for="pName">Nom complet</label><input id="pName" data-p="name" placeholder="Prénom Nom"></div>
-            <div class="field"><label for="pFormation">Formation / poste visé</label><input id="pFormation" data-p="formation" placeholder="Titre AIS (Bac+3/4)"></div>
-            <div class="field"><label for="pPhone">Téléphone</label><input id="pPhone" data-p="phone" type="tel" placeholder="06 12 34 56 78"></div>
-            <div class="field"><label for="pEmail">Email</label><input id="pEmail" data-p="email" type="email" placeholder="prenom.nom@mail.fr"></div>
-            <div class="field"><label for="pCv">Lien CV</label><input id="pCv" data-p="cvUrl" type="url" placeholder="https://…"></div>
-            <div class="field"><label for="pPortfolio">Portfolio / LinkedIn</label><input id="pPortfolio" data-p="portfolio" type="url" placeholder="https://…"></div>
-          </div>
-        </div>
-        <div class="pcard">
-          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/attachment.svg);mask-image:url(assets/icons/attachment.svg)" aria-hidden="true"></span> Mon CV &amp; ma lettre (PDF)</h3>
-          <p class="pd">Toujours sous la main au moment d'écrire un email (bouton « Écrire » d'une piste). Stockés <b>à part de tes pistes</b> : même lourds, ils ne peuvent ni les bloquer ni les faire perdre — et ils ne partent <b>jamais</b> dans un fichier partagé.</p>
-          <div id="docSlots"></div>
-        </div>
-        <div class="pcard">
-          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/note.svg);mask-image:url(assets/icons/note.svg)" aria-hidden="true"></span> Lettre de motivation type</h3>
-          <div class="field"><textarea id="pLetter" data-p="letter" style="min-height:140px" placeholder="Madame, Monsieur, …" aria-label="Lettre de motivation type"></textarea></div>
-        </div>
-        <div class="pcard">
-          <h3><span class="ic" style="-webkit-mask-image:url(assets/icons/mail.svg);mask-image:url(assets/icons/mail.svg)" aria-hidden="true"></span> Modèles d'emails</h3>
-          <p class="pd">Utilisables depuis n'importe quelle piste (bouton « Écrire »). Variables : <b>{{entreprise}}</b>, <b>{{contact}}</b>, <b>{{ville}}</b>.</p>
-          <div id="tplList"></div>
-          <button class="btn btn-sm" id="btnAddTpl">+ Nouveau modèle</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ VUE PROMPTS ============ -->
-    <section class="view page" id="view-prompts" hidden>
-      <div class="page-inner">
-        <h2>Prompts IA</h2>
-        <div class="sub">ChatGPT · Claude · Gemini · Mistral… — pour collecter et formater des pistes propres.</div>
-        <div id="promptList"></div>
-        <div class="callout warn">Une IA peut inventer. Vérifie emails, téléphones et noms avant de contacter — un champ vide vaut mieux qu'un champ faux.</div>
-      </div>
-    </section>
-
-    <!-- ============ VUE AIDE ============ -->
-    <section class="view page" id="view-guide" hidden>
-      <div class="page-inner guide">
-        <h2>Aide</h2>
-        <div class="sub">Les réponses aux questions fréquentes — le reste s'apprend en utilisant.</div>
-
-        <h3>Comment ça marche ?</h3>
-        <p><b>1.</b> Cherche une entreprise, un contact ou une ville. <b>2.</b> Consulte les pistes (carte, liste ou grille) — depuis une fiche : « Écrire », « Itinéraire ». <b>3.</b> Contribue en ajoutant une piste utile. <b>4.</b> Échange tes pistes avec ta promo (page « Échanger ») — par fichier ou copier-coller. <b>5.</b> Pour candidater en série : « Sélectionner » dans la liste, puis « Prospecter » — les pistes défilent une par une, chaque email reste personnel. <b>6.</b> Ton suivi et ton journal restent privés.</p>
-
-        <h3>Qu'est-ce qui est partagé, qu'est-ce qui reste privé ?</h3>
-        <p><span class="tag-share">Partagé</span> : entreprise, ville, contacts professionnels, technos, types de postes, process, conseils.<br><span class="tag-priv">Privé</span> : ton statut, tes notes, tes dates, ton historique, ton journal, ton CV et ta lettre — jamais inclus dans un fichier « à partager ». Tu peux aussi choisir précisément <b>quelles pistes</b> partent dans le fichier (« Ma sélection »).</p>
-
-        <h3>Le mot de passe de groupe, comment ça marche ?</h3>
-        <p>Si tu en choisis un au moment d'exporter, le fichier est <b>réellement chiffré</b> (AES) : illisible sans ce mot de passe, y compris par nous — il n'existe aucune clé cachée dans le site. Il t'est demandé <b>deux fois</b> pour éviter la faute de frappe, car si le groupe le perd, personne ne peut récupérer le contenu. Et soyons honnêtes : une personne qui possède le mot de passe peut évidemment copier les données une fois le fichier ouvert — aucun outil ne peut l'empêcher.</p>
-
-        <h3>L'indice de complétude, c'est quoi ?</h3>
-        <p>Le petit chiffre sur chaque fiche mesure si elle est <b>complète, récente et confirmée</b> (bouton « J'ai vérifié ces infos »). Touche le chiffre pour voir le détail. C'est un indicateur d'entretien de la fiche, <b>pas une garantie d'exactitude</b>.</p>
-
-        <h3>Services tiers (transparence)</h3>
-        <p>OpenContact ne possède aucun serveur, mais trois services externes sont utilisés : les <b>fonds de carte</b> (CARTO / OpenStreetMap), le <b>géocodage</b> — l'adresse que tu tapes est envoyée à Nominatim (OpenStreetMap) uniquement quand tu cliques « Depuis l'adresse » — et les <b>polices</b> (Google Fonts, transmission d'adresse IP). Ta position GPS, elle, ne quitte jamais ton appareil.</p>
-
-        <h3>Questions fréquentes</h3>
-        <ul>
-          <li><b>Où sont mes données ?</b> Dans ton navigateur, sur cet appareil. Pas de serveur, pas de compte. Fais une sauvegarde (page « Échanger ») régulièrement et pour changer d'appareil — le bouton « Télécharger » crée un fichier <code>.oc</code>.</li>
-          <li><b>Hors-ligne ? Installer l'app ?</b> Après ta première visite, OpenContact fonctionne <b>sans connexion</b> (seuls la carte et le géocodage ont besoin du réseau). Tu peux aussi l'installer comme une app : menu du navigateur → « Ajouter à l'écran d'accueil » / « Installer ».</li>
-          <li><b>La fusion peut-elle écraser mes pistes ?</b> Non : elle ajoute les nouveautés, complète les champs vides, ajoute les contacts inconnus — et ne touche jamais à ce que tu as déjà. Les informations divergentes sont comptées, pas importées. Et juste après une fusion, un bouton <b>« Annuler »</b> reste affiché ~30 secondes pour revenir en arrière.</li>
-          <li><b>Une piste sans position sur la carte ?</b> Elle reste pleinement visible en Liste et en Grille.</li>
-          <li><b>Me rendre sur place ?</b> Ouvre la fiche d'une piste qui a une adresse ou une position → <b>Itinéraire</b> : ton application de navigation (Plans, Google Maps, Waze…) prend le relais.</li>
-          <li><b>L'historique d'une piste ?</b> Il garde les 40 derniers événements (création, statuts, emails préparés, notes, contacts…) — les plus anciens s'effacent d'eux-mêmes. Le journal de « Mon suivi » regroupe, lui, tes actions récentes toutes pistes confondues.</li>
-          <li><b>Supprimer plusieurs pistes ?</b> Dans la liste : « Sélectionner », puis « Supprimer ». Ou « Tout supprimer » dans la zone avancée de la page « Échanger » (après sauvegarde !).</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- ============ VUE À PROPOS ============ -->
-    <section class="view page" id="view-apropos" hidden>
-      <div class="page-inner guide">
-        <h2>À propos</h2>
-        <div class="sub">Open source · local-first · communautaire · version <span id="appVer"></span></div>
-        <h3>Pourquoi OpenContact</h3>
-        <p>Chercher un stage, c'est refaire cent fois le travail que d'autres ont déjà fait : trouver les bonnes entreprises, le bon contact, le bon process. Cette connaissance devrait se partager, pas se re-fabriquer. Chaque promotion devrait laisser la carte plus riche pour la suivante.</p>
-        <h3>Qui suis-je</h3>
-        <p>[À personnaliser] Je suis <b>[ton prénom]</b>, étudiant en <b>Titre AIS (Bac+3/4)</b>. J'ai créé OpenContact pendant ma propre recherche de stage — d'abord pour moi, puis pour ma promo, maintenant pour tous.</p>
-        <h3>Les principes</h3>
-        <ul>
-          <li><b>Local-first</b> : tes données vivent chez toi, sans compte ni serveur.</li>
-          <li><b>Communautaire</b> : les pistes circulent de personne à personne, comme un dépôt Git.</li>
-          <li><b>Honnête</b> : pas de pub, pas de tracking, pas de promesses techniques impossibles.</li>
-          <li><b>Open source</b> : code lisible et améliorable par tous — <b>[lien de ton dépôt GitHub]</b>. Auto-tests intégrés : ajoute <code>?test</code> à l'URL.</li>
-        </ul>
-        <div class="callout">Contact : <b>[ton email ou LinkedIn]</b> — retours et idées bienvenus. Licence suggérée : MIT.</div>
-      </div>
-    </section>
+    <section class="view" id="view-aujourdhui" hidden aria-label="Aujourd’hui"></section>
+    <section class="view" id="view-pistes" hidden aria-label="Mes pistes"></section>
+    <section class="view" id="view-echanger" hidden aria-label="Échanger"></section>
+    <section class="view" id="view-moi" hidden aria-label="Moi"></section>
   </main>
 
   <footer class="statusbar">
@@ -326,214 +59,18 @@
     <span>OpenContact <span id="sbVer"></span> · fichier .oc</span>
   </footer>
 
-  <!-- ============ NAV BASSE (mobile) ============ -->
   <nav class="bottomnav" aria-label="Navigation mobile">
-    <a href="#/pistes" data-r="pistes"><span class="ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span>Pistes</a>
-    <a href="#/suivi" data-r="suivi"><span class="ic" style="-webkit-mask-image:url(assets/icons/clipboard.svg);mask-image:url(assets/icons/clipboard.svg)" aria-hidden="true"></span>Suivi</a>
+    <a href="#/aujourdhui" data-r="aujourdhui"><span class="ic" style="-webkit-mask-image:url(assets/icons/zap.svg);mask-image:url(assets/icons/zap.svg)" aria-hidden="true"></span>Aujourd’hui</a>
+    <a href="#/pistes" data-r="pistes"><span class="ic" style="-webkit-mask-image:url(assets/icons/briefcase.svg);mask-image:url(assets/icons/briefcase.svg)" aria-hidden="true"></span>Pistes</a>
     <button class="bn-add" id="bnAdd" aria-label="Ajouter une piste"><span class="ic ic-20" style="-webkit-mask-image:url(assets/icons/plus.svg);mask-image:url(assets/icons/plus.svg)" aria-hidden="true"></span></button>
     <a href="#/echanger" data-r="echanger"><span class="ic" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span>Échanger</a>
-    <a href="#" id="btnMore" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"><span class="ic" style="-webkit-mask-image:url(assets/icons/more-horizontal.svg);mask-image:url(assets/icons/more-horizontal.svg)" aria-hidden="true"></span>Plus</a>
+    <a href="#/moi" data-r="moi"><span class="ic" style="-webkit-mask-image:url(assets/icons/user.svg);mask-image:url(assets/icons/user.svg)" aria-hidden="true"></span>Moi</a>
   </nav>
-  <div class="moremenu" id="moreMenu" role="menu">
-    <a href="#/docs" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/user.svg);mask-image:url(assets/icons/user.svg)" aria-hidden="true"></span> Mon profil, docs &amp; modèles</a>
-    <a href="#/prompts" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/sparkles.svg);mask-image:url(assets/icons/sparkles.svg)" aria-hidden="true"></span> Prompts IA</a>
-    <a href="#/guide" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/book-open.svg);mask-image:url(assets/icons/book-open.svg)" aria-hidden="true"></span> Aide</a>
-    <a href="#/apropos" role="menuitem"><span class="ic" style="-webkit-mask-image:url(assets/icons/info-box.svg);mask-image:url(assets/icons/info-box.svg)" aria-hidden="true"></span> À propos</a>
-    <button id="miInstall" role="menuitem" hidden><span class="ic" style="-webkit-mask-image:url(assets/icons/download.svg);mask-image:url(assets/icons/download.svg)" aria-hidden="true"></span> Installer l'app</button>
-  </div>
-
-  <!-- ============ BARRE DE SÉLECTION ============ -->
-  <div class="selbar" id="selBar" role="toolbar" aria-label="Sélection de pistes">
-    <div class="sel-row">
-      <span id="selCount">0 sélectionnée</span>
-      <span class="grow"></span>
-      <button class="btn btn-sm" id="selAll">Tout</button>
-      <button class="btn btn-sm" id="selNone">Aucune</button>
-      <button class="btn btn-sm" id="selCancel" aria-label="Annuler la sélection">✕</button>
-    </div>
-    <div class="sel-row sel-actions">
-      <button class="btn btn-sm btn-primary" id="selOk"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/check.svg);mask-image:url(assets/icons/check.svg)" aria-hidden="true"></span> Valider ma sélection</button>
-      <button class="btn btn-sm btn-primary" id="selQueue" hidden><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/mail.svg);mask-image:url(assets/icons/mail.svg)" aria-hidden="true"></span> Prospecter</button>
-      <button class="btn btn-sm" id="selShare" hidden><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span> Partager</button>
-      <button class="btn btn-sm btn-danger" id="selDel" hidden><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/trash.svg);mask-image:url(assets/icons/trash.svg)" aria-hidden="true"></span> Supprimer</button>
-    </div>
-  </div>
 
 </div><!-- /.app -->
 
-<!-- ============ MODALE PISTE ============ -->
-<div class="overlay" id="ovForm">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
-    <div class="modal-h"><h2 id="formTitle">Ajouter une piste</h2><button class="x" id="xForm" aria-label="Fermer">✕</button></div>
-    <div class="modal-b">
-
-      <div class="field"><label for="fName">Entreprise / structure *</label><input id="fName" placeholder="Ex : Orange Cyberdefense"></div>
-      <div class="grid2">
-        <div class="field"><label for="fCity">Ville</label><input id="fCity" placeholder="Ex : Lille"></div>
-        <div class="field"><label for="fDom">Domaine</label><select id="fDom"></select></div>
-      </div>
-      <div class="hint" style="margin:-4px 0 13px">Ça suffit pour enregistrer — le reste se complète quand tu veux (ou par quelqu'un d'autre).</div>
-
-      <details class="fs" id="fsContacts">
-        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/contact.svg);mask-image:url(assets/icons/contact.svg)" aria-hidden="true"></span> Contacts <span class="bf-n" id="fsCtN" hidden></span> <span class="tag-share">Partagé</span></summary>
-        <div class="fs-b">
-          <div id="contactsBox"></div>
-          <button class="btn btn-sm" id="btnAddContact">+ Ajouter un contact</button>
-          <div class="hint">RH, recruteur, manager, ancien stagiaire, email générique… tout contact utile compte : c'est l'or à partager.</div>
-        </div>
-      </details>
-
-      <details class="fs" id="fsPlace">
-        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span> Adresse &amp; carte <span class="tag-share">Partagé</span></summary>
-        <div class="fs-b">
-          <div class="field"><label for="fAddr">Adresse complète</label><input id="fAddr" placeholder="N°, rue, code postal, ville"></div>
-          <div class="pos-box">
-            <div class="pos-val" id="posVal">Pas de position — la piste restera visible en Liste et Grille.</div>
-            <div class="pos-btns">
-              <button class="btn btn-sm" id="btnGeo"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/search.svg);mask-image:url(assets/icons/search.svg)" aria-hidden="true"></span> Depuis l'adresse</button>
-              <button class="btn btn-sm" id="btnPlace"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span> Placer sur la carte</button>
-              <button class="btn btn-sm" id="btnMyPos"><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/gps.svg);mask-image:url(assets/icons/gps.svg)" aria-hidden="true"></span> Ma position</button>
-              <button class="btn btn-sm btn-ghost" id="btnClearPos">Effacer</button>
-            </div>
-            <div class="hint" id="posHint"></div>
-          </div>
-        </div>
-      </details>
-
-      <details class="fs" id="fsDetails">
-        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/info-box.svg);mask-image:url(assets/icons/info-box.svg)" aria-hidden="true"></span> Plus de détails <span class="tag-share">Partagé</span></summary>
-        <div class="fs-b">
-          <div class="field"><label for="fDesc">Activité en une phrase</label><input id="fDesc" placeholder="Ex : ESN infra & sécurité, ~200 salariés"></div>
-          <div class="field">
-            <label id="lblPositions">Contrats proposés</label>
-            <div class="checks" id="fPositions" role="group" aria-labelledby="lblPositions"></div>
-            <div class="hint">Ce que cette structure propose (ou a déjà proposé) — pas ce que toi tu cherches.</div>
-          </div>
-          <div class="field"><label for="fTechs">Technologies</label><input id="fTechs" placeholder="Windows Server, Azure, Fortinet…"></div>
-          <div class="field"><label for="fWeb">Site web</label><input id="fWeb" type="url" placeholder="https://…"></div>
-          <div class="field"><label for="fProcess">Process de recrutement</label><textarea id="fProcess" placeholder="Ex : appel RH → entretien technique (1 h) → réponse sous 2 semaines"></textarea></div>
-          <div class="field"><label for="fTips">Conseils &amp; retours d'expérience</label><textarea id="fTips" placeholder="Ex : la spontanée marche bien, citer la certif CCNA…"></textarea></div>
-        </div>
-      </details>
-
-      <details class="fs" id="fsSuivi">
-        <summary><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> Mon suivi <span class="tag-priv">Privé, jamais partagé</span></summary>
-        <div class="fs-b">
-          <div class="grid2">
-            <div class="field"><label for="fSta">Statut</label><select id="fSta"></select></div>
-            <div class="field"><label for="fAppl">Candidature envoyée le</label><input id="fAppl" type="date"></div>
-            <div class="field"><label for="fNext">Prochaine action le</label><input id="fNext" type="date"></div>
-          </div>
-          <div class="field"><label for="fNotes">Notes perso</label><textarea id="fNotes" placeholder="Échange avec M. X le 12/03, rappeler la semaine prochaine…"></textarea></div>
-          <div class="field" id="histWrap" hidden><label>Historique</label><ul class="timeline" id="histList"></ul></div>
-        </div>
-      </details>
-
-    </div>
-    <div class="modal-f">
-      <button class="btn btn-danger" id="btnDelete" hidden>Supprimer</button>
-      <button class="btn btn-ghost" id="btnCancel">Annuler</button>
-      <button class="btn btn-primary" id="btnSave">Enregistrer la piste</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ MODALE FICHE ============ -->
-<div class="overlay" id="ovCard">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Détail de la piste">
-    <div class="modal-h"><h2 id="cardTitle">Piste</h2><button class="x" id="xCard" aria-label="Fermer">✕</button></div>
-    <div class="modal-b" id="cardBody"></div>
-    <div class="modal-f" id="cardFoot"></div>
-  </div>
-</div>
-
-<!-- ============ MODALE EMAIL ============ -->
-<div class="overlay" id="ovMail">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mailTitle">
-    <div class="modal-h"><h2 id="mailTitle">Écrire</h2><button class="x" id="xMail" aria-label="Fermer">✕</button></div>
-    <div class="modal-b">
-      <div class="grid2">
-        <div class="field"><label for="mailTo">Destinataire</label><select id="mailTo"></select></div>
-        <div class="field"><label for="mailTpl">Modèle</label><select id="mailTpl"></select></div>
-      </div>
-      <div class="field"><label for="mailSubj">Objet</label><input id="mailSubj"></div>
-      <div class="field"><label for="mailBody">Message</label><textarea id="mailBody" style="min-height:180px"></textarea></div>
-      <p class="hint" id="mailHint"></p>
-      <div class="pos-btns" id="mailDocs" hidden style="margin-top:6px"></div>
-    </div>
-    <div class="modal-f">
-      <button class="btn btn-ghost" id="btnMailSkip" hidden>Passer →</button>
-      <button class="btn" id="btnMailCopy">Copier</button>
-      <a class="btn btn-primary" id="btnMailto" href="#" style="text-decoration:none">Ouvrir dans Mail</a>
-      <button class="btn" id="btnMailSent">Envoyée</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ BIENVENUE (premier lancement uniquement) ============ -->
-<div class="overlay" id="ovWelcome">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="obTitle" style="max-width:430px">
-    <div class="modal-h"><h2 id="obTitle">Bienvenue</h2><button class="x" id="obX" aria-label="Fermer">✕</button></div>
-    <div class="modal-b">
-      <div class="ob-step" data-ob="0">
-        <span class="ic ic-32 ob-ic" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span>
-        <h3 class="ob-h">Tes données restent chez toi</h3>
-        <p class="ob-p">Pas de compte, pas de serveur : tout vit dans ce navigateur. Pense à la sauvegarde (page « Échanger ») pour changer d'appareil.</p>
-      </div>
-      <div class="ob-step" data-ob="1" hidden>
-        <span class="ic ic-32 ob-ic" style="-webkit-mask-image:url(assets/icons/map-pin.svg);mask-image:url(assets/icons/map-pin.svg)" aria-hidden="true"></span>
-        <h3 class="ob-h">Trouve et enrichis des pistes</h3>
-        <p class="ob-p">Entreprises, contacts, conseils — sur la carte ou en liste. Un nom et une ville suffisent pour commencer ; chaque fiche se complète avec le temps.</p>
-      </div>
-      <div class="ob-step" data-ob="2" hidden>
-        <span class="ic ic-32 ob-ic" style="-webkit-mask-image:url(assets/icons/share.svg);mask-image:url(assets/icons/share.svg)" aria-hidden="true"></span>
-        <h3 class="ob-h">Partage avec ta promo</h3>
-        <p class="ob-p">Tes pistes circulent par fichiers .oc, de la main à la main. Ton suivi — statuts, notes, dates — reste privé : il ne part jamais dans un partage.</p>
-      </div>
-      <div class="ob-nav">
-        <span class="ob-dots" id="obDots" aria-hidden="true"></span>
-        <span class="ob-count" id="obCount">1/3</span>
-      </div>
-    </div>
-    <div class="modal-f">
-      <button class="btn btn-ghost" id="obSkip">Passer</button>
-      <button class="btn btn-primary" id="obNext">Suivant</button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ MODALE CONFIRMATION (actions destructives) ============ -->
-<div class="overlay" id="ovConfirm">
-  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="cfTitle" aria-describedby="cfMsg" style="max-width:430px">
-    <div class="modal-h"><h2 id="cfTitle">Confirmer ?</h2><button class="x" id="cfX" aria-label="Fermer">✕</button></div>
-    <div class="modal-b">
-      <p id="cfMsg" style="font-size:13.5px;line-height:1.6;color:var(--muted)"></p>
-      <div class="field" id="cfVerifyWrap" hidden style="margin-top:12px">
-        <label for="cfVerify">Tape <b style="color:var(--danger)">SUPPRIMER</b> pour confirmer</label>
-        <input id="cfVerify" autocomplete="off" autocapitalize="characters" spellcheck="false">
-      </div>
-    </div>
-    <div class="modal-f">
-      <button class="btn btn-ghost" id="cfCancel">Annuler</button>
-      <button class="btn btn-danger" id="cfOk">Confirmer</button>
-    </div>
-  </div>
-</div>
-
-<div class="place-banner" id="placeBanner">
-  <span>Touche la carte pour placer la piste</span>
-  <button id="btnCancelPlace">Annuler</button>
-</div>
-
-<div class="undo-bar" id="undoBar" hidden>
-  <span id="undoMsg" role="status" aria-live="polite"></span>
-  <button class="btn btn-sm" id="btnUndo">Annuler</button>
-  <button class="x" id="undoX" aria-label="Fermer sans annuler">✕</button>
-</div>
-
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

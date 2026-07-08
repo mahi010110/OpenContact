@@ -48,6 +48,7 @@ export function mergeIncoming(list, companies){
     if (!ex){
       x.id = uid(); x.demo = false;
       x.status = 'todo'; x.notes = ''; x.appliedAt = ''; x.nextAction = '';          /* le privé ne s'importe jamais */
+      x.nextActionText = ''; x.closedAt = ''; x.closedReason = '';
       x.history = [{ d: todayISO(), t: 'Reçue via partage' }];
       companies.push(x);
       stats.addedC++;
