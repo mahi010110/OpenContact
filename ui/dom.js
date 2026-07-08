@@ -83,7 +83,9 @@ export function openSheet(o){
     ov, body, close,
     setTitle(t){ ov.querySelector('.modal-h h2 span').textContent = t; },
     setFoot(content){
+      /* remplace — les feuilles à étapes rappellent setFoot à chaque écran */
       foot.hidden = false;
+      foot.innerHTML = '';
       if (typeof content === 'string') foot.innerHTML = content;
       else foot.append(...[].concat(content));
     }

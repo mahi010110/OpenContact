@@ -22,6 +22,12 @@ function doneTodayCount(){
   return S.journal.filter(e => e.t >= +start &&
     (e.txt.startsWith('Fait :') || e.txt.startsWith('Email envoyé') || e.txt.startsWith('Clôturée'))).length;
 }
+/* pistes arrivées par partage aujourd'hui — le petit accès « reçu de la promo » */
+function receivedTodayCount(){
+  const today = todayISO();
+  return S.companies.filter(c =>
+    (c.history || []).some(h => h.t === 'Reçue via partage' && h.d === today)).length;
+}
 
 function rowHTML(c){
   const verb = c.nextActionText || 'Faire le point';
@@ -82,7 +88,8 @@ export function renderToday(){
          <div class="td-date">${frToday()}</div>
        </div>
        ${done ? `<div class="done-line">${ic('check', 'ic-14')} ${done} action${done > 1 ? 's' : ''} faite${done > 1 ? 's' : ''} aujourd’hui</div>` : ''}
-       ${S.orphans.length ? `<button class="td-chip" data-go="pistes">${ic('contact', 'ic-14')} ${S.orphans.length} contact${S.orphans.length > 1 ? 's' : ''} à rattacher</button>` : ''}`;
+       ${S.orphans.length ? `<button class="td-chip" data-go="pistes">${ic('contact', 'ic-14')} ${S.orphans.length} contact${S.orphans.length > 1 ? 's' : ''} à rattacher</button>` : ''}
+       ${receivedTodayCount() ? `<button class="td-chip" data-go="pistes">${ic('inbox', 'ic-14')} reçu de la promo : ${receivedTodayCount()}</button>` : ''}`;
 
   if (!alive.length && !S.companies.length){
     /* première visite : la promesse, puis un seul geste */
@@ -139,7 +146,7 @@ export function renderToday(){
   root.querySelectorAll('.tr-more').forEach(b =>
     b.addEventListener('click', () => { expanded.add(b.dataset.tr); renderToday(); }));
   const goPistes = () => { location.hash = '#/pistes'; };
-  root.querySelector('[data-go="pistes"]')?.addEventListener('click', goPistes);
+  root.querySelectorAll('[data-go="pistes"]').forEach(b => b.addEventListener('click', goPistes));
   root.querySelector('#tdNoAct')?.addEventListener('click', goPistes);
   root.querySelector('#tdeAdd')?.addEventListener('click', () => openCapture());
   root.querySelector('#tdeDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le quand tu veux.'); });

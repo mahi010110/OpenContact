@@ -569,6 +569,54 @@ a.fk-v{display:inline-flex;align-items:center;gap:5px}
 .pk.on .pk-m span{color:var(--select-text);opacity:.75}
 .pk.on .ic-on{color:var(--select-text)}
 
+/* ============ ÉCHANGER : QR, SCAN, APERÇU, ANNULER ============ */
+.qr-wrap{
+  background:#fff;border:1px solid var(--border-strong);box-shadow:var(--shadow-raised);
+  padding:16px;max-width:300px;margin:0 auto 12px;
+}
+.qr-wrap svg{display:block;width:100%;height:auto}
+.scan-box{
+  position:relative;background:#000;border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-raised);overflow:hidden;aspect-ratio:1/1;max-height:46dvh;margin-bottom:10px;
+}
+.scan-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-mark{
+  position:absolute;inset:14%;border:2px solid #fff;
+  clip-path:polygon(0 0,26% 0,26% 6%,6% 6%,6% 26%,0 26%,0 0,
+    100% 0,100% 26%,94% 26%,94% 6%,74% 6%,74% 0,
+    100% 100%,74% 100%,74% 94%,94% 94%,94% 74%,100% 74%,
+    0 100%,0 74%,6% 74%,6% 94%,26% 94%,26% 100%);
+  opacity:.9;pointer-events:none;
+}
+.rc-recap{text-align:left}
+.rc-big{
+  font-size:var(--text-16);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight);
+  margin-bottom:10px;
+}
+.rc-lines{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:6px}
+.rc-lines li{
+  display:flex;align-items:center;gap:8px;font-size:var(--text-13);
+  padding:7px 10px;background:var(--surface-chrome);border:1px solid var(--border-soft);border-radius:var(--radius-1);
+}
+.rc-lines .rc-warn{color:var(--amber);border-color:var(--amber);background:var(--amber-wash)}
+.undo-bar{
+  position:fixed;left:50%;transform:translateX(-50%);z-index:3600;
+  bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:12px;width:calc(100% - 24px);max-width:480px;
+  background:var(--surface-window);border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-modal);padding:9px 12px;
+  font-family:var(--font-mono);font-size:var(--text-12);line-height:1.45;
+  animation:oc-up var(--dur-3) var(--ease-steps);
+}
+.undo-bar span{flex:1;min-width:0}
+.undo-bar .btn{flex:none}
+/* le toast laisse la place à la barre Annuler quand elle est là */
+body:has(.undo-bar) .toast{bottom:calc(var(--nav-h) + 76px + env(safe-area-inset-bottom))}
+@media (min-width:901px){
+  .undo-bar{bottom:40px}
+  body:has(.undo-bar) .toast{bottom:100px}
+}
+
 /* ============ ALERTE SAUVEGARDE / TOAST ============ */
 .save-warn{
   position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:3500;
