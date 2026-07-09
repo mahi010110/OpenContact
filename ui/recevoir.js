@@ -9,7 +9,7 @@ import { parseInput } from '../engine/exchange.js';
 import { mergeIncoming } from '../engine/merge.js';
 import { normalizeCompany } from '../engine/model.js';
 import { S, bus, saveData, logJ } from './state.js';
-import { openSheet, toast, btn, ic } from './dom.js';
+import { openSheet, toast, btn, ic, showUndo } from './dom.js';
 import { startScan } from './qr.js';
 
 export function openRecevoir(){
@@ -136,23 +136,14 @@ export function openRecevoir(){
 }
 
 /* ---- « Annuler » ~30 s : l'instantané d'avant fusion, restauré tel quel ---- */
-let undoTimer = null;
 function offerUndo(snapshot, stats){
-  document.querySelector('.undo-bar')?.remove();
-  clearTimeout(undoTimer);
-  const bar = document.createElement('div');
-  bar.className = 'undo-bar';
-  bar.innerHTML =
-    `<span>${ic('check', 'ic-14')} Fusion faite : +${stats.addedC} nouvelle${stats.addedC > 1 ? 's' : ''}, ${stats.enriched} complétée${stats.enriched > 1 ? 's' : ''}.</span>
-     <button class="btn btn-sm" id="undoMerge">${ic('undo', 'ic-14')} Annuler</button>`;
-  document.body.append(bar);
-  bar.querySelector('#undoMerge').addEventListener('click', () => {
-    S.companies = JSON.parse(snapshot).map(normalizeCompany);
-    saveData();
-    logJ('Fusion annulée');
-    bar.remove();
-    bus.refresh();
-    toast('Fusion annulée — tout est revenu comme avant.');
-  });
-  undoTimer = setTimeout(() => bar.remove(), 30000);
+  showUndo(
+    `${ic('check', 'ic-14')} Fusion faite : +${stats.addedC} nouvelle${stats.addedC > 1 ? 's' : ''}, ${stats.enriched} complétée${stats.enriched > 1 ? 's' : ''}.`,
+    () => {
+      S.companies = JSON.parse(snapshot).map(normalizeCompany);
+      saveData();
+      logJ('Fusion annulée');
+      bus.refresh();
+      toast('Fusion annulée — tout est revenu comme avant.');
+    });
 }

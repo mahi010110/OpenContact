@@ -61,7 +61,7 @@ function applyTheme(t, persist){
   $('#btnTheme').addEventListener('click', () => applyTheme(S.theme === 'dark' ? 'light' : 'dark', true));
   $('#bnAdd').addEventListener('click', () => openCapture());
   $('#btnAddTop').addEventListener('click', () => openCapture());
-  $('#swExport').addEventListener('click', downloadBackup);
+  $('#swExport').addEventListener('click', () => downloadBackup());   /* secours : brut, sans question */
 
   /* clavier : « / » saute à la recherche des pistes */
   document.addEventListener('keydown', e => {

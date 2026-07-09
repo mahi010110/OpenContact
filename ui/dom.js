@@ -106,6 +106,18 @@ document.addEventListener('keydown', e => {
   else if (!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
 });
 
+/* barre « Annuler » ~30 s — pour les gestes lourds mais réversibles
+   (fusion, restauration) : le clic rejoue l'instantané fourni */
+let undoTimer = null;
+export function showUndo(msgHTML, onUndo){
+  document.querySelector('.undo-bar')?.remove();
+  clearTimeout(undoTimer);
+  const bar = el(`<div class="undo-bar"><span>${msgHTML}</span></div>`);
+  bar.append(btn('Annuler', 'btn-sm', () => { bar.remove(); onUndo(); }, 'undo'));
+  document.body.append(bar);
+  undoTimer = setTimeout(() => bar.remove(), 30000);
+}
+
 /* confirmation simple — remplace confirm() natif */
 export function confirmSheet(o){
   return new Promise(resolve => {
