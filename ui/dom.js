@@ -70,10 +70,31 @@ export function openSheet(o){
     if (o.onClose) o.onClose(result);
     if (prevFocus && prevFocus.focus){ try { prevFocus.focus(); } catch (e) {} }
   }
-  const rec = { ov, close };
+  const rec = { ov, close, dismissible: o.dismissible !== false };
   stack.push(rec);
   ov.addEventListener('click', e => { if (e.target === ov && o.dismissible !== false) close(); });
   ov.querySelector('.x').addEventListener('click', () => close());
+  /* tactile : glisser la barre de titre vers le bas referme la feuille */
+  if (matchMedia('(pointer:coarse)').matches && o.dismissible !== false){
+    const head = ov.querySelector('.modal-h');
+    const modal = ov.querySelector('.modal');
+    let y0 = null, dy = 0;
+    head.addEventListener('touchstart', e => {
+      y0 = e.touches[0].clientY; dy = 0;
+      modal.style.transition = 'none';
+    }, { passive: true });
+    head.addEventListener('touchmove', e => {
+      if (y0 == null) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      modal.style.transform = dy ? `translateY(${dy}px)` : '';
+    }, { passive: true });
+    head.addEventListener('touchend', () => {
+      modal.style.transition = '';
+      if (dy > 90) close();
+      else modal.style.transform = '';
+      y0 = null;
+    });
+  }
   document.body.append(ov);
   requestAnimationFrame(() => {
     const f = (o.focus && ov.querySelector(o.focus)) || ov.querySelector('.x');
@@ -97,7 +118,7 @@ export function topSheet(){ return stack[stack.length - 1] || null; }
 document.addEventListener('keydown', e => {
   if (!stack.length) return;
   const top = stack[stack.length - 1];
-  if (e.key === 'Escape'){ e.preventDefault(); top.close(); return; }
+  if (e.key === 'Escape'){ e.preventDefault(); if (top.dismissible) top.close(); return; }
   if (e.key !== 'Tab') return;
   const f = focusables(top.ov);
   if (!f.length){ e.preventDefault(); return; }

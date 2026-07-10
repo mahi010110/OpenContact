@@ -8,8 +8,8 @@
 import { esc, fmtDate, isLate, debounce, directionsUrl } from '../engine/utils.js';
 import { STATUSES, CLOSE_REASONS, DOMAINS, POSITIONS } from '../engine/model.js';
 import { scoreOf } from '../engine/score.js';
-import { bus, isClosed, setStatus, saveData, reopenPiste } from './state.js';
-import { openSheet, toast, btn, ic } from './dom.js';
+import { bus, isClosed, setStatus, saveData, reopenPiste, deletePiste, undeletePiste } from './state.js';
+import { openSheet, confirmSheet, toast, btn, ic, showUndo } from './dom.js';
 import { frDate, relLabel } from './dates.js';
 import { askNextAction, askClose } from './actions.js';
 import { openMail } from './mail.js';
@@ -52,7 +52,7 @@ export function openFiche(c){
                ? `<div class="na-cur"><b>${esc(c.nextActionText || 'Faire le point')}</b>
                     <span>${frDate(c.nextAction)} · ${relLabel(c.nextAction)}</span></div>
                   <button class="btn btn-sm" id="fiNa">Modifier</button>`
-               : `<div class="na-cur na-none">Aucune — c’est elle qui fait vivre « Aujourd’hui »</div>
+               : `<div class="na-cur na-none">Aucune — planifie la suite</div>
                   <button class="btn btn-sm btn-primary" id="fiNa">Planifier</button>`}
            </div>
          </div>`}
@@ -75,7 +75,7 @@ export function openFiche(c){
              </div>
              ${t.note ? `<div class="ct-note">${esc(t.note)}</div>` : ''}
            </div>`).join('')}</div>` :
-         '<p class="hint" style="margin:0">Personne pour l’instant — un nom et un email augmentent tes chances de réponse.</p>'}
+         '<p class="hint" style="margin:0">Personne pour l’instant — ajoute au moins un email.</p>'}
        </div>
        ${know ? `
          <div class="field"><label>À savoir</label>
@@ -93,13 +93,14 @@ export function openFiche(c){
          <div class="fi-row">${ic('map-pin', 'ic-14')} <span>${esc(c.address || c.city)}</span>
            ${dirs ? `<a class="btn btn-sm" href="${esc(dirs)}" target="_blank" rel="noopener">${ic('directions', 'ic-14')} Itinéraire</a>` : ''}
          </div>` : ''}
-       <div class="field"><label for="fiNotes">Mes notes ${ic('lock', 'ic-14')} <span class="lbl-soft">privées, jamais partagées</span></label>
+       <div class="field"><label for="fiNotes">Mes notes ${ic('lock', 'ic-14')} <span class="lbl-soft">privées</span></label>
          <textarea id="fiNotes" placeholder="Échange avec M. X le 12/03, rappeler la semaine prochaine…">${esc(c.notes)}</textarea></div>
        ${(c.history || []).length ? `
          <details class="fi-hist"><summary>Historique</summary>
            <ul class="timeline">${c.history.slice().reverse().slice(0, 10).map(h =>
              `<li><span class="d">${esc(fmtDate(h.d))}</span><span>${esc(h.t)}</span></li>`).join('')}</ul>
-         </details>` : ''}`;
+         </details>` : ''}
+       <button class="linklike fi-del" id="fiDel">${ic('trash', 'ic-14')} Supprimer la piste</button>`;
 
     /* branchements */
     sh.body.querySelector('#fiEdit').addEventListener('click', () => openEditPiste(c, render));
@@ -114,6 +115,21 @@ export function openFiche(c){
     if (na) na.addEventListener('click', () => askNextAction(c, { onDone: render }));
     const ro = sh.body.querySelector('#fiReopen');
     if (ro) ro.addEventListener('click', () => { reopenPiste(c); render(); bus.refresh(); toast('Piste rouverte.'); });
+    sh.body.querySelector('#fiDel').addEventListener('click', async () => {
+      const ok = await confirmSheet({
+        title: 'Supprimer cette piste ?', danger: true, okLabel: 'Supprimer', icon: 'trash',
+        msg: `<b>${esc(c.name)}</b> sera supprimée — aussi de tes appareils synchronisés.`
+      });
+      if (!ok) return;
+      deletePiste(c);
+      sh.close();
+      bus.refresh();
+      showUndo(`${ic('check', 'ic-14')} « ${esc(c.name)} » supprimée.`, () => {
+        undeletePiste(c);
+        bus.refresh();
+        toast('Piste restaurée.');
+      });
+    });
     sh.body.querySelector('#fiNotes').addEventListener('input', debounce(e => {
       c.notes = e.target.value;
       c.updatedAt = Date.now();

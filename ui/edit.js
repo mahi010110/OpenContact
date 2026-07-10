@@ -14,7 +14,7 @@ const FIELDS = ['name','city','domain','desc','website','address','techs','proce
 export function openEditPiste(c, onDone){
   const sh = openSheet({ title: 'Modifier — ' + c.name, icon: 'pencil', className: 'modal-fiche', focus: '#edName' });
   sh.body.innerHTML =
-    `<p class="hint" style="margin:0 0 14px"><span class="tag-share">partagé</span> Ces infos partent dans un partage de piste — ton suivi (statut, notes, actions) jamais.</p>
+    `<p class="hint" style="margin:0 0 14px"><span class="tag-share">partagé</span> Ces infos circulent dans les partages — ton suivi jamais.</p>
      <div class="grid2">
        <div class="field"><label for="edName">Entreprise *</label><input id="edName" value="${esc(c.name)}"></div>
        <div class="field"><label for="edCity">Ville</label><input id="edCity" value="${esc(c.city)}"></div>

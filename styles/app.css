@@ -391,7 +391,9 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   width:100%;max-width:560px;border-radius:var(--radius-0);
   box-shadow:var(--shadow-modal);
   max-height:92dvh;display:flex;flex-direction:column;
+  transition:transform .18s ease;
 }
+@media (pointer:coarse){ .modal-h{touch-action:none} }
 .modal-h{
   display:flex;align-items:center;gap:8px;flex:none;
   min-height:var(--titlebar-h);padding:3px 4px 3px 10px;
@@ -434,6 +436,24 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   font-family:var(--font-mono);font-size:var(--text-12);font-weight:var(--weight-medium);color:var(--text-muted);
 }
 .na-company::before{content:'';width:8px;height:8px;flex:none;border:1px solid var(--border-strong);background:var(--teal)}
+/* ---- direct (P2P) ---- */
+.sy-phrase{display:flex;justify-content:center;margin:6px 0 10px}
+.sy-phrase span{
+  font-family:var(--font-mono);font-size:20px;font-weight:var(--weight-bold);
+  letter-spacing:.08em;padding:10px 16px;user-select:all;
+  border:1px dashed var(--border-strong);background:var(--surface-chrome);
+}
+.sy-status{
+  display:flex;align-items:center;gap:8px;justify-content:center;margin-top:12px;
+  font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted);
+}
+.sy-log{margin-top:10px}
+
+.date-row{display:flex;gap:8px;align-items:stretch}
+.date-row input{flex:1;min-width:0}
+.date-row .btn{flex:none}
+.fi-del{color:var(--red);margin-top:16px}
+.fi-del:hover{color:var(--red)}
 .datechips{display:flex;gap:7px;flex-wrap:wrap}
 .dchip{
   flex:1 1 auto;min-height:var(--ctl);padding:0 12px;

@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+<!-- CSP : filet de sécurité — un contenu piégé reçu de la promo ne peut ni
+     charger ni exécuter quoi que ce soit d'extérieur. wss: = P2P (relais). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://nominatim.openstreetmap.org wss:; media-src 'self' blob:; object-src 'none'; base-uri 'self'">
 <title>OpenContact — le fil de ta recherche, partagé avec ta promo</title>
 <meta name="description" content="OpenContact répond à « je fais quoi maintenant ? » dans ta recherche de stage, d'alternance ou d'emploi — et fait circuler les bonnes pistes dans ta promo. Local-first, sans compte, open source.">
 <meta name="theme-color" id="metaTheme" content="#F7F6F1">
@@ -55,8 +58,8 @@
   </header>
 
   <div class="save-warn" id="saveWarn" hidden role="alert">
-    <span>Sauvegarde impossible sur cet appareil — tes modifications seront perdues à la fermeture.</span>
-    <button id="swExport">Exporter maintenant</button>
+    <span>Sauvegarde impossible ici — exporte avant de fermer.</span>
+    <button id="swExport">Exporter</button>
   </div>
 
   <main class="main" id="main">
@@ -67,10 +70,9 @@
   </main>
 
   <footer class="statusbar">
-    <span><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/save.svg);mask-image:url(assets/icons/save.svg)" aria-hidden="true"></span> données locales — jamais de serveur</span>
-    <span><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> suivi privé, jamais partagé</span>
+    <span><span class="ic ic-14" style="-webkit-mask-image:url(assets/icons/lock.svg);mask-image:url(assets/icons/lock.svg)" aria-hidden="true"></span> local &amp; privé — sans serveur</span>
     <span class="grow"></span>
-    <span>OpenContact <span id="sbVer"></span> · fichier .oc</span>
+    <span>OpenContact <span id="sbVer"></span></span>
   </footer>
 
   <nav class="bottomnav" aria-label="Navigation mobile">

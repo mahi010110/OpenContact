@@ -7,7 +7,7 @@
    ============================================================ */
 import { APP_VERSION } from './engine/model.js';
 import { THEME_KEY, kvSet } from './engine/storage.js';
-import { S, bus, loadAll } from './ui/state.js';
+import { S, bus, loadAll, reloadFromStorage } from './ui/state.js';
 import { $, $$, toast } from './ui/dom.js';
 import { renderToday } from './ui/today.js';
 import { renderPistes } from './ui/pistes.js';
@@ -28,6 +28,9 @@ function routeFromHash(){
   return VIEWS[r] ? r : 'aujourdhui';
 }
 function render(){
+  /* un autre onglet a écrit pendant qu'une feuille était ouverte :
+     on recharge maintenant que la voie est libre */
+  if (S.stale && !document.querySelector('.overlay')){ reloadFromStorage(); return; }
   for (const k in VIEWS) $('#view-' + k).hidden = (k !== S.route);
   VIEWS[S.route]();
   $$('[data-r]').forEach(a => {
@@ -55,6 +58,10 @@ function applyTheme(t, persist){
   await loadAll();
   applyTheme(S.theme, false);
   $('#sbVer').textContent = APP_VERSION;
+
+  /* demander au navigateur de ne jamais purger le stockage (Safari
+     efface sinon les données d'un site non visité depuis 7 jours) */
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   /* navigation */
   window.addEventListener('hashchange', applyRoute);

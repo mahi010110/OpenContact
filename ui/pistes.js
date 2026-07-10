@@ -85,19 +85,15 @@ function orphansHTML(){
                    <button class="btn btn-sm btn-primary" data-attach="${o.id}">Rattacher</button>
                  </div>`;
        }).join('')}</div>
-       <p class="hint">Un contact vit mieux dans sa fiche entreprise — rattache-le dès que tu sais où.</p>
      </details>`);
 }
 
 export function renderPistes(){
   const root = $('#view-pistes');
   const wide = mqWide.matches;
-  const all = filterCompanies(S.companies, { q, sort: 'recent' });
-  const alive = all.filter(c => !isClosed(c));
-  const closed = all.filter(isClosed);
   const nAlive = S.companies.filter(c => !isClosed(c)).length;
 
-  let html =
+  root.innerHTML =
     `<div class="page-inner${wide ? ' page-wide' : ''}">
        <div class="td-head">
          <h2>Mes pistes</h2>
@@ -108,68 +104,74 @@ export function renderPistes(){
          <input class="search" id="piQ" type="search" placeholder="Chercher : entreprise, contact, ville, techno…"
                 aria-label="Rechercher une piste" value="${esc(q)}">
        </div>
-       ${orphansHTML()}`;
-  if (!S.companies.length){
-    html +=
-      `<div class="td-empty">
-         <div class="tde-ic">${ic('briefcase', 'ic-24')}</div>
-         <h3>Aucune piste pour l’instant</h3>
-         <p>Chaque entreprise croisée est une piste — même avec juste un nom.</p>
-         <div class="tde-actions">
-           <button class="btn btn-primary" id="piAdd">${ic('plus', 'ic-14')} Ajouter une piste</button>
-           ${!hasDemo() ? '<button class="btn" id="piDemo">Voir un exemple</button>' : ''}
-         </div>
-       </div>`;
-  } else if (!all.length){
-    html += `<div class="empty-list">Rien ne correspond à « ${esc(q)} ».</div>`;
-  } else {
-    html += wide ? boardHTML(alive) : `<div class="rows">${alive.map(rowHTML).join('')}</div>`;
-    if (closed.length){
-      html +=
-        `<details class="tranche tr-closed">
-           <summary class="tr-h">${ic('archive', 'ic-14')} Clôturées <span class="tr-n">${closed.length}</span></summary>
-           <div class="rows">${closed.map(rowHTML).join('')}</div>
-         </details>`;
-    }
-  }
-  html += '</div>';
-  root.innerHTML = html;
+       <div id="piBody"></div>
+     </div>`;
 
-  const input = root.querySelector('#piQ');
-  if (input){
-    let h = null;
-    input.addEventListener('input', () => {
-      clearTimeout(h);
-      h = setTimeout(() => {
-        q = input.value;
-        renderPistes();
-        const nq = root.querySelector('#piQ');
-        nq.focus();
-        nq.setSelectionRange(nq.value.length, nq.value.length);
-      }, 220);
-    });
-  }
   const openById = id => {
     const c = S.companies.find(x => x.id === id);
     if (c) openFiche(c);
   };
-  root.querySelectorAll('.row-item').forEach(r => {
-    r.addEventListener('click', () => openById(r.dataset.id));
-    r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openById(r.dataset.id); } });
-  });
-  root.querySelectorAll('.bcard').forEach(b =>
-    b.addEventListener('click', () => openById(b.dataset.id)));
-  /* bac : la ligne édite, le bouton rattache */
-  root.querySelectorAll('.orow').forEach(r => {
-    const o = () => S.orphans.find(x => x.id === r.dataset.oid);
-    const edit = () => { const ct = o(); if (ct) openContactEditor({ contact: ct }); };
-    r.querySelector('.o-main').addEventListener('click', edit);
-    r.querySelector('.o-main').addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); edit(); }
+
+  /* le corps se re-rend seul pendant la frappe — le champ de recherche
+     reste le même nœud, le curseur ne saute plus */
+  const renderBody = () => {
+    const body = root.querySelector('#piBody');
+    const all = filterCompanies(S.companies, { q, sort: 'recent' });
+    const alive = all.filter(c => !isClosed(c));
+    const closed = all.filter(isClosed);
+
+    let html = orphansHTML();
+    if (!S.companies.length){
+      html +=
+        `<div class="td-empty">
+           <div class="tde-ic">${ic('briefcase', 'ic-24')}</div>
+           <h3>Aucune piste pour l’instant</h3>
+           <p>Chaque entreprise croisée est une piste — même avec juste un nom.</p>
+           <div class="tde-actions">
+             <button class="btn btn-primary" id="piAdd">${ic('plus', 'ic-14')} Ajouter une piste</button>
+             ${!hasDemo() ? '<button class="btn" id="piDemo">Voir un exemple</button>' : ''}
+           </div>
+         </div>`;
+    } else if (!all.length){
+      html += `<div class="empty-list">Rien ne correspond à « ${esc(q)} ».</div>`;
+    } else {
+      html += wide ? boardHTML(alive) : `<div class="rows">${alive.map(rowHTML).join('')}</div>`;
+      if (closed.length){
+        html +=
+          `<details class="tranche tr-closed">
+             <summary class="tr-h">${ic('archive', 'ic-14')} Clôturées <span class="tr-n">${closed.length}</span></summary>
+             <div class="rows">${closed.map(rowHTML).join('')}</div>
+           </details>`;
+      }
+    }
+    body.innerHTML = html;
+
+    body.querySelectorAll('.row-item').forEach(r => {
+      r.addEventListener('click', () => openById(r.dataset.id));
+      r.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openById(r.dataset.id); } });
     });
-    r.querySelector('[data-attach]').addEventListener('click', () => { const ct = o(); if (ct) openAttach(ct); });
+    body.querySelectorAll('.bcard').forEach(b =>
+      b.addEventListener('click', () => openById(b.dataset.id)));
+    /* bac : la ligne édite, le bouton rattache */
+    body.querySelectorAll('.orow').forEach(r => {
+      const o = () => S.orphans.find(x => x.id === r.dataset.oid);
+      const edit = () => { const ct = o(); if (ct) openContactEditor({ contact: ct }); };
+      r.querySelector('.o-main').addEventListener('click', edit);
+      r.querySelector('.o-main').addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); edit(); }
+      });
+      r.querySelector('[data-attach]').addEventListener('click', () => { const ct = o(); if (ct) openAttach(ct); });
+    });
+    body.querySelector('#piAdd')?.addEventListener('click', () => openCapture());
+    body.querySelector('#piDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le depuis « Aujourd’hui ».'); });
+  };
+
+  const input = root.querySelector('#piQ');
+  let h = null;
+  input.addEventListener('input', () => {
+    clearTimeout(h);
+    h = setTimeout(() => { q = input.value; renderBody(); }, 180);
   });
   root.querySelector('#piProspect')?.addEventListener('click', openProspect);
-  root.querySelector('#piAdd')?.addEventListener('click', () => openCapture());
-  root.querySelector('#piDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le depuis « Aujourd’hui ».'); });
+  renderBody();
 }

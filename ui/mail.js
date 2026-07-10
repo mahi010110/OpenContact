@@ -36,7 +36,7 @@ export function openMail(c, opts){
      <div class="field"><label for="mSubj">Objet</label><input id="mSubj"></div>
      <div class="field"><label for="mBody">Message</label><textarea id="mBody" style="min-height:170px"></textarea></div>
      <p class="hint" id="mHint"></p>
-     ${!S.profile.name ? `<p class="hint warn">Ton profil est vide — remplis-le dans « Moi » et tes emails partiront signés et complets.</p>` : ''}`;
+     ${!S.profile.name ? `<p class="hint warn">Profil vide — remplis-le dans « Moi » pour signer tes emails.</p>` : ''}`;
 
   const q = s => sh.body.querySelector(s);
   const currentCt = () => cts[+q('#mTo').value] || (c.contacts || [])[0] || null;

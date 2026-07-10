@@ -25,7 +25,7 @@ export function openCapture(prefill){
      ${prefill.website ? `<div class="cp-carry">${ic('link', 'ic-14')} <span>${esc(prefill.website)}</span></div>
        <p class="hint">Le lien sera rangé dans la fiche.</p>` : ''}
      <div class="dup-note" id="cpDup" hidden></div>
-     <p class="hint">Ça suffit pour enregistrer — le reste (contacts, détails) se complète quand tu veux, depuis la fiche.</p>
+     <p class="hint">Ça suffit — le reste se complète depuis la fiche.</p>
      <button class="linklike" id="cpOrph">C’est une personne, pas une entreprise ? Ajouter un contact seul</button>`;
   const q = s => sh.body.querySelector(s);
 

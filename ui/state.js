@@ -9,12 +9,14 @@ import { todayISO, fmtDate, uid } from '../engine/utils.js';
 import { STATUSES, CLOSE_REASONS, normalizeCompany, normalizeContact,
          normalizeProfile, pushHist } from '../engine/model.js';
 import { contactKey } from '../engine/merge.js';
-import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, THEME_KEY,
+import { mergeTombs } from '../engine/sync.js';
+import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, THEME_KEY,
          OLD_V2, OLD_V1, kvInit, kvGet, kvSet, getBackend } from '../engine/storage.js';
 
 export const S = {
   companies: [],
   orphans: [],          /* contacts « à rattacher » */
+  tombs: [],            /* suppressions — voyagent vers mes autres appareils */
   profile: null,
   journal: [],          /* privé, jamais partagé */
   theme: 'light',
@@ -27,9 +29,49 @@ export function setSaveWarn(bad){
   const w = document.getElementById('saveWarn');
   if (w) w.hidden = !bad;
 }
-export function saveData(){ kvSet(DATA_KEY, JSON.stringify(S.companies)).then(ok => setSaveWarn(!ok)); }
-export function saveProfile(){ kvSet(PROFILE_KEY, JSON.stringify(S.profile)).then(ok => setSaveWarn(!ok)); }
-export function saveOrphans(){ kvSet(ORPHANS_KEY, JSON.stringify(S.orphans)).then(ok => setSaveWarn(!ok)); }
+/* les autres onglets rechargent quand celui-ci écrit (sinon : dernier
+   écrit = seul gardé, les modifications de l'autre onglet partaient
+   silencieusement à la poubelle) */
+const tabs = ('BroadcastChannel' in window) ? new BroadcastChannel('oc_tabs') : null;
+let selfTab = Math.random().toString(36).slice(2);
+function tellTabs(){
+  if (tabs) tabs.postMessage(selfTab);
+  /* la sync appareils (direct.js) écoute : chaque enregistrement se propage */
+  document.dispatchEvent(new CustomEvent('oc:change'));
+}
+if (tabs) tabs.addEventListener('message', e => {
+  if (e.data === selfTab) return;
+  /* une feuille ouverte = édition en cours : on recharge après, pas pendant */
+  if (document.querySelector('.overlay')){ S.stale = true; return; }
+  reloadFromStorage();
+});
+export async function reloadFromStorage(){
+  S.stale = false;
+  await loadAll();
+  bus.refresh();
+}
+
+export function saveData(){ kvSet(DATA_KEY, JSON.stringify(S.companies)).then(ok => setSaveWarn(!ok)); tellTabs(); }
+export function saveProfile(){
+  S.profile.updatedAt = Date.now();     /* LWW entre appareils */
+  kvSet(PROFILE_KEY, JSON.stringify(S.profile)).then(ok => setSaveWarn(!ok));
+  tellTabs();
+}
+export function saveOrphans(){ kvSet(ORPHANS_KEY, JSON.stringify(S.orphans)).then(ok => setSaveWarn(!ok)); tellTabs(); }
+export function saveTombs(){ kvSet(TOMBS_KEY, JSON.stringify(S.tombs)); }
+/* applique le résultat d'une sync appareils — SANS re-tamponner le profil
+   (saveProfile met updatedAt à maintenant, ce qui fausserait le LWW) */
+export function applySynced(r){
+  S.companies = r.companies;
+  S.orphans = r.orphans;
+  S.tombs = r.tombs;
+  if (r.profile) S.profile = r.profile;
+  kvSet(DATA_KEY, JSON.stringify(S.companies)).then(ok => setSaveWarn(!ok));
+  kvSet(ORPHANS_KEY, JSON.stringify(S.orphans));
+  kvSet(TOMBS_KEY, JSON.stringify(S.tombs));
+  kvSet(PROFILE_KEY, JSON.stringify(S.profile));
+  tellTabs();
+}
 export function logJ(txt, cid){
   S.journal.push({ t: Date.now(), txt, cid: cid || null });
   if (S.journal.length > 200) S.journal = S.journal.slice(-200);
@@ -47,6 +89,7 @@ export async function loadAll(){
   try { S.journal = JSON.parse(await kvGet(JOURNAL_KEY)) || []; } catch (e) { S.journal = []; }
   if (!Array.isArray(S.journal)) S.journal = [];
   try { S.orphans = (JSON.parse(await kvGet(ORPHANS_KEY)) || []).map(normalizeContact); } catch (e) { S.orphans = []; }
+  try { S.tombs = mergeTombs(JSON.parse(await kvGet(TOMBS_KEY)) || [], []); } catch (e) { S.tombs = []; }
   const raw = await kvGet(DATA_KEY);
   if (raw){
     try { S.companies = (JSON.parse(raw) || []).map(normalizeCompany); } catch (e) { S.companies = []; }
@@ -109,6 +152,21 @@ export function reopenPiste(c){
   c.updatedAt = Date.now();
   pushHist(c, 'Rouverte');
   logJ('Rouverte : ' + c.name, c.id);
+  saveData();
+}
+/* suppression définitive — la tombstone voyage vers mes autres appareils */
+export function deletePiste(c){
+  S.companies = S.companies.filter(x => x.id !== c.id);
+  S.tombs = mergeTombs(S.tombs, [{ id: c.id, t: Date.now() }]);
+  saveTombs();
+  saveData();
+  logJ('Supprimée : ' + c.name);
+}
+export function undeletePiste(c){
+  S.tombs = S.tombs.filter(t => t.id !== c.id);
+  c.updatedAt = Date.now();
+  S.companies.push(c);
+  saveTombs();
   saveData();
 }
 

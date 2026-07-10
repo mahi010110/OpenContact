@@ -155,6 +155,7 @@ export function renderToday(){
 
 /* la ligne se vide : petit temps d'effacement, puis la suite */
 function finishRow(row, c){
+  if (row.classList.contains('act-gone')) return;   /* double-tap = un seul « Fait » */
   row.classList.add('act-gone');
   setTimeout(() => {
     markDone(c);

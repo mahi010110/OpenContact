@@ -28,7 +28,7 @@ export function downloadBackup(pass){
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     logJ('Sauvegarde téléchargée' + (pass ? ' (chiffrée)' : ''));
-    toast('Sauvegarde téléchargée — garde-la précieusement.');
+    toast('Sauvegarde téléchargée.');
   };
   return doIt();
 }
@@ -36,10 +36,10 @@ export function downloadBackup(pass){
 function openBackupSheet(){
   const sh = openSheet({ title: 'Ma sauvegarde', icon: 'save' });
   sh.body.innerHTML =
-    `<p class="hint" style="margin:0 0 12px"><span class="tag-priv">privé inclus</span> Tout part dans le fichier : pistes, suivi, profil, contacts à rattacher. C’est pour toi seul — pas pour la promo.</p>
+    `<p class="hint" style="margin:0 0 12px"><span class="tag-priv">privé inclus</span> Tout, dans un fichier — pour toi seul.</p>
      <div class="field"><label for="bkPass">Mot de passe <span class="lbl-soft">— optionnel</span></label>
-       <input id="bkPass" type="password" placeholder="Laisser vide = fichier lisible par tous" autocomplete="new-password">
-       <p class="hint">Chiffré (AES) si tu en mets un. Perdu = sauvegarde irrécupérable.</p></div>`;
+       <input id="bkPass" type="password" placeholder="Vide = lisible par tous" autocomplete="new-password">
+       <p class="hint">Chiffré si tu en mets un — perdu = irrécupérable.</p></div>`;
   sh.setFoot([
     btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Télécharger', 'btn-primary', async () => {
@@ -133,7 +133,7 @@ async function docLine(key, label){
   });
   row.querySelector('[data-del]')?.addEventListener('click', async () => {
     const ok = await confirmSheet({ title: 'Retirer ce document ?', danger: true, okLabel: 'Retirer',
-      msg: 'Le fichier sera retiré de cet appareil (ta copie d’origine n’est pas touchée).' });
+      msg: 'Retiré de cet appareil seulement.' });
     if (!ok) return;
     await docDel(key).catch(() => {});
     docLine(key, label);
@@ -148,7 +148,7 @@ async function docLine(key, label){
       if (f.size > 8 * 1048576){ toast('Trop lourd (8 Mo max) — allège le PDF.'); return; }
       try {
         await docPut(key, { name: f.name, size: f.size, type: f.type, added: Date.now(), blob: f });
-        toast('Document rangé — il reste sur cet appareil.');
+        toast('Document rangé.');
       } catch (e) { toast('Stockage indisponible sur ce navigateur.'); }
       docLine(key, label);
     });
@@ -158,6 +158,17 @@ async function docLine(key, label){
 
 /* ---------- prompts IA : le coup de pouce, pas une rubrique ---------- */
 const PROMPTS = [
+  ['Mes emails → pistes',
+   `Voici des emails liés à ma recherche de stage / alternance / emploi :
+
+[colle ici tes emails — expéditeur, objet, corps]
+
+Extrais-en les entreprises et contacts utiles, et rends UNIQUEMENT un JSON valide (aucun texte autour) à ce format exact :
+{"v":4,"kind":"share","companies":[{"name":"","city":"","domain":"esn|cyber|cloud|dsi|public|startup|industrie|commerce|sante|autre","desc":"","website":"","techs":"","positions":["stage","alternance","cdi","cdd","freelance"],"process":"","tips":"","contacts":[{"name":"","role":"","email":"","phone":"","link":"","note":""}]}]}
+
+Règles : n'invente rien — champ inconnu = vide ; une entrée par entreprise ; regroupe les contacts d'une même entreprise ; "note" = le contexte de l'échange (ex : « a répondu le 12/06, propose un entretien ») ; ignore newsletters et refus automatiques.
+
+Je collerai ce JSON dans OpenContact : Échanger → Recevoir → Coller.`],
   ['Préparer un entretien',
    'Je suis étudiant(e) en [formation] et j’ai un entretien chez [entreprise] pour un [stage/alternance]. Voici ce que je sais : [colle ici la fiche]. Prépare-moi : 5 questions probables, 3 questions intelligentes à poser, et les points de mon profil à mettre en avant.'],
   ['Améliorer un email',
@@ -191,12 +202,11 @@ export function renderMoi(){
          <h3>${ic('attachment', 'ic-14')} CV &amp; lettre <span class="lbl-soft">PDF, sur cet appareil</span></h3>
          <div class="doc-row" id="doc-cv"></div>
          <div class="doc-row" id="doc-lettre"></div>
-         <p class="hint" style="margin-top:8px">Rangés à part des pistes — un PDF lourd ne peut jamais les bloquer.</p>
        </div>
 
        <div class="pcard">
          <h3>${ic('save', 'ic-14')} Ma sauvegarde <span class="tag-priv">privé inclus</span></h3>
-         <p class="pd">Tout — ${S.companies.length} piste${S.companies.length > 1 ? 's' : ''} (dont ${alive} vivante${alive > 1 ? 's' : ''}), suivi, profil — dans un fichier <b>.oc</b>, chiffrable. À refaire régulièrement.</p>
+         <p class="pd">${S.companies.length} piste${S.companies.length > 1 ? 's' : ''} (${alive} vivante${alive > 1 ? 's' : ''}), suivi et profil dans un fichier <b>.oc</b> — à refaire régulièrement.</p>
          <div class="pc-actions">
            <button class="btn btn-primary" id="moiBackup">${ic('download', 'ic-14')} Télécharger</button>
            <button class="btn" id="moiRestore">${ic('reload', 'ic-14')} Restaurer</button>
@@ -207,7 +217,7 @@ export function renderMoi(){
 
        <details class="pcard pcard-details">
          <summary><h3>${ic('sparkles', 'ic-14')} Coup de pouce IA</h3></summary>
-         <p class="pd">Trois amorces à coller dans l’assistant de ton choix — remplace les [crochets] par tes infos.</p>
+         <p class="pd">À coller dans l’assistant de ton choix — remplace les [crochets].</p>
          ${PROMPTS.map((pr, i) =>
            `<div class="prompt-row">
               <b>${pr[0]}</b>
@@ -218,10 +228,10 @@ export function renderMoi(){
        <details class="pcard pcard-details">
          <summary><h3>${ic('book-open', 'ic-14')} Comment ça marche</h3></summary>
          <ul class="help-list">
-           <li><b>Local-first.</b> Tout vit dans ce navigateur — pas de compte, pas de serveur. Qui dit local dit : la sauvegarde, c’est toi.</li>
-           <li><b>Une piste = une entreprise.</b> Donne-lui une <b>prochaine action + une date</b> : c’est ce qui nourrit « Aujourd’hui ».</li>
-           <li><b>Échanger</b> fait circuler les fiches — jamais tes statuts, notes ou actions. Recevoir montre l’aperçu avant, n’écrase rien, et s’annule.</li>
-           <li><b>Raccourci :</b> « / » saute à la recherche des pistes.</li>
+           <li><b>Local-first.</b> Tout vit sur tes appareils — pas de compte, pas de serveur.</li>
+           <li><b>Une piste = une entreprise</b>, avec une prochaine action + une date : c’est ce qui nourrit « Aujourd’hui ».</li>
+           <li><b>Échanger</b> synchronise tes appareils et fait circuler les fiches — jamais ton suivi.</li>
+           <li><b>Raccourci :</b> « / » saute à la recherche.</li>
          </ul>
        </details>
 

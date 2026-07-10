@@ -18,7 +18,8 @@ const QR_SOFT_MAX = 6;        /* au-delà, on propose le fichier d'emblée */
 const QR_HARD_MAX = 1800;     /* caractères OCQ1 : au-delà, un QR devient illisible */
 
 export function openDonner(){
-  const alive = S.companies.filter(c => !isClosed(c))
+  /* jamais les pistes d'exemple : leurs contacts sont fictifs */
+  const alive = S.companies.filter(c => !isClosed(c) && !c.demo)
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   if (!alive.length){ toast('Rien à donner pour l’instant — ajoute d’abord une piste.'); return; }
   const sel = new Set(alive.map(c => c.id));
@@ -30,7 +31,7 @@ export function openDonner(){
   const stepQuoi = () => {
     sh.setTitle('Donner — quoi ?');
     sh.body.innerHTML =
-      `<p class="hint" style="margin:0 0 10px">${ic('lock', 'ic-14')} Ton suivi privé — statuts, notes, actions, historique — <b>ne part jamais</b>. Seule la fiche partageable circule.</p>
+      `<p class="hint" style="margin:0 0 10px">${ic('lock', 'ic-14')} Seules les fiches partent — jamais ton suivi privé.</p>
        <button class="linklike" id="dnAll">Tout cocher / décocher</button>
        <div class="pick-list" style="margin-top:8px">
          ${alive.map(c =>
@@ -80,8 +81,7 @@ export function openDonner(){
            <b>${ic('file', 'ic-14')} Fichier .oc</b>
            <span>partage, téléchargement ou copie — mot de passe possible</span>
          </button>
-       </div>
-       <p class="hint">Depuis un ordinateur, le QR sert aussi de pont vers ton téléphone : affiche-le ici, scanne-le là-bas.</p>`;
+       </div>`;
     q('#dnQR').addEventListener('click', stepQR);
     q('#dnFile').addEventListener('click', stepFile);
     sh.setFoot([btn('← Retour', 'btn-ghost', stepQuoi)]);
@@ -106,8 +106,7 @@ export function openDonner(){
     sh.setTitle(`QR — ${sel.size} piste${sel.size > 1 ? 's' : ''}`);
     sh.body.innerHTML =
       `<div class="qr-wrap" role="img" aria-label="QR à faire scanner">${svg}</div>
-       <p class="hint" style="text-align:center">L’autre personne : <b>Échanger → Recevoir → Scanner</b>.<br>
-       ${ic('lock', 'ic-14')} Sans ton suivi privé — comme toujours.</p>`;
+       <p class="hint" style="text-align:center">L’autre personne : <b>Échanger → Recevoir → Scanner</b>.</p>`;
     logJ('Donné (QR) : ' + sel.size + ' piste(s)');
     sh.setFoot([btn('← Retour', 'btn-ghost', stepComment), btn('Fichier plutôt', '', stepFile), btn('Terminé', 'btn-primary', () => sh.close())]);
   };
@@ -117,15 +116,14 @@ export function openDonner(){
     const n = sel.size;
     sh.setTitle(`Fichier .oc — ${n} piste${n > 1 ? 's' : ''}`);
     sh.body.innerHTML =
-      `<div class="field"><label for="dnPass">Mot de passe <span class="lbl-soft">— optionnel, à donner de vive voix</span></label>
-         <input id="dnPass" type="password" placeholder="Laisser vide = fichier lisible par tous" autocomplete="new-password">
-         <p class="hint">Avec mot de passe : chiffré (AES). Perdu = irrécupérable — c’est le principe.</p></div>
+      `<div class="field"><label for="dnPass">Mot de passe <span class="lbl-soft">— optionnel</span></label>
+         <input id="dnPass" type="password" placeholder="Vide = lisible par tous" autocomplete="new-password">
+         <p class="hint">Chiffré si tu en mets un — perdu = irrécupérable.</p></div>
        <div class="pick-list">
-         ${navigator.share ? `<button class="pick" id="dnShare"><b>${ic('share', 'ic-14')} Partager</b><span>WhatsApp, mail… la feuille de partage du téléphone</span></button>` : ''}
+         ${navigator.share ? `<button class="pick" id="dnShare"><b>${ic('share', 'ic-14')} Partager</b><span>WhatsApp, mail…</span></button>` : ''}
          <button class="pick" id="dnDl"><b>${ic('download', 'ic-14')} Télécharger</b><span>opencontact-pistes-${todayISO()}.oc</span></button>
-         <button class="pick" id="dnCopy"><b>${ic('copy', 'ic-14')} Copier le texte</b><span>à coller dans n’importe quelle messagerie</span></button>
-       </div>
-       <p class="hint">${ic('lock', 'ic-14')} Toujours sans ton suivi privé.</p>`;
+         <button class="pick" id="dnCopy"><b>${ic('copy', 'ic-14')} Copier le texte</b><span>à coller où tu veux</span></button>
+       </div>`;
     const make = async () => {
       const payload = sharePayload(chosen());
       const pass = q('#dnPass').value;

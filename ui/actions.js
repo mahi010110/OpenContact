@@ -17,6 +17,16 @@ const DATE_CHOICES = [
   ['Lundi', nextMondayISO]
 ];
 
+/* champ date + bouton OK : le bouton apparaît dès qu'une date est posée */
+function bindDateOk(root, inputSel, okSel, pick){
+  const inp = root.querySelector(inputSel);
+  const okB = root.querySelector(okSel);
+  const sync = () => { okB.hidden = !inp.value; };
+  inp.addEventListener('input', sync);
+  inp.addEventListener('change', sync);
+  okB.addEventListener('click', () => { if (inp.value) pick(inp.value); });
+}
+
 /* « Et ensuite ? » — un verbe + une date ; taper une date valide et referme */
 export function askNextAction(c, opts){
   opts = opts || {};
@@ -37,7 +47,10 @@ export function askNextAction(c, opts){
        </div>
      </div>
      <div class="field"><label for="naDate">Ou une date précise</label>
-       <input id="naDate" type="date" min="${plusDaysISO(0)}"></div>`;
+       <div class="date-row">
+         <input id="naDate" type="date" min="${plusDaysISO(0)}">
+         <button class="btn btn-primary" id="naOk" hidden>OK</button>
+       </div></div>`;
   const pick = iso => {
     const txt = sh.body.querySelector('#naTxt').value.trim() || 'Faire le point';
     setNextAction(c, txt, iso);
@@ -47,9 +60,9 @@ export function askNextAction(c, opts){
   };
   sh.body.querySelectorAll('.dchip').forEach(b =>
     b.addEventListener('click', () => pick(DATE_CHOICES[+b.dataset.i][1]())));
-  sh.body.querySelector('#naDate').addEventListener('change', e => {
-    if (e.target.value) pick(e.target.value);
-  });
+  /* la date précise se VALIDE : sur mobile, la roue déclenche des
+     `change` intermédiaires — fermer au premier aurait pris la mauvaise date */
+  bindDateOk(sh.body, '#naDate', '#naOk', pick);
   sh.setFoot([btn(opts.laterLabel || 'Plus tard', 'btn-ghost', () => {
     sh.close();
     toast('OK — la piste attend dans « Mes pistes ».');
@@ -67,7 +80,10 @@ export function reportAction(c){
          `<button class="pick" data-i="${i}"><b>${d[0]}</b><span>${frDate(d[1]())}</span></button>`).join('')}
      </div>
      <div class="field" style="margin-top:10px"><label for="rpDate">Ou une date précise</label>
-       <input id="rpDate" type="date" min="${plusDaysISO(0)}"></div>`;
+       <div class="date-row">
+         <input id="rpDate" type="date" min="${plusDaysISO(0)}">
+         <button class="btn btn-primary" id="rpOk" hidden>OK</button>
+       </div></div>`;
   const pick = iso => {
     setNextAction(c, c.nextActionText, iso);
     sh.close();
@@ -76,9 +92,7 @@ export function reportAction(c){
   };
   sh.body.querySelectorAll('.pick').forEach(b =>
     b.addEventListener('click', () => pick(DATE_CHOICES[+b.dataset.i][1]())));
-  sh.body.querySelector('#rpDate').addEventListener('change', e => {
-    if (e.target.value) pick(e.target.value);
-  });
+  bindDateOk(sh.body, '#rpDate', '#rpOk', pick);
 }
 
 /* « Clôturer » — une raison, un tap ; la piste reste dans « Mes pistes » */
@@ -94,7 +108,7 @@ export function askClose(c, opts){
             <span>${k === 'won' ? 'bravo !' : k === 'rejected' ? 'la suivante sera la bonne' : 'on passe à autre chose'}</span>
           </button>`).join('')}
      </div>
-     <p class="hint">${ic('archive', 'ic-14')} Elle quitte « Aujourd’hui » mais reste dans « Mes pistes » — rouvrable à tout moment.</p>`;
+     <p class="hint">${ic('archive', 'ic-14')} Elle reste dans « Mes pistes », rouvrable.</p>`;
   sh.body.querySelectorAll('.pick-close').forEach(b =>
     b.addEventListener('click', () => {
       closePiste(c, b.dataset.r);
