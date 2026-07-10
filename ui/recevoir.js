@@ -6,7 +6,7 @@
    (instantané restauré tel quel).
    ============================================================ */
 import { esc } from '../engine/utils.js';
-import { parseInput } from '../engine/exchange.js';
+import { parseInput, makeOCQJoiner } from '../engine/exchange.js';
 import { mergeIncoming } from '../engine/merge.js';
 import { normalizeCompany } from '../engine/model.js';
 import { S, bus, saveData, logJ } from './state.js';
@@ -44,15 +44,24 @@ export function openRecevoir(){
     sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close())]);
   };
 
-  /* ---- scanner ---- */
+  /* ---- scanner — un QR simple, ou un QR animé assemblé tout seul ---- */
   const scan = async () => {
     sh.setTitle('Scanner');
     sh.body.innerHTML =
       `<div class="scan-box"><video id="rcVideo" playsinline muted></video><div class="scan-mark"></div></div>
+       <div class="scan-prog" id="rcProg" hidden></div>
        <p class="hint" style="text-align:center">Vise le QR — la lecture est automatique.</p>`;
     sh.setFoot([btn('← Retour', 'btn-ghost', menu)]);
+    const joiner = makeOCQJoiner();
     try {
-      stopScan = await startScan(q('#rcVideo'), raw => { halt(); treat(raw); });
+      stopScan = await startScan(q('#rcVideo'), raw => {
+        const part = joiner(raw);
+        if (!part){ halt(); treat(raw); return false; }
+        if (part.done){ halt(); treat(part.text); return false; }
+        const p = q('#rcProg');
+        if (p){ p.hidden = false; p.textContent = `QR animé — reçu ${part.got}/${part.total}, continue de viser`; }
+        return true;   /* il manque des parties : on continue */
+      });
     } catch (e) {
       toast('Caméra indisponible ou refusée — passe par le fichier ou le collage.');
       menu();

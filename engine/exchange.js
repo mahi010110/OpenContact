@@ -46,6 +46,42 @@ export async function decodeOCQ(compact){
   catch (e) { throw new Error('format'); }
 }
 
+/* ---------- OCQP : QR animé (multi-parties) ----------
+   Quand l'OCQ1 déborde d'un QR lisible, la chaîne complète est découpée
+   en tranches « OCQP.<i>.<n>.<tranche> » (i de 1 à n) que l'émetteur fait
+   défiler ; le lecteur réassemble dans n'importe quel ordre puis relit
+   l'OCQ1 obtenu. Plus aucune limite pratique au nombre de fiches,
+   toujours hors ligne. Préfixe inconnu des vieux lecteurs = ignoré. */
+export const OCQP_CHUNK = 800;     /* caractères par tranche : QR dense mais net */
+export const OCQP_MAX = 512;       /* garde-fou : au-delà, c'est un fichier */
+export function splitOCQ(ocq, size){
+  size = size || OCQP_CHUNK;
+  ocq = String(ocq);
+  if (ocq.length <= size) return [ocq];
+  const n = Math.ceil(ocq.length / size);
+  return Array.from({ length: n }, (_, i) =>
+    'OCQP.' + (i + 1) + '.' + n + '.' + ocq.slice(i * size, (i + 1) * size));
+}
+/* réassembleur : nourrir avec chaque lecture ; rend null si ce n'est pas
+   une tranche OCQP, sinon { done, got, total, text } */
+export function makeOCQJoiner(){
+  let total = 0;
+  let parts = {};
+  return raw => {
+    const m = /^OCQP\.(\d+)\.(\d+)\./.exec(String(raw || ''));
+    if (!m) return null;
+    const i = +m[1], n = +m[2];
+    if (n < 2 || i < 1 || i > n || n > OCQP_MAX) return null;
+    if (total && n !== total){ total = 0; parts = {}; }   /* autre séquence : on repart */
+    total = n;
+    parts[i] = String(raw).slice(m[0].length);
+    const got = Object.keys(parts).length;
+    const done = got === n;
+    return { done, got, total: n,
+             text: done ? Array.from({ length: n }, (_, k) => parts[k + 1]).join('') : '' };
+  };
+}
+
 export async function parseInput(raw, pass){
   const s = String(raw || '').trim();
   if (!s) throw new Error('vide');

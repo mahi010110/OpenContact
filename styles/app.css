@@ -451,6 +451,18 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 }
 .sy-log{margin-top:10px}
 .pr-send{width:100%;margin-top:12px}
+.qr-prog,.scan-prog{
+  margin-top:8px;text-align:center;
+  font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted);
+}
+.sy-devs{margin-top:16px}
+.dev-row{
+  display:flex;align-items:center;gap:8px;min-height:var(--ctl);
+  padding:4px 0;border-bottom:1px dashed var(--border-soft);
+}
+.dev-row:last-of-type{border-bottom:0}
+.dev-row b{font-size:var(--text-13);font-weight:var(--weight-semibold)}
+.dev-sub{flex:1;font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted)}
 
 /* ---- autocomplétion d'adresse ---- */
 .ac-wrap{position:relative}

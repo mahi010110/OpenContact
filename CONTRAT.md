@@ -23,6 +23,9 @@ doit être repensée, pas forcée.
 | `oc_tombs_v1` | Suppressions (tombstones, 500 max) — font voyager les suppressions entre MES appareils | JSON : tableau `{id, t}` |
 | `oc_sync_v1` | Phrase de liaison de mes appareils | chaîne |
 | `oc_relays_v1` | Relais P2P personnalisés (optionnel — vide = relais publics) | JSON : tableau d'URLs |
+| `oc_device_v1` | Cet appareil — identité annoncée à la sync | JSON : `{id, name}` |
+| `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
+| `oc_promo_v1` | Dernier mot de passe de salle de promo (confort de saisie) | chaîne |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
@@ -69,6 +72,18 @@ Une enveloppe `kind:"share"` (jamais de privé), compressée par l'API native
 `CompressionStream` puis encodée base64url. Lu par `parseInput` comme les
 autres formats. Si l'API manque (très vieux navigateur), l'émetteur replie
 vers le fichier `.oc` — le format ne change pas.
+
+### Compact multi-parties — OCQP (QR animé)
+
+```
+OCQP.<i>.<n>.<tranche>
+```
+
+Quand l'OCQ1 dépasse ce qu'un seul QR lisible peut porter, la chaîne
+complète est découpée en `n` tranches (`i` de 1 à `n`, 512 max) que
+l'émetteur fait défiler à l'écran ; le lecteur réassemble dans n'importe
+quel ordre puis relit l'OCQ1 obtenu. Un lecteur ancien ignore ce préfixe
+sans casse — et le fichier `.oc` reste toujours possible.
 
 ### Chiffré — OC2 (format actuel)
 

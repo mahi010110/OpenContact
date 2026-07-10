@@ -1,21 +1,22 @@
 /* ============================================================
    OpenContact — interface · Donner à la promo
    Une feuille guidée, une décision à la fois : quoi → comment
-   (QR en personne, ~5 pistes ; ou fichier .oc) → protégé ?
+   (QR en personne — animé en plusieurs parties si besoin, sans
+   limite pratique de fiches ; ou fichier .oc) → protégé ?
    Le suivi privé ne part jamais : tout passe par sharePayload
-   (vue communautaire) ou OCQ1 — les deux l'excluent par
+   (vue communautaire) ou OCQ1/OCQP — qui l'excluent par
    construction.
    ============================================================ */
 import { esc, todayISO } from '../engine/utils.js';
 import { STATUSES } from '../engine/model.js';
-import { sharePayload, encodeOCQ } from '../engine/exchange.js';
+import { sharePayload, encodeOCQ, splitOCQ } from '../engine/exchange.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { S, isClosed, logJ } from './state.js';
 import { openSheet, toast, btn, ic } from './dom.js';
 import { makeQrSvg } from './qr.js';
 
-const QR_SOFT_MAX = 6;        /* au-delà, on propose le fichier d'emblée */
-const QR_HARD_MAX = 1800;     /* caractères OCQ1 : au-delà, un QR devient illisible */
+const QR_SOFT_MAX = 6;        /* au-delà, le QR s'anime (plusieurs parties) */
+const QR_HARD_MAX = 1800;     /* caractères par QR : au-delà, on découpe (OCQP) */
 
 export function openDonner(){
   /* jamais les pistes d'exemple : leurs contacts sont fictifs */
@@ -75,7 +76,7 @@ export function openDonner(){
       `<div class="pick-list">
          <button class="pick" id="dnQR">
            <b>${ic('grid-3x3', 'ic-14')} QR — en personne</b>
-           <span>${n > QR_SOFT_MAX ? 'beaucoup pour un QR — le fichier ira mieux' : 'l’autre téléphone scanne ton écran'}</span>
+           <span>l’autre téléphone scanne ton écran${n > QR_SOFT_MAX ? ' — QR animé en plusieurs parties' : ''}</span>
          </button>
          <button class="pick" id="dnFile">
            <b>${ic('file', 'ic-14')} Fichier .oc</b>
@@ -87,7 +88,7 @@ export function openDonner(){
     sh.setFoot([btn('← Retour', 'btn-ghost', stepQuoi)]);
   };
 
-  /* ---- QR (OCQ1) — repli automatique vers le fichier si trop gros ---- */
+  /* ---- QR (OCQ1) — au-delà d'un QR lisible, il s'anime (OCQP) ---- */
   const stepQR = async () => {
     let compact;
     try {
@@ -97,16 +98,23 @@ export function openDonner(){
       stepFile();
       return;
     }
-    if (compact.length > QR_HARD_MAX){
-      toast('Trop de contenu pour un QR lisible — le fichier prend le relais.');
-      stepFile();
-      return;
-    }
-    const svg = await makeQrSvg(compact);
+    const parts = compact.length > QR_HARD_MAX ? splitOCQ(compact) : [compact];
+    const svgs = await Promise.all(parts.map(makeQrSvg));
     sh.setTitle(`QR — ${sel.size} piste${sel.size > 1 ? 's' : ''}`);
     sh.body.innerHTML =
-      `<div class="qr-wrap" role="img" aria-label="QR à faire scanner">${svg}</div>
-       <p class="hint" style="text-align:center">L’autre personne : <b>Échanger → Recevoir → Scanner</b>.</p>`;
+      `<div class="qr-wrap" role="img" aria-label="QR à faire scanner">${svgs[0]}</div>
+       ${svgs.length > 1 ? `<div class="qr-prog" id="dnQrProg">partie 1/${svgs.length} — laisse défiler</div>` : ''}
+       <p class="hint" style="text-align:center">L’autre personne : <b>Échanger → Recevoir → Scanner</b>${svgs.length > 1 ? ' — son appareil assemble tout seul' : ''}.</p>`;
+    if (svgs.length > 1){
+      let i = 0;
+      const t = setInterval(() => {
+        const wrap = q('.qr-wrap'), prog = q('#dnQrProg');
+        if (!wrap || !document.body.contains(wrap)){ clearInterval(t); return; }   /* étape quittée */
+        i = (i + 1) % svgs.length;
+        wrap.innerHTML = svgs[i];
+        prog.textContent = `partie ${i + 1}/${svgs.length} — laisse défiler`;
+      }, 900);
+    }
     logJ('Donné (QR) : ' + sel.size + ' piste(s)');
     sh.setFoot([btn('← Retour', 'btn-ghost', stepComment), btn('Fichier plutôt', '', stepFile), btn('Terminé', 'btn-primary', () => sh.close())]);
   };

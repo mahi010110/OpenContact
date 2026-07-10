@@ -31,8 +31,11 @@ function loadJsQR(){
     document.head.append(s);
   }));
 }
-/* branche la caméra sur <video> et appelle onCode(texte) à la première
-   lecture ; retourne stop(). Jette 'camera' si l'accès est refusé. */
+/* branche la caméra sur <video> et appelle onCode(texte) à chaque
+   lecture ; onCode qui rend `true` = continuer à scanner (QR animé,
+   plusieurs parties), sinon on s'arrête à la première. Deux lectures
+   identiques d'affilée ne comptent qu'une fois. Retourne stop().
+   Jette 'camera' si l'accès est refusé. */
 export async function startScan(video, onCode){
   let stream;
   try {
@@ -49,7 +52,7 @@ export async function startScan(video, onCode){
   const jsQR = detector ? null : await loadJsQR();
   const cv = document.createElement('canvas');
   const ctx = cv.getContext('2d', { willReadFrequently: true });
-  let stopped = false, found = false;
+  let stopped = false, found = false, lastRaw = '';
   const tick = async () => {
     if (stopped) return;
     if (video.readyState >= 2 && !found){
@@ -66,7 +69,10 @@ export async function startScan(video, onCode){
           const r = jsQR(d.data, d.width, d.height);
           raw = (r && r.data) || '';
         }
-        if (raw){ found = true; onCode(raw); }
+        if (raw && raw !== lastRaw){
+          lastRaw = raw;
+          found = !onCode(raw);
+        }
       } catch (e) {}
     }
     if (!stopped) setTimeout(tick, 200);
