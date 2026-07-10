@@ -4,12 +4,12 @@
    sur desktop — le poste de commandement. Le bac « Contacts à
    rattacher » vit ici ; les clôturées restent repliées en bas.
    ============================================================ */
-import { esc } from '../engine/utils.js';
+import { esc, distKm } from '../engine/utils.js';
 import { STATUSES, CLOSE_REASONS, DOMAINS } from '../engine/model.js';
 import { scoreOf } from '../engine/score.js';
 import { filterCompanies } from '../engine/filter.js';
 import { S, bus, isClosed, hasDemo, addDemo, ctLabel } from './state.js';
-import { $, ic, toast } from './dom.js';
+import { $, ic, toast, openSheet, btn } from './dom.js';
 import { relLabel } from './dates.js';
 import { openFiche } from './fiche.js';
 import { openCapture } from './capture.js';
@@ -18,14 +18,59 @@ import { openProspect } from './prospect.js';
 
 let q = '';
 
+/* tri : peu d'options, les bonnes — « Récentes » reste l'ordre naturel */
+const SORTS = {
+  recent: ['Récentes', 'dernière activité en tête'],
+  action: ['À faire', 'prochaine action la plus proche d’abord'],
+  dist:   ['Près de moi', 'les plus proches d’abord — il faut ta position'],
+  score:  ['Fiches complètes', 'les mieux renseignées d’abord'],
+  az:     ['A → Z', 'ordre alphabétique']
+};
+let sort = 'recent';
+let userPos = null;
+
+function openSortSheet(){
+  const sh = openSheet({ title: 'Trier les pistes', icon: 'sort-vertical' });
+  const apply = k => {
+    sort = k;
+    sh.close();
+    renderPistes();
+  };
+  sh.body.innerHTML =
+    `<div class="pick-list">
+       ${Object.keys(SORTS).map(k =>
+         `<button class="pick" data-k="${k}" aria-pressed="${sort === k}">
+            <b>${SORTS[k][0]}${sort === k ? ' ' + ic('check', 'ic-14') : ''}</b>
+            <span>${SORTS[k][1]}</span>
+          </button>`).join('')}
+     </div>`;
+  sh.body.querySelectorAll('.pick').forEach(b =>
+    b.addEventListener('click', () => {
+      const k = b.dataset.k;
+      if (k !== 'dist'){ apply(k); return; }
+      if (!navigator.geolocation){ toast('Pas de géolocalisation sur ce navigateur.'); return; }
+      navigator.geolocation.getCurrentPosition(
+        p => { userPos = { lat: p.coords.latitude, lng: p.coords.longitude }; apply('dist'); },
+        () => toast('Position indisponible — tri par proximité impossible.'),
+        { timeout: 8000, maximumAge: 300000 }
+      );
+    }));
+  sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close())]);
+}
+
 /* liste ⇄ tableau : on re-rend au franchissement du breakpoint */
 const mqWide = matchMedia('(min-width:901px)');
 mqWide.addEventListener('change', () => { if (S.route === 'pistes') renderPistes(); });
+
+/* en tri « Près de moi », la distance s'affiche — sinon rien ne change */
+const kmBit = c => (sort === 'dist' && userPos && c.lat != null)
+  ? Math.round(distKm(userPos.lat, userPos.lng, c.lat, c.lng)) + ' km' : '';
 
 function rowHTML(c){
   const closed = isClosed(c);
   const color = closed ? CLOSE_REASONS[c.closedReason].color : STATUSES[c.status].color;
   const bits = [];
+  if (kmBit(c)) bits.push(kmBit(c));
   if (c.city) bits.push(esc(c.city));
   if (c.domain !== 'autre') bits.push(esc(DOMAINS[c.domain].label));
   if (closed) bits.push('<b>' + CLOSE_REASONS[c.closedReason].label + '</b>');
@@ -43,7 +88,7 @@ function rowHTML(c){
 }
 
 function cardHTML(c){
-  const bits = [c.city, c.domain !== 'autre' ? DOMAINS[c.domain].label : ''].filter(Boolean);
+  const bits = [kmBit(c), c.city, c.domain !== 'autre' ? DOMAINS[c.domain].label : ''].filter(Boolean);
   const na = c.nextAction
     ? `<span class="bc-na">${esc(c.nextActionText || 'Faire le point')} · <em class="${relLabel(c.nextAction).startsWith('–') ? 'late' : ''}">${relLabel(c.nextAction)}</em></span>`
     : '<span class="bc-na bc-none">pas de prochaine action</span>';
@@ -103,6 +148,8 @@ export function renderPistes(){
        <div class="search-wrap">
          <input class="search" id="piQ" type="search" placeholder="Chercher : entreprise, contact, ville, techno…"
                 aria-label="Rechercher une piste" value="${esc(q)}">
+         <button class="btn icon-btn${sort !== 'recent' ? ' btn-primary' : ''}" id="piSort"
+                 aria-label="Trier — ${SORTS[sort][0]}" title="Trier — ${SORTS[sort][0]}">${ic('sort-vertical', 'ic-14')}</button>
        </div>
        <div id="piBody"></div>
      </div>`;
@@ -116,7 +163,7 @@ export function renderPistes(){
      reste le même nœud, le curseur ne saute plus */
   const renderBody = () => {
     const body = root.querySelector('#piBody');
-    const all = filterCompanies(S.companies, { q, sort: 'recent' });
+    const all = filterCompanies(S.companies, { q, sort, userPos });
     const alive = all.filter(c => !isClosed(c));
     const closed = all.filter(isClosed);
 
@@ -172,6 +219,7 @@ export function renderPistes(){
     clearTimeout(h);
     h = setTimeout(() => { q = input.value; renderBody(); }, 180);
   });
+  root.querySelector('#piSort').addEventListener('click', openSortSheet);
   root.querySelector('#piProspect')?.addEventListener('click', openProspect);
   renderBody();
 }

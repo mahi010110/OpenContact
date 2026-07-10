@@ -196,7 +196,8 @@ html[data-theme="dark"] .field select{
 @media (max-width:349px){.grid2{grid-template-columns:1fr}}
 .hint{font-size:var(--text-12);color:var(--text-muted);margin-top:7px;line-height:1.5}
 .hint.warn{color:var(--amber)}
-.search-wrap{position:relative;display:flex;margin-bottom:14px}
+.search-wrap{position:relative;display:flex;gap:8px;margin-bottom:14px}
+.search-wrap .search{flex:1;min-width:0}
 .search{
   width:100%;height:var(--ctl);
   background:var(--surface-field);border:1px solid var(--border-field);border-radius:var(--radius-1);
@@ -450,6 +451,22 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 }
 .sy-log{margin-top:10px}
 .pr-send{width:100%;margin-top:12px}
+
+/* ---- autocomplétion d'adresse ---- */
+.ac-wrap{position:relative}
+.ac-list{
+  position:absolute;left:0;right:0;top:100%;z-index:6;
+  display:flex;flex-direction:column;
+  background:var(--surface-field);border:1px solid var(--border-strong);
+  box-shadow:var(--shadow-raised);
+}
+.ac-item{
+  text-align:left;padding:8px 10px;min-height:var(--ctl);
+  font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-body);
+  border:0;background:none;cursor:pointer;
+}
+.ac-item:hover,.ac-item:focus{background:var(--select-bg);color:var(--select-text)}
+.ac-item+.ac-item{border-top:1px solid var(--border-soft)}
 
 .date-row{display:flex;gap:8px;align-items:stretch}
 .date-row input{flex:1;min-width:0}

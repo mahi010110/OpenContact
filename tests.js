@@ -342,6 +342,23 @@ export async function runSelfTests(){
       eq(filterCompanies(list, { status: 'active' }).map(c => c.name), ['Bravo']);
       eq(filterCompanies(list, { sort: 'az' }).map(c => c.name), ['Alpha', 'Bravo']);
     },
+    'tri « À faire » : la prochaine action la plus proche d’abord, sans rien de prévu à la fin': () => {
+      const list = [
+        normalizeCompany({ name: 'SansRien', updatedAt: 900 }),
+        normalizeCompany({ name: 'Loin', nextAction: '2030-06-01', updatedAt: 1 }),
+        normalizeCompany({ name: 'Retard', nextAction: '2020-01-01', updatedAt: 1 })
+      ];
+      eq(filterCompanies(list, { sort: 'action' }).map(c => c.name), ['Retard', 'Loin', 'SansRien']);
+    },
+    'tri « Près de moi » : distance croissante, sans coordonnées à la fin': () => {
+      const list = [
+        normalizeCompany({ name: 'SansCoord' }),
+        normalizeCompany({ name: 'Paris', lat: 48.85, lng: 2.35 }),
+        normalizeCompany({ name: 'Lille', lat: 50.63, lng: 3.06 })
+      ];
+      eq(filterCompanies(list, { sort: 'dist', userPos: { lat: 50.69, lng: 3.17 } }).map(c => c.name),
+         ['Lille', 'Paris', 'SansCoord']);
+    },
     'historique : pushHist plafonne à 40 entrées': () => {
       const c = normalizeCompany({ name: 'X' });
       for (let i = 0; i < 50; i++) pushHist(c, 't' + i);
