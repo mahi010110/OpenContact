@@ -45,6 +45,12 @@ et vérifié par les auto-tests (`?test`).
 
 ## Développement
 
+**Avant toute contribution — humaine ou assistée par IA — lire
+[`CLAUDE.md`](CLAUDE.md)** : c'est la référence produit & UI/UX qui
+centralise la direction, les invariants, le design « Utilitaire 98 »,
+l'approche adaptative et le catalogue des motifs d'interaction. Aucune
+décision UI/UX ne se prend en dehors de ce cadre.
+
 Servir le dossier en local (`python3 -m http.server`) puis ouvrir
 `http://localhost:8000`. L'app est découpée en modules ES : l'ouverture
 directe du fichier (`file://`) ne fonctionne pas, il faut ce petit serveur.
