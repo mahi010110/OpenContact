@@ -456,6 +456,15 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted);
 }
 .sy-devs{margin-top:16px}
+.ec-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 0;border-bottom:1px dashed var(--border-soft);
+}
+.ec-row:last-of-type{border-bottom:0}
+.ec-row-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ec-row-m b{font-size:var(--text-13);font-weight:var(--weight-semibold)}
+.ec-row-m .tag-beta{margin-left:2px}
+.ec-sub{font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted)}
 .dev-row{
   display:flex;align-items:center;gap:8px;min-height:var(--ctl);
   padding:4px 0;border-bottom:1px dashed var(--border-soft);

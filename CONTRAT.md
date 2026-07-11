@@ -25,7 +25,7 @@ doit être repensée, pas forcée.
 | `oc_relays_v1` | Relais P2P personnalisés (optionnel — vide = relais publics) | JSON : tableau d'URLs |
 | `oc_device_v1` | Cet appareil — identité annoncée à la sync | JSON : `{id, name}` |
 | `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
-| `oc_promo_v1` | Dernier mot de passe de salle de promo (confort de saisie) | chaîne |
+| `oc_promo_v1` | Dernier mot de passe de partage en groupe (confort de saisie) | chaîne |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
@@ -178,7 +178,8 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    change rien, et deux appareils arrivent au même état quel que soit l'ordre.
 5. La phrase de liaison ne transite jamais en clair : la salle P2P porte un
    hash, les données sont chiffrées de bout en bout.
-6. La **salle de promo**, elle, passe exclusivement par `sharePayload`
+6. Le **partage en groupe** (ex-« salle de promo » — le préfixe technique
+   `promo-` et la clé `oc_promo_v1` ne changent pas), lui, passe exclusivement par `sharePayload`
    (vue communautaire, §3) et l'aperçu avant fusion (§4) — mêmes règles que
    par fichier, quel que soit le canal.
 

@@ -139,15 +139,19 @@ partent — jamais ton suivi privé. »
 ## 8. Partage & sync — les deux mondes à ne pas mélanger
 
 1. **Communautaire** (promo) : `sharePayload` → vue communautaire, jamais le
-   privé, fusion `merge.js` qui n'écrase rien + aperçu avant. Canaux : salle
-   de promo (P2P), QR, fichier `.oc`, coller.
+   privé, fusion `merge.js` qui n'écrase rien + aperçu avant. Canaux : partage
+   en groupe (P2P), QR, fichier `.oc`, coller.
 2. **Mes appareils** (même personne) : `engine/sync.js`, TOUT circule (privé
    inclus), le plus récent gagne (`updatedAt`), suppressions par tombstones.
    Canal : P2P avec phrase de liaison personnelle (hashée pour nommer la
-   salle, données chiffrées de pair à pair).
+   salle, données chiffrées de pair à pair). Le lien est **persistant**
+   (`ui/synclive.js`) : tant que la phrase existe, l'app rejoint la salle en
+   arrière-plan au démarrage et chaque enregistrement se propage — jusqu'à
+   « Rompre le lien ». La feuille « Mes appareils » n'est que le poste de
+   gestion de cet état.
 
 Le transport P2P est Trystero (vendorisé) via relais Nostr publics —
-personnalisables (`oc_relays_v1`). La salle de promo reste une **bêta
+personnalisables (`oc_relays_v1`). Le partage en groupe reste une **bêta
 discrète** : fonctionnelle et soignée, mais jamais mise en avant au
 détriment des chemins éprouvés (QR, fichier).
 

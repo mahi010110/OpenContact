@@ -3,7 +3,7 @@
 Outil communautaire et **local-first** pour trouver, enrichir et partager des pistes
 et contacts utiles (stage, alternance, emploi). Sans compte, sans serveur : les
 données vivent sur les appareils et circulent **en direct de pair à pair**
-(WebRTC — sync de ses propres appareils, salle de promo) ou par fichiers `.oc`
+(WebRTC — sync de ses propres appareils, partage en groupe) ou par fichiers `.oc`
 (le repli qui marche toujours : hors-ligne, réseau bloqué, main à la main).
 
 ## Structure
@@ -13,7 +13,7 @@ données vivent sur les appareils et circulent **en direct de pair à pair**
 | `index.html` | Structure de l'interface (HTML) |
 | `styles/` | Feuille de production `app.css` + `tokens/` (couleurs, typos, effets — source unique du design) |
 | `app.js` | Amorçage et routeur ; chaque écran vit dans `ui/` |
-| `ui/` | Les écrans et le direct P2P (`direct.js` : mes appareils + salle de promo) |
+| `ui/` | Les écrans et le direct P2P (`direct.js` : mes appareils + partage en groupe) |
 | `engine/` | Le moteur : modèle, stockage (IndexedDB), chiffrement, fusions (communautaire `merge.js`, appareils `sync.js`), score, filtres — aucun accès à l'écran |
 | `assets/` | Polices (WOFF2 + licences OFL), icônes pixel (pixelarticons, MIT), logos, libs vendorisées (jsQR, qrcode-generator, Trystero — MIT) |
 | `design/` | Le kit de design « Utilitaire 98 » : composants de référence, guidelines, maquettes |
@@ -28,7 +28,7 @@ données vivent sur les appareils et circulent **en direct de pair à pair**
 - **Mes appareils** : une phrase de liaison, et téléphone + ordinateur se
   synchronisent en entier (suivi privé compris) — le plus récent gagne,
   les suppressions voyagent (tombstones). `engine/sync.js` + `ui/direct.js`.
-- **Salle de promo** : un mot de passe de groupe, et les fiches partageables
+- **Partage en groupe** : un mot de passe de groupe, et les fiches partageables
   circulent en direct — jamais le privé, aperçu avant chaque fusion.
 - Transport : WebRTC via [Trystero](https://github.com/dmotz/trystero)
   (vendorisé, 58 Ko) ; la signalisation passe par des relais Nostr publics,

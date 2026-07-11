@@ -120,7 +120,7 @@ export function openRecevoir(){
 }
 
 /* ---- aperçu avant fusion + fusion + annulation — réutilisé par le
-   direct (salle de promo) : mêmes règles, quel que soit le canal ---- */
+   direct (partage en groupe) : mêmes règles, quel que soit le canal ---- */
 export function mergePreviewInto(sh, obj, opts){
   opts = opts || {};
   /* fusion à blanc sur une copie : l'aperçu dit tout, rien n'est touché */

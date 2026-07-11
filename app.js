@@ -15,6 +15,7 @@ import { renderEchanger } from './ui/echanger.js';
 import { renderMoi } from './ui/moi.js';
 import { openCapture } from './ui/capture.js';
 import { downloadBackup } from './ui/moi.js';
+import { initSyncLive } from './ui/synclive.js';
 
 const VIEWS = {
   aujourdhui: renderToday,
@@ -82,6 +83,10 @@ function applyTheme(t, persist){
   });
 
   applyRoute();
+
+  /* sync appareils : si une phrase de liaison existe, l'app rejoint la
+     salle en arrière-plan et y RESTE — différé pour un démarrage net */
+  setTimeout(() => { initSyncLive().catch(() => {}); }, 2000);
 
   /* partage entrant (PWA share_target) : « Partager » depuis LinkedIn ou
      le navigateur → capture pré-remplie ; les params sont consommés puis

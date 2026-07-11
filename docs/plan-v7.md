@@ -21,7 +21,7 @@ consigne ce qui a été décidé, ce qui reste à faire, et dans quel ordre.
 **P2P (Trystero/WebRTC vendorisé, 58 Ko, MIT)**
 - « Mes appareils » : phrase de liaison, sync complète LWW (privé inclus),
   suppressions propagées, convergence testée de bout en bout.
-- « Salle de promo » : mot de passe de groupe, fiches partageables en
+- « Partage en groupe » : mot de passe de groupe, fiches partageables en
   direct, aperçu avant fusion identique au fichier.
 - Le `.oc` **reste** : c'est la sauvegarde, ET le repli qui marche toujours
   (réseau d'école bloquant WebRTC, hors-ligne, main à la main). Il passe
@@ -83,6 +83,6 @@ build, moteur pur sans DOM. Chemin recommandé le moment venu :
 2. Deux téléphones, 4G ≠ opérateurs : idem (traversée NAT).
 3. Wi-Fi d'établissement : si échec → tester `oc_relays_v1` avec un relais
    auto-hébergé, sinon confirmer que le repli QR/fichier est fluide.
-4. Salle de promo à 5+ : débit, files d'aperçus, doublons après fusions
+4. Partage en groupe à 5+ : débit, files d'aperçus, doublons après fusions
    croisées (l'idempotence doit tenir).
 5. Toujours vérifier après coup : `?test` → 38 tests verts.
