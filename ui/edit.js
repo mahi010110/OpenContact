@@ -4,8 +4,9 @@
    site, adresse, technos, postes, process, conseils. Le suivi
    privé (statut, notes, actions) ne passe jamais par ici.
    ============================================================ */
-import { esc } from '../engine/utils.js';
+import { esc, debounce } from '../engine/utils.js';
 import { DOMAINS, POSITIONS, pushHist } from '../engine/model.js';
+import { suggestAddresses } from '../engine/geo.js';
 import { bus, saveData, logJ } from './state.js';
 import { openSheet, toast, btn } from './dom.js';
 
@@ -27,8 +28,9 @@ export function openEditPiste(c, onDone){
      <div class="grid2">
        <div class="field"><label for="edWebsite">Site web</label>
          <input id="edWebsite" type="url" value="${esc(c.website)}" placeholder="https://…" autocomplete="off"></div>
-       <div class="field"><label for="edAddress">Adresse</label>
-         <input id="edAddress" value="${esc(c.address)}" placeholder="Ex : 12 rue…, 59000 Lille" autocomplete="off"></div>
+       <div class="field ac-wrap"><label for="edAddress">Adresse</label>
+         <input id="edAddress" value="${esc(c.address)}" placeholder="Ex : 12 rue…, 59000 Lille" autocomplete="off">
+         <div class="ac-list" id="edAc" hidden></div></div>
      </div>
      <div class="field"><label for="edTechs">Technos <span class="lbl-soft">— ce qu'on y pratique</span></label>
        <input id="edTechs" value="${esc(c.techs)}" placeholder="Ex : SOC, Fortinet, Linux" autocomplete="off"></div>
@@ -50,12 +52,39 @@ export function openEditPiste(c, onDone){
       b.setAttribute('aria-pressed', b.classList.contains('on'));
     }));
 
+  /* adresse : suggestions pendant la frappe — un tap remplit l'adresse,
+     la ville (si vide) et retient les coordonnées pour « Près de moi » */
+  let picked = null;      /* {label, city, lat, lng} de la suggestion choisie */
+  const acBox = q('#edAc');
+  const acHide = () => { acBox.hidden = true; acBox.innerHTML = ''; };
+  const acSearch = debounce(async v => {
+    if (v.length < 4){ acHide(); return; }
+    const sug = await suggestAddresses(v);
+    if (q('#edAddress').value.trim() !== v) return;   /* la frappe a continué */
+    if (!sug.length){ acHide(); return; }
+    acBox.innerHTML = sug.map((s, i) =>
+      `<button type="button" class="ac-item" data-i="${i}">${esc(s.label)}</button>`).join('');
+    acBox.hidden = false;
+    acBox.querySelectorAll('.ac-item').forEach(b =>
+      b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        picked = sug[+b.dataset.i];
+        q('#edAddress').value = picked.label;
+        if (!q('#edCity').value.trim() && picked.city) q('#edCity').value = picked.city;
+        acHide();
+      }));
+  }, 350);
+  q('#edAddress').addEventListener('input', e => { picked = null; acSearch(e.target.value.trim()); });
+  q('#edAddress').addEventListener('blur', () => setTimeout(acHide, 150));
+
   sh.setFoot([
     btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       const name = q('#edName').value.trim();
       if (!name){ toast('Le nom de la structure est obligatoire.'); q('#edName').focus(); return; }
-      const before = JSON.stringify(FIELDS.map(f => c[f]).concat([c.positions]));
+      const snap = () => JSON.stringify(FIELDS.map(f => c[f]).concat([c.positions, c.lat, c.lng]));
+      const before = snap();
+      const addrBefore = c.address;
       c.name = name;
       c.city = q('#edCity').value.trim();
       c.domain = q('#edDomain').value;
@@ -65,8 +94,12 @@ export function openEditPiste(c, onDone){
       c.techs = q('#edTechs').value.trim();
       c.process = q('#edProcess').value.trim();
       c.tips = q('#edTips').value.trim();
+      /* coordonnées : la suggestion choisie fait foi ; une adresse
+         réécrite à la main invalide les anciennes */
+      if (picked){ c.lat = picked.lat; c.lng = picked.lng; }
+      else if (c.address !== addrBefore){ c.lat = null; c.lng = null; }
       c.positions = Array.from(sh.body.querySelectorAll('.dchip.on')).map(b => b.dataset.p);
-      if (JSON.stringify(FIELDS.map(f => c[f]).concat([c.positions])) !== before){
+      if (snap() !== before){
         pushHist(c, 'Fiche complétée');
         logJ('Fiche complétée : ' + c.name, c.id);
         c.updatedAt = Date.now();

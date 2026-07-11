@@ -64,7 +64,8 @@ export function openProspect(){
   sync();
 }
 
-/* la série : un composeur après l'autre, la relance planifiée entre les deux */
+/* la série : un composeur après l'autre, la relance planifiée entre les
+   deux. « Passer » avance, la croix arrête tout — tout de suite. */
 function run(list){
   let i = 0;
   const next = () => {
@@ -74,7 +75,11 @@ function run(list){
       return;
     }
     const c = list[i++];
-    openMail(c, { progress: i + '/' + list.length, onDone: next });
+    openMail(c, {
+      progress: i + '/' + list.length,
+      onDone: next,
+      onQuit: () => { toast('Prospection arrêtée.'); bus.refresh(); }
+    });
   };
   next();
 }

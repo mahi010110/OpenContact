@@ -25,6 +25,12 @@ export function filterCompanies(companies, opts){
   });
   if (sort === 'score') arr.sort((a,b) => scoreOf(b) - scoreOf(a));
   else if (sort === 'az') arr.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+  else if (sort === 'action'){
+    /* la prochaine action la plus proche d'abord (le retard en tête),
+       les pistes sans rien de prévu à la fin */
+    const k = c => c.nextAction || '9999-99-99';
+    arr.sort((a,b) => k(a) < k(b) ? -1 : k(a) > k(b) ? 1 : (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
   else if (sort === 'dist' && userPos){
     const dv = c => (c.lat == null) ? Infinity : distKm(userPos.lat, userPos.lng, c.lat, c.lng);
     arr.sort((a,b) => dv(a) - dv(b) || (b.updatedAt || 0) - (a.updatedAt || 0));

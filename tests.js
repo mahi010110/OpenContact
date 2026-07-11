@@ -9,14 +9,15 @@ import { esc, normName, extractCity, distKm, todayISO, localISO } from './engine
 import { KDF_ITER, encryptOC2, decryptOC2, deriveKey, bytesToB64,
          fnv, ocKeystream, unsealOC1 } from './engine/crypto.js';
 import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
-         pushHist, fillTpl, safeUrl } from './engine/model.js';
+         pushHist, fillTpl, safeUrl, PROMPTS_MAX, PROMPT_MAX_LEN } from './engine/model.js';
 import { communityView, parseInput, sharePayload, fullPayload,
-         encodeOCQ } from './engine/exchange.js';
+         encodeOCQ, splitOCQ, makeOCQJoiner, OCQP_CHUNK } from './engine/exchange.js';
 import { findMatch, mergeIncoming, contactKey } from './engine/merge.js';
 import { syncMerge, mergeTombs, TOMBS_MAX } from './engine/sync.js';
 import { filterCompanies } from './engine/filter.js';
 import { scoreOf } from './engine/score.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, SYNC_KEY,
+         RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY,
          THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1 } from './engine/storage.js';
 
 export async function runSelfTests(){
@@ -146,6 +147,10 @@ export async function runSelfTests(){
       eq(ORPHANS_KEY, 'oc_orphans_v1');
       eq(TOMBS_KEY, 'oc_tombs_v1');
       eq(SYNC_KEY, 'oc_sync_v1');
+      eq(RELAYS_KEY, 'oc_relays_v1');
+      eq(DEVICE_KEY, 'oc_device_v1');
+      eq(DEVICES_KEY, 'oc_devices_v1');
+      eq(PROMO_KEY, 'oc_promo_v1');
       eq(THEME_KEY, 'oc_theme');
       eq(VIEW_KEY, 'oc_view');
       eq(OLD_V2, 'oc_data_v2');
@@ -223,6 +228,34 @@ export async function runSelfTests(){
       const m = mergeTombs(many, [{ id: 'k0', t: 9999 }]);
       eq(m.length, TOMBS_MAX);
       eq(m[0], { id: 'k0', t: 9999 });
+    },
+    'profil : prompts IA — un seul défaut, bornés (8 × 4 000)': () => {
+      const p = normalizeProfile({});
+      eq(p.prompts.length, 1);
+      eq(p.prompts[0].name, 'Mes emails → pistes');
+      ok(p.prompts[0].text.includes('"kind":"share"'));
+      const many = normalizeProfile({ prompts: Array.from({ length: 12 }, (_, i) => ({ name: 'P' + i, text: 'x'.repeat(9000) })) });
+      eq(many.prompts.length, PROMPTS_MAX);
+      eq(many.prompts[0].text.length, PROMPT_MAX_LEN);
+      eq(normalizeProfile({ prompts: [{ text: 'y' }] }).prompts[0].name, 'Prompt');
+    },
+    'contrat : OCQP — découpe du QR animé et réassemblage dans le désordre': () => {
+      const court = 'OCQ1.petit';
+      eq(splitOCQ(court), [court]);                       /* court = un seul QR, format inchangé */
+      const long = 'OCQ1.' + 'x'.repeat(OCQP_CHUNK * 2 + 100);
+      const parts = splitOCQ(long);
+      eq(parts.length, 3);
+      ok(parts.every((p, i) => p.startsWith('OCQP.' + (i + 1) + '.3.')));
+      const j = makeOCQJoiner();
+      let r = null;
+      for (const p of [parts[2], parts[0], parts[1]]) r = j(p);   /* n'importe quel ordre */
+      eq(r.done, true);
+      eq(r.text, long);
+      eq(j('OCQ1.abc'), null);                            /* pas une tranche : au lecteur normal */
+      /* les doublons ne comptent qu'une fois */
+      const j2 = makeOCQJoiner();
+      j2(parts[0]); j2(parts[0]);
+      eq(j2(parts[0]).got, 1);
     },
     'contrat : enveloppe « full » — champ tombs optionnel': () => {
       const prof = normalizeProfile({ name: 'Moi' });
@@ -341,6 +374,23 @@ export async function runSelfTests(){
       eq(filterCompanies(list, { domain: 'esn' }).map(c => c.name), ['Alpha']);
       eq(filterCompanies(list, { status: 'active' }).map(c => c.name), ['Bravo']);
       eq(filterCompanies(list, { sort: 'az' }).map(c => c.name), ['Alpha', 'Bravo']);
+    },
+    'tri « À faire » : la prochaine action la plus proche d’abord, sans rien de prévu à la fin': () => {
+      const list = [
+        normalizeCompany({ name: 'SansRien', updatedAt: 900 }),
+        normalizeCompany({ name: 'Loin', nextAction: '2030-06-01', updatedAt: 1 }),
+        normalizeCompany({ name: 'Retard', nextAction: '2020-01-01', updatedAt: 1 })
+      ];
+      eq(filterCompanies(list, { sort: 'action' }).map(c => c.name), ['Retard', 'Loin', 'SansRien']);
+    },
+    'tri « Près de moi » : distance croissante, sans coordonnées à la fin': () => {
+      const list = [
+        normalizeCompany({ name: 'SansCoord' }),
+        normalizeCompany({ name: 'Paris', lat: 48.85, lng: 2.35 }),
+        normalizeCompany({ name: 'Lille', lat: 50.63, lng: 3.06 })
+      ];
+      eq(filterCompanies(list, { sort: 'dist', userPos: { lat: 50.69, lng: 3.17 } }).map(c => c.name),
+         ['Lille', 'Paris', 'SansCoord']);
     },
     'historique : pushHist plafonne à 40 entrées': () => {
       const c = normalizeCompany({ name: 'X' });

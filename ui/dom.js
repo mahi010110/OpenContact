@@ -74,26 +74,35 @@ export function openSheet(o){
   stack.push(rec);
   ov.addEventListener('click', e => { if (e.target === ov && o.dismissible !== false) close(); });
   ov.querySelector('.x').addEventListener('click', () => close());
-  /* tactile : glisser la barre de titre vers le bas referme la feuille */
+  /* tactile : glisser vers le bas referme — depuis la barre de titre
+     toujours, et depuis le corps entier quand la feuille est petite
+     (rien à faire défiler) : les confirmations se balaient d'un pouce */
   if (matchMedia('(pointer:coarse)').matches && o.dismissible !== false){
-    const head = ov.querySelector('.modal-h');
     const modal = ov.querySelector('.modal');
-    let y0 = null, dy = 0;
-    head.addEventListener('touchstart', e => {
-      y0 = e.touches[0].clientY; dy = 0;
-      modal.style.transition = 'none';
-    }, { passive: true });
-    head.addEventListener('touchmove', e => {
-      if (y0 == null) return;
-      dy = Math.max(0, e.touches[0].clientY - y0);
-      modal.style.transform = dy ? `translateY(${dy}px)` : '';
-    }, { passive: true });
-    head.addEventListener('touchend', () => {
-      modal.style.transition = '';
-      if (dy > 90) close();
-      else modal.style.transform = '';
-      y0 = null;
-    });
+    const bindDrag = (zone, guard) => {
+      let y0 = null, dy = 0;
+      zone.addEventListener('touchstart', e => {
+        if (guard && !guard(e)) return;
+        y0 = e.touches[0].clientY; dy = 0;
+        modal.style.transition = 'none';
+      }, { passive: true });
+      zone.addEventListener('touchmove', e => {
+        if (y0 == null) return;
+        dy = Math.max(0, e.touches[0].clientY - y0);
+        modal.style.transform = dy ? `translateY(${dy}px)` : '';
+      }, { passive: true });
+      zone.addEventListener('touchend', () => {
+        if (y0 == null) return;
+        modal.style.transition = '';
+        if (dy > 90) close();
+        else modal.style.transform = '';
+        y0 = null;
+      });
+    };
+    bindDrag(ov.querySelector('.modal-h'));
+    bindDrag(body, e =>
+      body.scrollHeight - body.clientHeight <= 4 &&
+      !e.target.closest('button, a, input, textarea, select, [role="button"], .datechips'));
   }
   document.body.append(ov);
   requestAnimationFrame(() => {

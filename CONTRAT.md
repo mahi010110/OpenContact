@@ -17,12 +17,15 @@ doit être repensée, pas forcée.
 | Clé | Contenu | Format |
 |---|---|---|
 | `oc_data_v3` | Les pistes (partagé + suivi privé) | JSON : tableau de pistes |
-| `oc_profile_v1` | Profil, modèles d'emails, fiches confirmées, flags, `updatedAt` (LWW appareils) | JSON : objet profil |
+| `oc_profile_v1` | Profil, modèles d'emails, prompts IA (8 × 4 000 car. max), fiches confirmées, flags, `updatedAt` (LWW appareils) | JSON : objet profil |
 | `oc_journal_v1` | Journal privé des actions (200 max) | JSON : tableau `{t, txt, cid}` |
 | `oc_orphans_v1` | Contacts « à rattacher » (sans entreprise) — l'indice d'entreprise saisi par l'utilisateur voyage dans `extra.company` (D3), consommé au rattachement | JSON : tableau de contacts |
 | `oc_tombs_v1` | Suppressions (tombstones, 500 max) — font voyager les suppressions entre MES appareils | JSON : tableau `{id, t}` |
 | `oc_sync_v1` | Phrase de liaison de mes appareils | chaîne |
 | `oc_relays_v1` | Relais P2P personnalisés (optionnel — vide = relais publics) | JSON : tableau d'URLs |
+| `oc_device_v1` | Cet appareil — identité annoncée à la sync | JSON : `{id, name}` |
+| `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
+| `oc_promo_v1` | Dernier mot de passe de partage en groupe (confort de saisie) | chaîne |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
@@ -69,6 +72,18 @@ Une enveloppe `kind:"share"` (jamais de privé), compressée par l'API native
 `CompressionStream` puis encodée base64url. Lu par `parseInput` comme les
 autres formats. Si l'API manque (très vieux navigateur), l'émetteur replie
 vers le fichier `.oc` — le format ne change pas.
+
+### Compact multi-parties — OCQP (QR animé)
+
+```
+OCQP.<i>.<n>.<tranche>
+```
+
+Quand l'OCQ1 dépasse ce qu'un seul QR lisible peut porter, la chaîne
+complète est découpée en `n` tranches (`i` de 1 à `n`, 512 max) que
+l'émetteur fait défiler à l'écran ; le lecteur réassemble dans n'importe
+quel ordre puis relit l'OCQ1 obtenu. Un lecteur ancien ignore ce préfixe
+sans casse — et le fichier `.oc` reste toujours possible.
 
 ### Chiffré — OC2 (format actuel)
 
@@ -163,7 +178,8 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    change rien, et deux appareils arrivent au même état quel que soit l'ordre.
 5. La phrase de liaison ne transite jamais en clair : la salle P2P porte un
    hash, les données sont chiffrées de bout en bout.
-6. La **salle de promo**, elle, passe exclusivement par `sharePayload`
+6. Le **partage en groupe** (ex-« salle de promo » — le préfixe technique
+   `promo-` et la clé `oc_promo_v1` ne changent pas), lui, passe exclusivement par `sharePayload`
    (vue communautaire, §3) et l'aperçu avant fusion (§4) — mêmes règles que
    par fichier, quel que soit le canal.
 

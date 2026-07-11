@@ -6,7 +6,8 @@
    restauration, aide condensée — et le coup de pouce IA, rangé
    ici sans faire d'ombre au reste.
    ============================================================ */
-import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile } from '../engine/model.js';
+import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
+         defaultPrompts, PROMPTS_MAX, PROMPT_MAX_LEN } from '../engine/model.js';
 import { fullPayload, parseInput } from '../engine/exchange.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
@@ -156,26 +157,49 @@ async function docLine(key, label){
   });
 }
 
-/* ---------- prompts IA : le coup de pouce, pas une rubrique ---------- */
-const PROMPTS = [
-  ['Mes emails → pistes',
-   `Voici des emails liés à ma recherche de stage / alternance / emploi :
-
-[colle ici tes emails — expéditeur, objet, corps]
-
-Extrais-en les entreprises et contacts utiles, et rends UNIQUEMENT un JSON valide (aucun texte autour) à ce format exact :
-{"v":4,"kind":"share","companies":[{"name":"","city":"","domain":"esn|cyber|cloud|dsi|public|startup|industrie|commerce|sante|autre","desc":"","website":"","techs":"","positions":["stage","alternance","cdi","cdd","freelance"],"process":"","tips":"","contacts":[{"name":"","role":"","email":"","phone":"","link":"","note":""}]}]}
-
-Règles : n'invente rien — champ inconnu = vide ; une entrée par entreprise ; regroupe les contacts d'une même entreprise ; "note" = le contexte de l'échange (ex : « a répondu le 12/06, propose un entretien ») ; ignore newsletters et refus automatiques.
-
-Je collerai ce JSON dans OpenContact : Échanger → Recevoir → Coller.`],
-  ['Préparer un entretien',
-   'Je suis étudiant(e) en [formation] et j’ai un entretien chez [entreprise] pour un [stage/alternance]. Voici ce que je sais : [colle ici la fiche]. Prépare-moi : 5 questions probables, 3 questions intelligentes à poser, et les points de mon profil à mettre en avant.'],
-  ['Améliorer un email',
-   'Voici mon email de candidature : [colle ton email]. Rends-le plus percutant sans le rallonger : accroche spécifique à l’entreprise, verbe d’action, appel à l’action clair. Garde mon ton.'],
-  ['Trouver des pistes proches',
-   'Liste 10 entreprises de [ville/région] qui recrutent des profils [formation] en [stage/alternance], avec pour chacune : domaine, taille approximative, et pourquoi elle pourrait me correspondre. Je connais déjà : [tes pistes].']
-];
+/* ---------- prompts IA : les SIENS — créés, modifiés, bornés ----------
+   Un seul livré d'origine (« Mes emails → pistes », qui fabrique un JSON
+   à coller dans Recevoir) ; le reste appartient à l'utilisateur. Ils
+   vivent dans le profil, donc voyagent entre ses appareils. */
+function editPrompt(i){
+  const isNew = i < 0;
+  const src = isNew ? { name: '', text: '' } : S.profile.prompts[i];
+  const sh = openSheet({ title: isNew ? 'Nouveau prompt' : 'Modifier le prompt', icon: 'sparkles', focus: '#ppName' });
+  sh.body.innerHTML =
+    `<div class="field"><label for="ppName">Nom</label>
+       <input id="ppName" value="${esc(src.name)}" maxlength="60" placeholder="Ex : Préparer un entretien"></div>
+     <div class="field"><label for="ppText">Le prompt <span class="lbl-soft">— [crochets] = à remplacer au moment de coller</span></label>
+       <textarea id="ppText" maxlength="${PROMPT_MAX_LEN}" style="min-height:180px">${esc(src.text)}</textarea>
+       <p class="hint" style="text-align:right"><span id="ppCount">${src.text.length}</span> / ${PROMPT_MAX_LEN}</p></div>`;
+  const q = s => sh.body.querySelector(s);
+  q('#ppText').addEventListener('input', () => { q('#ppCount').textContent = q('#ppText').value.length; });
+  const foot = [
+    btn('Annuler', 'btn-ghost', () => sh.close()),
+    btn('Enregistrer', 'btn-primary', () => {
+      const name = q('#ppName').value.trim();
+      const text = q('#ppText').value.trim();
+      if (!name || !text){ toast('Un nom et un contenu — il manque l’un des deux.'); return; }
+      if (isNew) S.profile.prompts.push({ name, text: text.slice(0, PROMPT_MAX_LEN) });
+      else S.profile.prompts[i] = { name, text: text.slice(0, PROMPT_MAX_LEN) };
+      saveProfile();
+      sh.close();
+      bus.refresh();
+      toast('Prompt enregistré ✓');
+    })
+  ];
+  if (!isNew && S.profile.prompts.length > 1){
+    foot.unshift(btn('Supprimer', 'btn-danger', async () => {
+      const ok = await confirmSheet({ title: 'Supprimer ce prompt ?', danger: true, okLabel: 'Supprimer', icon: 'trash',
+        msg: `<b>${esc(src.name)}</b> sera retiré de tes prompts.` });
+      if (!ok) return;
+      S.profile.prompts.splice(i, 1);
+      saveProfile();
+      sh.close();
+      bus.refresh();
+    }));
+  }
+  sh.setFoot(foot);
+}
 
 /* ---------- l'écran ---------- */
 export function renderMoi(){
@@ -217,12 +241,17 @@ export function renderMoi(){
 
        <details class="pcard pcard-details">
          <summary><h3>${ic('sparkles', 'ic-14')} Coup de pouce IA</h3></summary>
-         <p class="pd">À coller dans l’assistant de ton choix — remplace les [crochets].</p>
-         ${PROMPTS.map((pr, i) =>
+         <p class="pd">Tes prompts, à coller dans l’assistant de ton choix. « Mes emails → pistes » fabrique un JSON à coller dans <b>Échanger → Recevoir</b>.</p>
+         ${p.prompts.map((pr, i) =>
            `<div class="prompt-row">
-              <b>${pr[0]}</b>
+              <b>${esc(pr.name)}</b>
               <button class="btn btn-sm" data-prompt="${i}">${ic('copy', 'ic-14')} Copier</button>
+              <button class="abtn abtn-sm" data-pedit="${i}" aria-label="Modifier ${esc(pr.name)}" title="Modifier">${ic('pencil', 'ic-14')}</button>
             </div>`).join('')}
+         ${p.prompts.length < PROMPTS_MAX
+           ? `<button class="btn btn-sm" id="moiPromptAdd" style="margin-top:10px">${ic('plus', 'ic-14')} Nouveau prompt</button>`
+           : `<p class="hint" style="margin-top:8px">${PROMPTS_MAX} prompts max — supprime-en un pour en créer un autre.</p>`}
+         <button class="linklike" id="moiPromptReset" style="margin-top:8px">Revenir au prompt d’origine</button>
        </details>
 
        <details class="pcard pcard-details">
@@ -246,9 +275,20 @@ export function renderMoi(){
   rf.addEventListener('change', () => { if (rf.files[0]) restoreFile(rf.files[0]); });
   root.querySelectorAll('[data-prompt]').forEach(b =>
     b.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(PROMPTS[+b.dataset.prompt][1]); toast('Copié — colle-le dans ton assistant.'); }
+      try { await navigator.clipboard.writeText(S.profile.prompts[+b.dataset.prompt].text); toast('Copié — colle-le dans ton assistant.'); }
       catch (e) { toast('Copie impossible ici.'); }
     }));
+  root.querySelectorAll('[data-pedit]').forEach(b =>
+    b.addEventListener('click', () => editPrompt(+b.dataset.pedit)));
+  root.querySelector('#moiPromptAdd')?.addEventListener('click', () => editPrompt(-1));
+  root.querySelector('#moiPromptReset')?.addEventListener('click', async () => {
+    const ok = await confirmSheet({ title: 'Revenir au prompt d’origine ?', okLabel: 'Réinitialiser',
+      msg: 'Tes prompts actuels seront remplacés par le seul prompt d’origine (« Mes emails → pistes »).', danger: true });
+    if (!ok) return;
+    S.profile.prompts = defaultPrompts();
+    saveProfile();
+    bus.refresh();
+  });
   DOCS.forEach(([k, l]) => docLine(k, l));
   if (navigator.storage && navigator.storage.estimate){
     navigator.storage.estimate().then(({ usage, quota }) => {

@@ -60,21 +60,27 @@ export function openFiche(c){
          <div class="lbl-row"><label>Contacts</label>
            <button class="btn btn-sm" id="fiCtAdd">${ic('plus', 'ic-14')} Ajouter</button></div>
          ${(c.contacts || []).length ? `
-         <div class="ct-list">${c.contacts.map(t => `
+         <div class="ct-list">${c.contacts.map(t => {
+           const title = t.name || t.email || t.phone;
+           const meta = [t.email, t.phone].filter(x => x && x !== title).join(' · ');
+           const acts = [
+             t.email ? `<a class="btn" href="mailto:${esc(t.email)}">${ic('mail', 'ic-14')} Email</a>` : '',
+             t.phone ? `<a class="btn" href="${esc(telHref(t.phone))}">${ic('phone', 'ic-14')} Appeler</a>
+                        <a class="btn" href="${esc(smsHref(t.phone))}">${ic('message-text', 'ic-14')} SMS</a>
+                        <a class="btn" href="${esc(waHref(t.phone))}" target="_blank" rel="noopener">${ic('message-text', 'ic-14')} WhatsApp</a>` : '',
+             t.link ? `<a class="btn" href="${esc(t.link)}" target="_blank" rel="noopener">${ic('external-link', 'ic-14')} Profil</a>` : ''
+           ].filter(Boolean).join('');
+           return `
            <div class="ct">
-             <div class="ct-h"><b>${esc(t.name || t.email || t.phone)}</b>
+             <div class="ct-h"><b>${esc(title)}</b>
                ${t.role ? `<span class="ct-role">${esc(t.role)}</span>` : ''}
                ${t.conf === 'ok' ? '<span class="conf-ok">vérifié ✓</span>' : t.conf === 'doubt' ? '<span class="conf-doubt">à confirmer ?</span>' : ''}
                <button class="abtn abtn-sm" data-ct="${t.id}" aria-label="Modifier ${esc(t.name || 'le contact')}" title="Modifier">${ic('pencil', 'ic-14')}</button></div>
-             <div class="ct-links">
-               ${t.email ? `<a href="mailto:${esc(t.email)}">${ic('mail', 'ic-14')} ${esc(t.email)}</a>` : ''}
-               ${t.phone ? `<a href="${esc(telHref(t.phone))}">${ic('phone', 'ic-14')} ${esc(t.phone)}</a>
-                            <a href="${esc(smsHref(t.phone))}">${ic('message-text', 'ic-14')} SMS</a>
-                            <a href="${esc(waHref(t.phone))}" target="_blank" rel="noopener">${ic('message-text', 'ic-14')} WhatsApp</a>` : ''}
-               ${t.link ? `<a href="${esc(t.link)}" target="_blank" rel="noopener">${ic('link', 'ic-14')} profil</a>` : ''}
-             </div>
+             ${meta ? `<div class="ct-meta">${esc(meta)}</div>` : ''}
+             ${acts ? `<div class="ct-acts">${acts}</div>` : ''}
              ${t.note ? `<div class="ct-note">${esc(t.note)}</div>` : ''}
-           </div>`).join('')}</div>` :
+           </div>`;
+         }).join('')}</div>` :
          '<p class="hint" style="margin:0">Personne pour l’instant — ajoute au moins un email.</p>'}
        </div>
        ${know ? `

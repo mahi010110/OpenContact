@@ -159,14 +159,40 @@ Bien cordialement,
 {{moi}} — {{tel}}` }
   ];
 }
+/* prompts IA de l'utilisateur : bornés pour rester un coup de pouce,
+   pas une bibliothèque — 8 prompts de 4 000 caractères max. Un seul
+   par défaut : l'universel « mes emails → un JSON prêt à coller ». */
+export const PROMPTS_MAX = 8;
+export const PROMPT_MAX_LEN = 4000;
+export function defaultPrompts(){
+  return [{
+    name: 'Mes emails → pistes',
+    text: `Voici des emails liés à ma recherche de stage / alternance / emploi :
+
+[colle ici tes emails — expéditeur, objet, corps]
+
+Extrais-en les entreprises et contacts utiles, et rends UNIQUEMENT un JSON valide (aucun texte autour) à ce format exact :
+{"v":4,"kind":"share","companies":[{"name":"","city":"","domain":"esn|cyber|cloud|dsi|public|startup|industrie|commerce|sante|autre","desc":"","website":"","techs":"","positions":["stage","alternance","cdi","cdd","freelance"],"process":"","tips":"","contacts":[{"name":"","role":"","email":"","phone":"","link":"","note":""}]}]}
+
+Règles : n'invente rien — champ inconnu = vide ; une entrée par entreprise ; regroupe les contacts d'une même entreprise ; "note" = le contexte de l'échange (ex : « a répondu le 12/06, propose un entretien ») ; ignore newsletters et refus automatiques.
+
+Je collerai ce JSON dans OpenContact : Échanger → Recevoir → Coller.`
+  }];
+}
 export function defaultProfile(){
   return { name:'', formation:'', phone:'', email:'', cvUrl:'', portfolio:'', letter:'',
-           templates: defaultTemplates(), confirmedIds: [], flags: {}, updatedAt: 0 };
+           templates: defaultTemplates(), prompts: defaultPrompts(),
+           confirmedIds: [], flags: {}, updatedAt: 0 };
 }
 /* remet un profil (chargé, importé ou restauré) aux invariants attendus */
 export function normalizeProfile(raw){
   const profile = Object.assign(defaultProfile(), (raw && typeof raw === 'object') ? raw : {});
   if (!Array.isArray(profile.templates) || !profile.templates.length) profile.templates = defaultTemplates();
+  if (!Array.isArray(profile.prompts) || !profile.prompts.length) profile.prompts = defaultPrompts();
+  profile.prompts = profile.prompts.slice(0, PROMPTS_MAX).map(p => ({
+    name: (String((p && p.name) || '').trim() || 'Prompt').slice(0, 60),
+    text: String((p && p.text) || '').slice(0, PROMPT_MAX_LEN)
+  }));
   if (!Array.isArray(profile.confirmedIds)) profile.confirmedIds = [];
   if (!profile.flags || typeof profile.flags !== 'object') profile.flags = {};
   profile.updatedAt = Number(profile.updatedAt) || 0;   /* LWW entre appareils */

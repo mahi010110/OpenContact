@@ -1,191 +1,169 @@
 /* ============================================================
    OpenContact — interface · le DIRECT (P2P, WebRTC via Trystero)
-   Deux salles bien distinctes, jamais mélangées :
-   · « Mes appareils » — une phrase de liaison PERSONNELLE ; tout
-     circule (privé inclus) et le plus récent gagne (engine/sync).
-   · « Salle de promo » — un mot de passe de GROUPE ; seules les
+   Deux mondes bien distincts, jamais mélangés :
+   · « Mes appareils » — le lien est PERSISTANT : synclive.js garde
+     la connexion en arrière-plan tant que la phrase existe. Cette
+     feuille n'est que le poste de gestion : statut, dernier lot
+     reçu, profil à reprendre, appareils reliés, rompre le lien.
+   · « Partage en groupe » — un mot de passe de GROUPE ; seules les
      fiches partageables circulent (sharePayload), avec le même
-     aperçu avant fusion que par fichier.
-   La signalisation passe par des relais publics (Nostr), les
-   données voyagent chiffrées de pair à pair. Rien n'est stocké
-   ailleurs que sur les appareils. La lib (58 Ko) est chargée
-   paresseusement — zéro poids au démarrage.
+     aperçu avant fusion que par fichier. Bêta discrète.
    ============================================================ */
 import { esc } from '../engine/utils.js';
-import { sharePayload, fullPayload } from '../engine/exchange.js';
-import { syncMerge } from '../engine/sync.js';
-import { SYNC_KEY, RELAYS_KEY, kvGet, kvSet } from '../engine/storage.js';
-import { S, bus, isClosed, applySynced, logJ } from './state.js';
-import { openSheet, toast, btn, ic, showUndo } from './dom.js';
+import { sharePayload } from '../engine/exchange.js';
+import { PROMO_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { S, bus, isClosed, logJ } from './state.js';
+import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mergePreviewInto } from './recevoir.js';
+import { getSync, startSync, breakLink, keepMyProfile, makePhrase, openRoom,
+         deviceSelf, loadDevices, removeDevice, DEVICES_MAX } from './synclive.js';
 
-let libP = null;
-const loadLib = () => libP || (libP = import('../assets/vendor/trystero-nostr.min.js'));
+const agoLabel = t => {
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 2) return 'à l’instant';
+  if (m < 60) return 'il y a ' + m + ' min';
+  const h = Math.round(m / 60);
+  if (h < 24) return 'il y a ' + h + ' h';
+  return 'il y a ' + Math.round(h / 24) + ' j';
+};
 
-async function sha256hex(s){
-  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-  return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-/* la phrase ne sort jamais telle quelle : la salle porte un hash.
-   Relais personnalisés possibles (oc_relays_v1) — utile si un
-   établissement héberge le sien ou si les relais publics sont bloqués. */
-async function openRoom(kind, phrase){
-  const { joinRoom } = await loadLib();
-  const id = kind + '-' + (await sha256hex('opencontact·' + kind + '·' + phrase)).slice(0, 24);
-  const cfg = { appId: 'opencontact', password: phrase };
-  try {
-    const urls = JSON.parse(await kvGet(RELAYS_KEY) || 'null');
-    if (Array.isArray(urls) && urls.length) cfg.relayConfig = { urls };
-  } catch (e) {}
-  return joinRoom(cfg, id);
-}
-/* phrase de liaison : 10 caractères sans ambiguïté, faciles à taper */
-function makePhrase(){
-  const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
-  const u = crypto.getRandomValues(new Uint8Array(10));
-  const c = i => abc[u[i] % abc.length];
-  return [0, 1, 2, 3, 4].map(c).join('') + '-' + [5, 6, 7, 8, 9].map(c).join('');
-}
-
-/* ============ Mes appareils : sync complète, LWW ============ */
+/* ============ Mes appareils : gestion du lien persistant ============ */
 export function openAppareils(){
-  let room = null;
-  let peers = 0;
-  let onChange = null;
-  const leave = () => {
-    if (onChange){ document.removeEventListener('oc:change', onChange); onChange = null; }
-    if (room){ try { room.leave(); } catch (e) {} room = null; }
-  };
-  const sh = openSheet({ title: 'Mes appareils', icon: 'switch', onClose: leave });
+  let onSync = null;
+  const sh = openSheet({
+    title: 'Mes appareils', icon: 'switch',
+    onClose: () => { if (onSync){ document.removeEventListener('oc:sync', onSync); onSync = null; } }
+  });
   const q = s => sh.body.querySelector(s);
 
-  const setStatus = txt => { const el = q('#syStatus'); if (el) el.innerHTML = txt; };
+  const statusHTML = () => {
+    const sy = getSync();
+    if (sy.state === 'on')
+      return `${ic('radio', 'ic-14')} <b>${sy.peers}</b> appareil${sy.peers > 1 ? 's' : ''} en face — à jour en continu`;
+    if (sy.state === 'wait')
+      return `${ic('clock', 'ic-14')} En liaison — les autres appareils se connecteront tout seuls`;
+    if (sy.state === 'err')
+      return `${ic('square-alert', 'ic-14')} Pas de connexion — réseau bloqué ? <button class="btn btn-sm" id="syRetry">Réessayer</button>`;
+    return `${ic('clock', 'ic-14')} Connexion…`;
+  };
 
-  async function connect(phrase){
-    await kvSet(SYNC_KEY, phrase);
-    sh.body.innerHTML =
-      `<div class="sy-phrase"><span>${esc(phrase)}</span></div>
-       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Échanger → Mes appareils</b>, puis cette phrase.</p>
-       <div class="sy-status" id="syStatus">${ic('radio', 'ic-14')} Connexion…</div>
-       <div class="sy-log" id="syLog"></div>`;
-    sh.setFoot([
-      btn('Changer de phrase', 'btn-ghost', () => { leave(); start(true); }),
-      btn('Fermer', 'btn-primary', () => sh.close())
-    ]);
-
-    let lastSent = '';
-    let sendFull = null;
-    let undoSnap = null;
-    const sendState = () => {
-      if (!sendFull || !peers) return;
-      const payload = fullPayload(S.companies, S.profile, S.orphans, S.tombs);
-      const j = JSON.stringify(payload);
-      if (j === lastSent) return;   /* rien de neuf = on ne renvoie pas (stop au ping-pong) */
-      lastSent = j;
-      sendFull(payload);
-    };
-    try {
-      room = await openRoom('sync', phrase);
-    } catch (e) {
-      setStatus(`${ic('square-alert', 'ic-14')} Pas de connexion — réseau bloqué ? La sauvegarde .oc marche toujours.`);
-      return;
-    }
-    {
-      const action = room.makeAction('full');
-      sendFull = d => action.send(d);
-      action.onMessage = obj => {
-        if (!obj || obj.kind !== 'full' || !Array.isArray(obj.companies)) return;
-        const r = syncMerge(obj, { companies: S.companies, orphans: S.orphans, profile: S.profile, tombs: S.tombs });
-        const st = r.stats;
-        const changed = st.addedC + st.updatedC + st.removedC + st.addedO + (st.profile === 'remote' ? 1 : 0);
-        if (changed){
-          undoSnap = undoSnap || {
-            companies: JSON.stringify(S.companies), orphans: JSON.stringify(S.orphans),
-            profile: JSON.stringify(S.profile), tombs: JSON.stringify(S.tombs)
-          };
-          applySynced(r);
-          bus.refresh();
-          logJ('Sync appareils : +' + st.addedC + ', ' + st.updatedC + ' maj, ' + st.removedC + ' suppr.');
-          const log = q('#syLog');
-          if (log) log.innerHTML =
-            `<ul class="rc-lines">
-               ${st.addedC ? `<li>${ic('plus', 'ic-14')} <b>${st.addedC}</b> reçue${st.addedC > 1 ? 's' : ''}</li>` : ''}
-               ${st.updatedC ? `<li>${ic('pencil', 'ic-14')} <b>${st.updatedC}</b> mise${st.updatedC > 1 ? 's' : ''} à jour</li>` : ''}
-               ${st.removedC ? `<li>${ic('trash', 'ic-14')} <b>${st.removedC}</b> supprimée${st.removedC > 1 ? 's' : ''}</li>` : ''}
-               ${st.addedO ? `<li>${ic('contact', 'ic-14')} <b>${st.addedO}</b> contact${st.addedO > 1 ? 's' : ''} à rattacher</li>` : ''}
-               ${st.profile === 'remote' ? `<li>${ic('user', 'ic-14')} profil repris (plus récent)</li>` : ''}
-             </ul>`;
-          const snap = undoSnap;
-          showUndo(`${ic('check', 'ic-14')} Appareils synchronisés.`, () => {
-            applySynced({
-              companies: JSON.parse(snap.companies), orphans: JSON.parse(snap.orphans),
-              profile: JSON.parse(snap.profile), tombs: JSON.parse(snap.tombs)
-            });
-            bus.refresh();
-            toast('Sync annulée — tout est revenu comme avant.');
-          });
-        }
-        setStatus(`${ic('check', 'ic-14')} À jour ✓ — ${peers} appareil${peers > 1 ? 's' : ''} en face`);
-        sendState();   /* converge : ne repart que si quelque chose a changé */
-      };
-    }
-    room.onPeerJoin = () => {
-      peers++;
-      setStatus(`${ic('radio', 'ic-14')} ${peers} appareil${peers > 1 ? 's' : ''} en face — envoi…`);
-      sendState();
-    };
-    room.onPeerLeave = () => {
-      peers = Math.max(0, peers - 1);
-      setStatus(peers ? `${ic('radio', 'ic-14')} ${peers} appareil${peers > 1 ? 's' : ''} en face`
-                      : `${ic('clock', 'ic-14')} En attente de l’autre appareil… (laisse la feuille ouverte)`);
-    };
-    setStatus(`${ic('clock', 'ic-14')} En attente de l’autre appareil… (laisse la feuille ouverte)`);
-    /* tant que la feuille est ouverte, chaque enregistrement se propage */
-    onChange = () => sendState();
-    document.addEventListener('oc:change', onChange);
-  }
-
-  async function start(forceNew){
-    const saved = forceNew ? '' : (await kvGet(SYNC_KEY) || '');
-    if (saved){ connect(saved); return; }
+  async function renderLinked(){
+    const sy = getSync();
+    const self = await deviceSelf();
+    const devs = await loadDevices();
+    const st = sy.lastStats;
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
-      `<p class="pd" style="margin:0 0 12px">Téléphone + ordinateur : une <b>phrase de liaison</b>, et tout se synchronise en direct — suivi privé compris (ce sont tes appareils).</p>
+      `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
+       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Échanger → Mes appareils</b>, puis cette phrase.<br>Le lien reste actif en arrière-plan — tu peux fermer.</p>
+       <div class="sy-status" id="syStatus">${statusHTML()}</div>
+       <div class="sy-log">${st ? `
+         <ul class="rc-lines">
+           ${st.addedC ? `<li>${ic('plus', 'ic-14')} <b>${st.addedC}</b> reçue${st.addedC > 1 ? 's' : ''}</li>` : ''}
+           ${st.updatedC ? `<li>${ic('pencil', 'ic-14')} <b>${st.updatedC}</b> mise${st.updatedC > 1 ? 's' : ''} à jour</li>` : ''}
+           ${st.removedC ? `<li>${ic('trash', 'ic-14')} <b>${st.removedC}</b> supprimée${st.removedC > 1 ? 's' : ''}</li>` : ''}
+           ${st.addedO ? `<li>${ic('contact', 'ic-14')} <b>${st.addedO}</b> contact${st.addedO > 1 ? 's' : ''} à rattacher</li>` : ''}
+           ${st.profile === 'remote' ? `<li>${ic('user', 'ic-14')} profil : la version la plus récente a été prise
+              ${sy.prevProfile ? '<button class="btn btn-sm" id="syKeepProf">Garder plutôt la mienne</button>' : ''}</li>` : ''}
+         </ul>` : ''}</div>
+       <div class="sy-devs">
+         <div class="lbl-row" style="margin-bottom:6px"><label>Appareils reliés</label></div>
+         <div class="dev-row"><b>${esc(self.name)}</b><span class="dev-sub">cet appareil</span></div>
+         ${devs.map(d =>
+           `<div class="dev-row"><b>${esc(d.name)}</b><span class="dev-sub">${agoLabel(d.seen || 0)}</span>
+              <button class="abtn abtn-sm" data-rm="${esc(d.id)}" aria-label="Retirer ${esc(d.name)}" title="Retirer">${ic('trash', 'ic-14')}</button>
+            </div>`).join('')}
+         ${1 + devs.length > DEVICES_MAX
+           ? `<p class="hint warn" style="margin-top:6px">Plus de ${DEVICES_MAX} appareils — change la phrase de liaison pour écarter ceux que tu ne reconnais pas.</p>`
+           : ''}
+       </div>
+       <button class="linklike" id="syNewPhrase" style="margin-top:12px">Changer la phrase de liaison</button>`;
+
+    q('#syRetry')?.addEventListener('click', () => startSync(sy.phrase));
+    q('#syKeepProf')?.addEventListener('click', keepMyProfile);
+    q('#syNewPhrase')?.addEventListener('click', () => renderStart(true));
+    sh.body.querySelectorAll('[data-rm]').forEach(b =>
+      b.addEventListener('click', async () => {
+        const d = devs.find(x => x.id === b.dataset.rm);
+        const ok = await confirmSheet({
+          title: 'Retirer cet appareil ?', danger: true, okLabel: 'Retirer', icon: 'trash',
+          msg: `<b>${esc(d ? d.name : 'Appareil')}</b> sort de la liste. Il connaît encore la phrase — pour l’écarter vraiment, change aussi la phrase de liaison.`
+        });
+        if (!ok) return;
+        await removeDevice(b.dataset.rm);
+        render();
+      }));
+    sh.setFoot([
+      btn('Rompre le lien', 'btn-ghost', async () => {
+        const ok = await confirmSheet({
+          title: 'Rompre le lien ?', danger: true, okLabel: 'Rompre', icon: 'switch',
+          msg: 'Cet appareil ne se synchronisera plus. Rien n’est effacé — tes pistes restent ici, les autres appareils gardent les leurs.'
+        });
+        if (!ok) return;
+        await breakLink();
+        toast('Lien rompu — cet appareil vit sa vie.');
+        render();
+      }),
+      btn('Fermer', 'btn-primary', () => sh.close())
+    ]);
+  }
+
+  function renderStart(changing){
+    sh.setTitle('Mes appareils');
+    sh.body.innerHTML =
+      `<p class="hint" style="margin:0 0 12px">${changing
+         ? 'Nouvelle phrase = nouveau lien : les autres appareils devront la retaper. Utile si tu ne reconnais pas un appareil.'
+         : 'Téléphone + ordinateur : une <b>phrase de liaison</b>, et tout reste synchronisé en continu — suivi privé compris (ce sont tes appareils).'}</p>
        <div class="pick-list">
-         <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} Premier appareil</b><span>créer ma phrase de liaison</span></button>
-         <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} Appareil suivant</b><span>taper la phrase déjà créée</span></button>
+         <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} ${changing ? 'Créer une nouvelle phrase' : 'Premier appareil'}</b><span>${changing ? 'à retaper sur les autres appareils' : 'créer ma phrase de liaison'}</span></button>
+         <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} ${changing ? 'Taper une autre phrase' : 'Appareil suivant'}</b><span>taper la phrase déjà créée</span></button>
        </div>`;
-    sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close())]);
-    q('#syNew').addEventListener('click', () => connect(makePhrase()));
+    sh.setFoot([changing
+      ? btn('← Retour', 'btn-ghost', render)
+      : btn('Fermer', 'btn-ghost', () => sh.close())]);
+    q('#syNew').addEventListener('click', () => { startSync(makePhrase()); render(); });
     q('#syJoin').addEventListener('click', () => {
       sh.body.innerHTML =
         `<div class="field"><label for="syPhrase">La phrase de l’autre appareil</label>
            <input id="syPhrase" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex : k7m3p-9xq2f"></div>`;
-      const go = () => { const v = q('#syPhrase').value.trim().toLowerCase(); if (v) connect(v); };
+      const go = () => {
+        const v = q('#syPhrase').value.trim().toLowerCase();
+        if (v){ startSync(v); render(); }
+      };
       q('#syPhrase').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-      sh.setFoot([btn('← Retour', 'btn-ghost', () => start(true)), btn('Relier', 'btn-primary', go)]);
+      sh.setFoot([btn('← Retour', 'btn-ghost', () => renderStart(changing)), btn('Relier', 'btn-primary', go)]);
       q('#syPhrase').focus();
     });
   }
-  start(false);
+
+  function render(){
+    if (getSync().phrase) renderLinked();
+    else renderStart(false);
+  }
+  /* l'état vivant pilote la feuille : peers, appareils, lot reçu… */
+  onSync = () => { if (!sh.body.querySelector('#syPhrase')) render(); };
+  document.addEventListener('oc:sync', onSync);
+  render();
 }
 
-/* ============ Salle de promo : partage communautaire en direct ============ */
+/* ============ Partage en groupe : communautaire, en direct ============ */
 export function openPromo(){
   let room = null;
   let peers = 0;
-  const queue = [];      /* payloads reçus, présentés un par un */
+  const queue = [];         /* payloads reçus, présentés un par un */
+  const seen = new Set();   /* le même envoi ne se représente pas */
   let showing = false;
   const leave = () => { if (room){ try { room.leave(); } catch (e) {} room = null; } };
-  const sh = openSheet({ title: 'Salle de promo', icon: 'radio', onClose: leave });
+  const sh = openSheet({ title: 'Partage en groupe', icon: 'radio', onClose: leave });
   const q = s => sh.body.querySelector(s);
 
-  const ask = () => {
+  const ask = async () => {
+    const last = (await kvGet(PROMO_KEY)) || '';
     sh.body.innerHTML =
-      `<p class="pd" style="margin:0 0 12px">Un mot de passe pour toute la promo, et les fiches circulent en direct — <b>jamais ton suivi privé</b>.</p>
-       <div class="field"><label for="prPass">Mot de passe de la salle</label>
-         <input id="prPass" autocomplete="off" autocapitalize="off" placeholder="ex : promo-sio-2026"></div>`;
-    const go = () => { const v = q('#prPass').value.trim(); if (v) enter(v); };
+      `<p class="hint" style="margin:0 0 12px">Un mot de passe pour le groupe (ta promo, ta classe), et les fiches circulent en direct — <b>jamais ton suivi privé</b>.</p>
+       <div class="field"><label for="prPass">Mot de passe du groupe</label>
+         <input id="prPass" autocomplete="off" autocapitalize="off" placeholder="ex : promo-sio-2026" value="${esc(last)}"></div>`;
+    const go = () => { const v = q('#prPass').value.trim(); if (v){ kvSet(PROMO_KEY, v); enter(v); } };
     q('#prPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
     sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close()), btn('Entrer', 'btn-primary', go)]);
     q('#prPass').focus();
@@ -194,11 +172,12 @@ export function openPromo(){
   async function enter(pass){
     sh.body.innerHTML =
       `<div class="sy-status" id="prStatus">${ic('radio', 'ic-14')} Connexion…</div>
+       <div id="prZone"></div>
        <p class="hint" id="prHint" style="text-align:center">Chacun garde la feuille ouverte ; chaque envoi montre un aperçu avant fusion.</p>`;
-    sh.setFoot([btn('Quitter la salle', 'btn-ghost', () => { leave(); ask(); }), btn('Fermer', 'btn-primary', () => sh.close())]);
+    sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); }), btn('Fermer', 'btn-primary', () => sh.close())]);
     const setStatus = txt => { const el = q('#prStatus'); if (el) el.innerHTML = txt; };
     try {
-      room = await openRoom('promo', pass);
+      room = await openRoom('promo', pass);   /* préfixe historique — compat */
     } catch (e) {
       setStatus(`${ic('square-alert', 'ic-14')} Pas de connexion — réseau bloqué ? Le fichier .oc marche toujours.`);
       return;
@@ -206,24 +185,47 @@ export function openPromo(){
     const share = room.makeAction('share');
 
     const mine = () => S.companies.filter(c => !isClosed(c) && !c.demo);
+    /* ce qui part : tout par défaut, élagable d'un tap */
+    const unsel = new Set();
+    const chosen = () => mine().filter(c => !unsel.has(c.id));
+    let choosing = false;
     const refreshStatus = () => {
-      const n = mine().length;
+      const n = chosen().length;
       setStatus(peers
-        ? `${ic('radio', 'ic-14')} <b>${peers}</b> camarade${peers > 1 ? 's' : ''} dans la salle`
+        ? `${ic('radio', 'ic-14')} <b>${peers}</b> camarade${peers > 1 ? 's' : ''} dans le groupe`
         : `${ic('clock', 'ic-14')} Personne d’autre pour l’instant…`);
-      const old = q('#prSend');
-      if (old) old.remove();
-      if (peers && n){
-        const b = btn(`Envoyer mes ${n} piste${n > 1 ? 's' : ''}`, 'btn-primary', () => {
-          share.send(sharePayload(mine()));
-          logJ('Donné (salle de promo) : ' + n + ' piste(s)');
-          toast('Parti vers ' + peers + ' camarade' + (peers > 1 ? 's' : '') + ' ✓');
-        }, 'share');
-        b.id = 'prSend';
-        b.style.width = '100%';
-        b.style.marginTop = '12px';
-        q('#prStatus').after(b);
-      }
+      const zone = q('#prZone');
+      if (!zone) return;
+      if (!peers || !mine().length){ zone.innerHTML = ''; return; }
+      zone.innerHTML =
+        `<button class="btn btn-primary pr-send" id="prSend"${n ? '' : ' disabled'}>${ic('share', 'ic-14')} Envoyer ${n ? n + ' piste' + (n > 1 ? 's' : '') : '…'}</button>
+         <button class="linklike" id="prPick" style="margin-top:6px">${choosing ? 'Replier la liste' : 'Choisir ce qui part…'}</button>
+         ${choosing ? `<div class="pick-list" style="margin-top:8px">
+           ${mine().map(c =>
+             `<button class="pick pk${unsel.has(c.id) ? '' : ' on'}" data-id="${c.id}" aria-pressed="${!unsel.has(c.id)}">
+                ${ic('checkbox', 'ic-20 ic-off')}${ic('checkbox-on', 'ic-20 ic-on')}
+                <div class="pk-m"><b>${esc(c.name)}</b>${c.city ? `<span>${esc(c.city)}</span>` : ''}</div>
+              </button>`).join('')}
+         </div>` : ''}`;
+      q('#prSend').addEventListener('click', () => {
+        const list = chosen();
+        if (!list.length) return;
+        share.send(sharePayload(list));
+        logJ('Donné (partage en groupe) : ' + list.length + ' piste(s)');
+        toast('Parti vers ' + peers + ' camarade' + (peers > 1 ? 's' : '') + ' ✓');
+      });
+      q('#prPick').addEventListener('click', () => { choosing = !choosing; refreshStatus(); });
+      zone.querySelectorAll('.pk').forEach(b =>
+        b.addEventListener('click', () => {
+          const id = b.dataset.id;
+          unsel.has(id) ? unsel.delete(id) : unsel.add(id);
+          b.classList.toggle('on', !unsel.has(id));
+          b.setAttribute('aria-pressed', !unsel.has(id));
+          const n2 = chosen().length;
+          const send = q('#prSend');
+          send.disabled = !n2;
+          send.innerHTML = `${ic('share', 'ic-14')} Envoyer ${n2 ? n2 + ' piste' + (n2 > 1 ? 's' : '') : '…'}`;
+        }));
     };
     const showNext = () => {
       if (showing || !queue.length) return;
@@ -236,6 +238,11 @@ export function openPromo(){
       if (!obj || obj.kind !== 'share' || !Array.isArray(obj.companies)) return;
       obj.companies = obj.companies.filter(x => x && typeof x === 'object' && x.name).slice(0, 2000);
       if (!obj.companies.length) return;
+      /* le même envoi (re-clic, rediffusion) ne réapparaît pas */
+      const key = JSON.stringify(obj.companies);
+      if (seen.has(key)) return;
+      seen.add(key);
+      if (seen.size > 30) seen.delete(seen.values().next().value);
       queue.push({ obj, from: 'camarade ' + String((meta && meta.peerId) || '').slice(0, 4) });
       showNext();
     };

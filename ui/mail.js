@@ -15,14 +15,14 @@ export function openMail(c, opts){
   const cts = (c.contacts || []).filter(t => t.email);
   const tpls = S.profile.templates;
   let logged = false;
-  /* en série (Prospecter) : prévenir la suite exactement une fois,
-     que la feuille soit envoyée, passée ou fermée */
-  let chained = false;
-  const finish = () => { if (opts.onDone){ const f = opts.onDone; opts.onDone = null; f(); } };
+  /* en série (Prospecter) : « Passer » ou « Envoyée » enchaînent la
+     suivante ; la croix (ou Échap) arrête TOUTE la série immédiatement */
+  let done = false;
+  const advance = () => { if (opts.onDone){ const f = opts.onDone; opts.onDone = null; f(); } };
   const sh = openSheet({
     title: 'Écrire — ' + c.name + (opts.progress ? '  ·  ' + opts.progress : ''),
     icon: 'mail', focus: cts.length ? '#mSubj' : '#mBody',
-    onClose: () => { if (!chained) finish(); }
+    onClose: () => { if (done) return; done = true; if (opts.onQuit) opts.onQuit(); }
   });
   sh.body.innerHTML =
     `<div class="grid2">
@@ -105,18 +105,18 @@ export function openMail(c, opts){
       if (!c.appliedAt) c.appliedAt = todayISO();
       c.updatedAt = Date.now();
       saveData();
-      chained = true;
+      done = true;
       sh.close();
       bus.refresh();
       askNextAction(c, {
         title: 'Envoyé ✓ — et ensuite ?',
         preset: 'Relancer' + (who ? ' ' + who : ''),
-        onDone: finish
+        onDone: advance
       });
     })
   ]);
   if (opts.onDone){
-    const skip = btn('Passer →', 'btn-ghost', () => sh.close());
+    const skip = btn('Passer →', 'btn-ghost', () => { done = true; sh.close(); advance(); });
     sh.ov.querySelector('.modal-f').prepend(skip);
   }
   fill();
