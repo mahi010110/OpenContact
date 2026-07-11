@@ -9,6 +9,8 @@ pas d'exception silencieuse.
 
 À lire avec : `CONTRAT.md` (contrat de données exécutable, vérifié par
 `?test`), `docs/refonte-brief.md` (la vision d'origine),
+`docs/degraissage-v6.3.md` (**chantier en cours — fait foi sur ce qu'il
+traite** : suppression au geste, diète de texte, Échanger, tri/ordre),
 `docs/plan-v7.md` (feuille de route), `design/` (kit « Utilitaire 98 »).
 
 ## 1. Le produit en une phrase
@@ -119,13 +121,18 @@ avec un motif existant :
 | Retour discret | `toast()` — court, ponctuel, jamais deux phrases |
 | Marquer partagé vs privé | `tag-share` / `tag-priv` |
 | Note contextuelle | `<p class="hint">` (+ `warn` si alerte) — une seule par écran si possible |
-| Multi-sélection | `.pk` avec icônes checkbox/checkbox-on |
+| Multi-sélection (choisir quoi partager) | `.pk` avec icônes checkbox/checkbox-on — **plus utilisé pour supprimer** |
+| Supprimer un élément (piste, prompt) | geste : **glisser** (mobile) / **poubelle au survol** (desktop) + `showUndo`, sans confirmation. Uniquement dans « Mes pistes » pour les pistes |
+| Fermer une barre transitoire (toast, Annuler, bandeau) | **balayer** (mobile) / **`✕`** (desktop) |
 | Contenu secondaire | `<details class="pcard pcard-details">` replié |
 | Recevoir des données | TOUJOURS l'aperçu avant fusion (`mergePreviewInto`) — mêmes règles quel que soit le canal (fichier, QR, P2P) |
 
-Règles d'écran : un bouton primaire max par vue ; les actions destructives
-en `btn-danger` + confirmation ; l'état vide de chaque écran enseigne le
-produit (pas un simple « aucune donnée »).
+Règles d'écran : un bouton primaire max par vue ; **une suppression unitaire
+réversible se fait au geste (glisser / poubelle au survol) + `showUndo`, sans
+confirmation** ; seules les actions lourdes ou irréversibles (tout supprimer,
+remplacer, retirer un appareil, rompre le lien) gardent `confirmSheet`
+(`btn-danger`) ; l'état vide de chaque écran enseigne le produit (pas un
+simple « aucune donnée »).
 
 ## 7. Les textes
 
@@ -134,7 +141,8 @@ Français, tutoiement, phrases courtes, concret. On parle « pistes »,
 autre jargon à l'écran. Les rappels de sécurité/valeur sont **courts et
 placés au moment du geste** (pas de paragraphes préventifs — la v6.1 a
 allégé, on ne réalourdit pas). Microcopie type : « Seules les fiches
-partent — jamais ton suivi privé. »
+partent — jamais ton suivi privé. » **Par défaut, un mot ou une icône
+suffit ; une phrase entière seulement quand la sécurité l'exige.**
 
 ## 8. Partage & sync — les deux mondes à ne pas mélanger
 
