@@ -6,7 +6,7 @@
    jamais l'écran ; ici, l'écran pilote le moteur.
    ============================================================ */
 import { todayISO, fmtDate, uid } from '../engine/utils.js';
-import { STATUSES, CLOSE_REASONS, normalizeCompany, normalizeContact,
+import { CLOSE_REASONS, normalizeCompany, normalizeContact,
          normalizeProfile, pushHist } from '../engine/model.js';
 import { contactKey } from '../engine/merge.js';
 import { mergeTombs } from '../engine/sync.js';
@@ -108,17 +108,10 @@ export async function loadAll(){
   if (getBackend() === 'memory') setSaveWarn(true);
 }
 
-/* ---------- gestes métier sur une piste ---------- */
+/* ---------- gestes métier sur une piste ----------
+   (le statut, lui, ne s'écrit plus qu'au « Confirmer » de la fiche) */
 export const isClosed = c => !!c.closedReason;
 
-export function setStatus(c, st){
-  if (!STATUSES[st] || c.status === st) return;
-  c.status = st;
-  c.updatedAt = Date.now();
-  pushHist(c, 'Statut → ' + STATUSES[st].label);
-  logJ('Statut : ' + c.name + ' → ' + STATUSES[st].label, c.id);
-  saveData();
-}
 export function setNextAction(c, text, dateISO){
   c.nextActionText = String(text || '').trim();
   c.nextAction = dateISO || '';

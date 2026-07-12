@@ -53,6 +53,13 @@ export function askNextAction(c, opts){
        </div></div>`;
   const pick = iso => {
     const txt = sh.body.querySelector('#naTxt').value.trim() || 'Faire le point';
+    /* mode formulaire (fiche) : la valeur revient à l'appelant, qui
+       n'enregistrera qu'au « Confirmer » */
+    if (opts.onPick){
+      opts.onPick(txt, iso);
+      sh.close();
+      return;
+    }
     setNextAction(c, txt, iso);
     sh.close();
     toast('Noté : ' + txt + ' — ' + frDate(iso));
@@ -63,10 +70,12 @@ export function askNextAction(c, opts){
   /* la date précise se VALIDE : sur mobile, la roue déclenche des
      `change` intermédiaires — fermer au premier aurait pris la mauvaise date */
   bindDateOk(sh.body, '#naDate', '#naOk', pick);
-  sh.setFoot([btn(opts.laterLabel || 'Plus tard', 'btn-ghost', () => {
-    sh.close();
-    toast('OK — la piste attend dans « Mes pistes ».');
-  })]);
+  sh.setFoot([opts.onPick
+    ? btn('Annuler', 'btn-ghost', () => sh.close())
+    : btn(opts.laterLabel || 'Plus tard', 'btn-ghost', () => {
+        sh.close();
+        toast('OK — la piste attend dans « Mes pistes ».');
+      })]);
   return sh;
 }
 

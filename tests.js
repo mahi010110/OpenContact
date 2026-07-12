@@ -9,7 +9,8 @@ import { esc, normName, extractCity, distKm, todayISO, localISO } from './engine
 import { KDF_ITER, encryptOC2, decryptOC2, deriveKey, bytesToB64,
          fnv, ocKeystream, unsealOC1 } from './engine/crypto.js';
 import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
-         pushHist, fillTpl, safeUrl, PROMPTS_MAX, PROMPT_MAX_LEN } from './engine/model.js';
+         pushHist, fillTpl, safeUrl, summarizeChanges,
+         PROMPTS_MAX, PROMPT_MAX_LEN } from './engine/model.js';
 import { communityView, parseInput, sharePayload, fullPayload,
          encodeOCQ, splitOCQ, makeOCQJoiner, OCQP_CHUNK,
          makeRdvCode, rdvNorm, rdvWrap, rdvParse } from './engine/exchange.js';
@@ -418,6 +419,15 @@ export async function runSelfTests(){
       const list = [normalizeCompany({ name: 'A', updatedAt: 1 }), normalizeCompany({ name: 'B', updatedAt: 2 })];
       eq(filterCompanies(list, { sort: 'recent' }).map(c => c.name),
          filterCompanies(list, { sort: 'recent', dir: 'desc' }).map(c => c.name));
+    },
+    'fiche : le « Confirmer » résume ce qui a réellement changé': () => {
+      const avant = { status: 'todo', notes: '', nextAction: '', nextActionText: '' };
+      eq(summarizeChanges(avant, { status: 'active', notes: 'vu au forum', nextAction: '2026-01-05', nextActionText: 'Relancer' }),
+         'Statut → En cours · À faire : Relancer — 05/01/2026 · Notes modifiées');
+      eq(summarizeChanges(avant, Object.assign({}, avant)), '');   /* rien de changé = rien d'écrit */
+      eq(summarizeChanges({ status: 'todo', notes: '', nextAction: '2026-01-05', nextActionText: 'X' },
+                          { status: 'todo', notes: '', nextAction: '', nextActionText: '' }),
+         'Action retirée');
     },
     'historique : pushHist plafonne à 40 entrées': () => {
       const c = normalizeCompany({ name: 'X' });

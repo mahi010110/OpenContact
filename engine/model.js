@@ -5,7 +5,7 @@
    défaut, historique, gabarits d'emails. C'est le contrat de
    données de l'application — aucun accès au DOM.
    ============================================================ */
-import { uid, extractCity, todayISO } from './utils.js';
+import { uid, extractCity, todayISO, fmtDate } from './utils.js';
 
 export const APP_VERSION = '6.1.0';
 
@@ -202,6 +202,22 @@ export function normalizeProfile(raw){
 export function pushHist(c, t){
   (c.history = c.history || []).push({ d: todayISO(), t });
   if (c.history.length > 40) c.history = c.history.slice(-40);
+}
+/* résume ce qui a RÉELLEMENT changé entre deux états du suivi — la
+   fiche (formulaire) n'écrit qu'une entrée d'historique, au moment
+   du « Confirmer », jamais un micro-geste à la fois */
+export function summarizeChanges(before, after){
+  const parts = [];
+  if (after.status !== before.status && STATUSES[after.status])
+    parts.push('Statut → ' + STATUSES[after.status].label);
+  if (after.nextAction !== before.nextAction || after.nextActionText !== before.nextActionText){
+    if (after.nextAction)
+      parts.push('À faire : ' + (after.nextActionText || 'faire le point') + ' — ' + fmtDate(after.nextAction));
+    else if (before.nextAction)
+      parts.push('Action retirée');
+  }
+  if (after.notes !== before.notes) parts.push('Notes modifiées');
+  return parts.join(' · ');
 }
 /* remplit un gabarit {{variable}} avec la piste, le contact visé et le profil */
 export function fillTpl(str, c, ct, profile){

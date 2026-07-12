@@ -105,8 +105,20 @@ export function openSheet(o){
 
   let closed = false;
   const prevFocus = document.activeElement;
-  function close(result){
+  /* o.guard : consulté avant de fermer (léger garde-fou « quitter sans
+     enregistrer ? ») — false ou promesse fausse = on reste */
+  function close(result, force){
     if (closed) return;
+    if (!force && o.guard){
+      const g = o.guard();
+      if (g === false || (g && typeof g.then === 'function')){
+        /* on reste : la feuille reprend sa place (glisser interrompu) */
+        const m = ov.querySelector('.modal');
+        if (m) m.style.transform = '';
+        if (g !== false) g.then(okv => { if (okv) close(result, true); });
+        return;
+      }
+    }
     closed = true;
     const i = stack.indexOf(rec);
     if (i >= 0) stack.splice(i, 1);
