@@ -122,7 +122,11 @@ avec les anciens fichiers. Un contenu altéré est refusé (`altéré`).
 ### Garde-fous à la lecture
 
 Entrée de plus de 4 Mo refusée (`troplourd`) ; plus de 2 000 pistes refusées
-(`tropdepistes`) ; entrées sans `name` ignorées silencieusement.
+(`tropdepistes`) ; entrées sans `name` ignorées silencieusement. Un OCQ1 dont
+la **taille décompressée** dépasse 8 Mo est refusé (`troplourd`) — anti-bombe de
+décompression. Tout JSON d'une source non fiable est lu par `safeJSONParse`,
+qui **écarte** les clés `__proto__` / `constructor` / `prototype` (anti-pollution
+de prototype).
 
 ## 3. Le schéma d'une piste — intouchable
 
