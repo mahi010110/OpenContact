@@ -196,8 +196,19 @@ html[data-theme="dark"] .field select{
 @media (max-width:349px){.grid2{grid-template-columns:1fr}}
 .hint{font-size:var(--text-12);color:var(--text-muted);margin-top:7px;line-height:1.5}
 .hint.warn{color:var(--amber)}
-.search-wrap{position:relative;display:flex;gap:8px;margin-bottom:14px}
+/* recherche + tri restent collés en haut pendant le défilement (le
+   conteneur de défilement est .view) ; le fond masque ce qui passe
+   dessous, la marge négative absorbe le padding du conteneur */
+.search-wrap{
+  position:sticky;top:-18px;z-index:40;display:flex;gap:8px;   /* -18 = marge -16 compensée */
+  background:var(--surface-desktop);
+  padding:16px 0 10px;margin:-16px 0 4px;
+}
 .search-wrap .search{flex:1;min-width:0}
+.view.scrolled .search-wrap{border-bottom:1px solid var(--border-soft)}
+/* la tête de page s'efface dès qu'on descend — bascule nette, style 98 */
+.td-head{transition:opacity var(--dur-2) var(--ease-steps)}
+.view.scrolled .td-head{opacity:0}
 .search{
   width:100%;height:var(--ctl);
   background:var(--surface-field);border:1px solid var(--border-field);border-radius:var(--radius-1);
@@ -207,9 +218,16 @@ html[data-theme="dark"] .field select{
 .search::-webkit-search-cancel-button,.search::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
 /* tri actif (critère changé ou ordre inversé) : marqué, sans voler le teal du héros */
 .sort-on{background:var(--teal-wash);border-color:var(--accent);color:var(--accent)}
-/* barre au-dessus d'une liste de choix (tri dans les feuilles) */
+/* barre au-dessus d'une liste de choix (tri dans les feuilles) — collée
+   en haut du corps de la feuille pendant le défilement */
 .listbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .listbar .linklike,.listbar>span{flex:1;min-width:0}
+.modal-b .listbar{
+  position:sticky;top:-9px;z-index:5;                          /* -9 = marge -8 compensée */
+  background:var(--surface-window);
+  padding:8px 0;margin:-8px 0 2px;
+}
+.modal-b>.listbar{top:-17px;padding:16px 0 8px;margin:-16px 0 6px}
 
 /* ============ TÊTE DE PAGE ============ */
 .td-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}

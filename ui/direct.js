@@ -55,7 +55,7 @@ export function openAppareils(){
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
-       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils</b>, puis cette phrase.<br>Le lien reste actif en arrière-plan — tu peux fermer.</p>
+       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils → Entrer une phrase</b>.</p>
        <div class="sy-status" id="syStatus">${statusHTML()}</div>
        <div class="sy-log">${st ? `
          <ul class="rc-lines">
@@ -112,11 +112,11 @@ export function openAppareils(){
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 12px">${changing
-         ? 'Nouvelle phrase = nouveau lien : les autres appareils devront la retaper. Utile si tu ne reconnais pas un appareil.'
-         : 'Téléphone + ordinateur : une <b>phrase de liaison</b>, et tout reste synchronisé en continu — suivi privé compris (ce sont tes appareils).'}</p>
+         ? 'Nouvelle phrase = nouveau lien — à retaper sur les autres appareils.'
+         : 'Une phrase de liaison, et tes appareils restent à jour — suivi compris.'}</p>
        <div class="pick-list">
-         <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} ${changing ? 'Créer une nouvelle phrase' : 'Premier appareil'}</b><span>${changing ? 'à retaper sur les autres appareils' : 'créer ma phrase de liaison'}</span></button>
-         <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} ${changing ? 'Taper une autre phrase' : 'Appareil suivant'}</b><span>taper la phrase déjà créée</span></button>
+         <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} Créer une phrase</b><span>je commence ici</span></button>
+         <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} Entrer une phrase</b><span>j’en ai déjà une</span></button>
        </div>`;
     sh.setFoot([changing
       ? btn('← Retour', 'btn-ghost', render)
@@ -124,7 +124,7 @@ export function openAppareils(){
     q('#syNew').addEventListener('click', () => { startSync(makePhrase()); render(); });
     q('#syJoin').addEventListener('click', () => {
       sh.body.innerHTML =
-        `<div class="field"><label for="syPhrase">La phrase de l’autre appareil</label>
+        `<div class="field"><label for="syPhrase">Phrase de l’autre appareil</label>
            <input id="syPhrase" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex : k7m3p-9xq2f"></div>`;
       const go = () => {
         const v = q('#syPhrase').value.trim().toLowerCase();

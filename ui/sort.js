@@ -26,15 +26,29 @@ const effDir = st => st.dir || NATURAL_DIR[st.sort] || 'desc';
 
 export function sortBarHTML(st){
   const arrow = effDir(st) === 'asc' ? 'arrow-up' : 'arrow-down';
+  const on = st.sort !== st.def;
+  /* tri déjà changé : le bouton annonce le retour au défaut (re-tap direct) */
+  const lbl = on ? `Tri : ${SORT_LABELS[st.sort]} — retaper pour revenir à « ${SORT_LABELS[st.def]} »`
+                 : `Trier — ${SORT_LABELS[st.sort]}`;
   return (
-    `<button class="btn icon-btn${st.sort !== st.def ? ' sort-on' : ''}" data-sort-crit
-             aria-label="Trier — ${SORT_LABELS[st.sort]}" title="Trier — ${SORT_LABELS[st.sort]}">${ic('sort-vertical', 'ic-14')}</button>
+    `<button class="btn icon-btn${on ? ' sort-on' : ''}" data-sort-crit
+             aria-label="${lbl}" title="${lbl}">${ic('sort-vertical', 'ic-14')}</button>
      <button class="btn icon-btn${st.dir ? ' sort-on' : ''}" data-sort-dir
              aria-label="Ordre — ${effDir(st) === 'asc' ? 'croissant' : 'décroissant'}" title="Inverser l’ordre">${ic(arrow, 'ic-14')}</button>`);
 }
 
 export function bindSortBar(root, st, onChange){
-  root.querySelector('[data-sort-crit]').addEventListener('click', () => openSortSheet(st, onChange));
+  root.querySelector('[data-sort-crit]').addEventListener('click', () => {
+    /* re-tap sur un tri actif = retour direct au défaut de l'écran
+       (critère ET ordre) — la feuille ne sert qu'à changer de critère */
+    if (st.sort !== st.def){
+      st.sort = st.def;
+      st.dir = '';
+      onChange();
+      return;
+    }
+    openSortSheet(st, onChange);
+  });
   root.querySelector('[data-sort-dir]').addEventListener('click', () => {
     const next = effDir(st) === 'asc' ? 'desc' : 'asc';
     st.dir = (next === (NATURAL_DIR[st.sort] || 'desc')) ? '' : next;

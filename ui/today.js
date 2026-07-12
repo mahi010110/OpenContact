@@ -73,6 +73,8 @@ function trancheHTML(key, label, icon, items, open){
 
 export function renderToday(){
   const root = $('#view-aujourdhui');
+  /* même geste que « Mes pistes » : la tête s'efface en descendant (CSS) */
+  root.onscroll = () => root.classList.toggle('scrolled', root.scrollTop > 8);
   const today = todayISO();
   const alive = S.companies.filter(c => !isClosed(c));
   const byDate = (a, b) => a.nextAction.localeCompare(b.nextAction) || (b.updatedAt || 0) - (a.updatedAt || 0);

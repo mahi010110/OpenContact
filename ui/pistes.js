@@ -120,6 +120,8 @@ export function renderPistes(){
   const root = $('#view-pistes');
   const wide = mqWide.matches;
   const nAlive = S.companies.filter(c => !isClosed(c)).length;
+  /* en descendant : la tête s'efface, recherche + tri restent collés (CSS) */
+  root.onscroll = () => root.classList.toggle('scrolled', root.scrollTop > 8);
 
   root.innerHTML =
     `<div class="page-inner${wide ? ' page-wide' : ''}">
