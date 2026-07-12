@@ -33,9 +33,10 @@ function rowHTML(c){
   const verb = c.nextActionText || 'Faire le point';
   const today = todayISO();
   /* la tranche donne le contexte : en retard → seul l'écart compte,
-     aujourd'hui → rien à répéter, bientôt → la date */
-  const when = c.nextAction < today ? ` · <em class="late">${relLabel(c.nextAction)}</em>`
-             : c.nextAction > today ? ' · ' + frDate(c.nextAction) : '';
+     aujourd'hui → rien à répéter, bientôt → la date. L'échéance passe
+     devant le nom : c'est lui qui se tronque, jamais elle. */
+  const when = c.nextAction < today ? `<em class="late">${relLabel(c.nextAction)}</em> · `
+             : c.nextAction > today ? frDate(c.nextAction) + ' · ' : '';
   return (
     `<div class="act-row" data-id="${c.id}">
        <div class="act-under act-under-done">${ic('check', 'ic-14')} Fait</div>
@@ -43,7 +44,7 @@ function rowHTML(c){
        <div class="act-in">
          <div class="act-main" role="button" tabindex="0" aria-label="Ouvrir ${esc(c.name)}">
            <b class="act-verb">${esc(verb)}</b>
-           <span class="act-sub">${esc(c.name)}${when}</span>
+           <span class="act-sub">${when}${esc(c.name)}</span>
          </div>
          <div class="act-btns">
            <button class="abtn" data-a="mail" aria-label="Écrire à ${esc(c.name)}" title="Écrire">${ic('mail')}</button>

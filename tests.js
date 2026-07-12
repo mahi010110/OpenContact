@@ -14,7 +14,7 @@ import { communityView, parseInput, sharePayload, fullPayload,
          encodeOCQ, splitOCQ, makeOCQJoiner, OCQP_CHUNK } from './engine/exchange.js';
 import { findMatch, mergeIncoming, contactKey } from './engine/merge.js';
 import { syncMerge, mergeTombs, TOMBS_MAX } from './engine/sync.js';
-import { filterCompanies } from './engine/filter.js';
+import { filterCompanies, NATURAL_DIR } from './engine/filter.js';
 import { scoreOf } from './engine/score.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, SYNC_KEY,
          RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY,
@@ -391,6 +391,24 @@ export async function runSelfTests(){
       ];
       eq(filterCompanies(list, { sort: 'dist', userPos: { lat: 50.69, lng: 3.17 } }).map(c => c.name),
          ['Lille', 'Paris', 'SansCoord']);
+      eq(filterCompanies(list, { sort: 'dist', dir: 'desc', userPos: { lat: 50.69, lng: 3.17 } }).map(c => c.name),
+         ['Paris', 'Lille', 'SansCoord']);
+    },
+    'tri : ↑↓ inverse chaque critère, les vides restent en fin': () => {
+      const list = [
+        normalizeCompany({ name: 'Bravo', updatedAt: 300 }),
+        normalizeCompany({ name: 'Alpha', nextAction: '2030-06-01', updatedAt: 100 }),
+        normalizeCompany({ name: 'Charlie', nextAction: '2020-01-01', updatedAt: 200 })
+      ];
+      eq(filterCompanies(list, { sort: 'az', dir: 'desc' }).map(c => c.name), ['Charlie', 'Bravo', 'Alpha']);
+      eq(filterCompanies(list, { sort: 'action', dir: 'desc' }).map(c => c.name), ['Alpha', 'Charlie', 'Bravo']);
+      eq(filterCompanies(list, { sort: 'recent', dir: 'asc' }).map(c => c.name), ['Alpha', 'Charlie', 'Bravo']);
+    },
+    'tri : dir absent = sens naturel du critère': () => {
+      eq(NATURAL_DIR.recent, 'desc'); eq(NATURAL_DIR.az, 'asc'); eq(NATURAL_DIR.action, 'asc');
+      const list = [normalizeCompany({ name: 'A', updatedAt: 1 }), normalizeCompany({ name: 'B', updatedAt: 2 })];
+      eq(filterCompanies(list, { sort: 'recent' }).map(c => c.name),
+         filterCompanies(list, { sort: 'recent', dir: 'desc' }).map(c => c.name));
     },
     'historique : pushHist plafonne à 40 entrées': () => {
       const c = normalizeCompany({ name: 'X' });

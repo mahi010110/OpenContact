@@ -27,14 +27,58 @@ export function btn(label, cls, fn, icon){
   return b;
 }
 
+/* ---------- barres transitoires : balayer (tactile) / ✕ (desktop) ---------- */
+function barX(onClose){
+  const b = el('<button class="bar-x" aria-label="Fermer">✕</button>');
+  b.addEventListener('click', onClose);
+  return b;
+}
+/* glisser horizontalement une barre centrée (transform -50%) la ferme ;
+   sous le seuil, elle revient — les minuteurs restent le secours */
+function bindBarSwipe(bar, dismiss){
+  if (!matchMedia('(pointer:coarse)').matches) return;
+  let x0 = null, y0 = null, dx = 0, active = false;
+  bar.addEventListener('touchstart', e => {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; active = false;
+  }, { passive: true });
+  bar.addEventListener('touchmove', e => {
+    if (x0 == null) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!active){
+      if (Math.abs(mx) < 12 || Math.abs(mx) < Math.abs(my) * 1.4) return;
+      active = true;
+    }
+    dx = mx;
+    bar.style.transition = 'none';
+    bar.style.transform = `translateX(calc(-50% + ${dx}px))`;
+    bar.style.opacity = String(Math.max(.25, 1 - Math.abs(dx) / 260));
+  }, { passive: true });
+  bar.addEventListener('touchend', () => {
+    if (x0 == null) return;
+    x0 = null;
+    bar.style.transition = '';
+    if (active && Math.abs(dx) > 64){ dismiss(); return; }
+    bar.style.transform = '';
+    bar.style.opacity = '';
+  });
+}
+
 let toastTimer = null;
+function hideToast(){
+  const t = $('#toast');
+  t.classList.remove('on');
+  t.style.transform = '';
+  t.style.opacity = '';
+}
 export function toast(msg){
   const t = $('#toast');
-  t.textContent = msg;
+  t.innerHTML = '';
+  t.append(document.createTextNode(msg), barX(hideToast));
   t.classList.add('on');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('on'), 3400);
+  toastTimer = setTimeout(hideToast, 3400);
 }
+bindBarSwipe(document.getElementById('toast'), hideToast);
 
 /* ---------- feuilles empilables ---------- */
 const stack = [];
@@ -137,15 +181,73 @@ document.addEventListener('keydown', e => {
 });
 
 /* barre « Annuler » ~30 s — pour les gestes lourds mais réversibles
-   (fusion, restauration) : le clic rejoue l'instantané fourni */
+   (fusion, suppression, restauration) : le clic rejoue l'instantané
+   fourni. Se ferme d'un balayage (tactile) ou du ✕ (desktop). */
 let undoTimer = null;
 export function showUndo(msgHTML, onUndo){
   document.querySelector('.undo-bar')?.remove();
   clearTimeout(undoTimer);
   const bar = el(`<div class="undo-bar"><span>${msgHTML}</span></div>`);
-  bar.append(btn('Annuler', 'btn-sm', () => { bar.remove(); onUndo(); }, 'undo'));
+  bar.append(btn('Annuler', 'btn-sm', () => { bar.remove(); onUndo(); }, 'undo'), barX(() => bar.remove()));
+  bindBarSwipe(bar, () => bar.remove());
   document.body.append(bar);
   undoTimer = setTimeout(() => bar.remove(), 30000);
+}
+
+/* ---------- suppression au geste — le motif unique ----------
+   Le nœud fournit un enfant .sw-in (le contenu visible) ; ici :
+   · tactile — glisser vers la gauche révèle « Supprimer », relâché
+     au-delà du seuil la ligne part (seuil calé pour ignorer le
+     défilement vertical) ;
+   · desktop — poubelle au survol / au focus (accessible clavier).
+   L'appelant double toujours onDelete d'un showUndo — jamais de
+   confirmation. */
+export function bindDeleteGesture(node, onDelete){
+  const inner = node.querySelector('.sw-in');
+  if (!inner || node.__swDel) return;
+  node.__swDel = true;
+  node.classList.add('sw');
+  let gone = false;
+  const vanish = () => {
+    if (gone) return;
+    gone = true;
+    node.classList.add('sw-gone');
+    setTimeout(onDelete, 150);
+  };
+  const del = el(`<button class="hov-del" aria-label="Supprimer" title="Supprimer">${ic('trash', 'ic-14')}</button>`);
+  del.addEventListener('click', e => { e.stopPropagation(); vanish(); });
+  inner.append(del);
+  if (!matchMedia('(pointer:coarse)').matches) return;
+  node.prepend(el(`<div class="sw-under" aria-hidden="true">${ic('trash', 'ic-14')} Supprimer</div>`));
+  let x0 = null, y0 = null, dx = 0, active = false, endedAt = 0;
+  node.addEventListener('touchstart', e => {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; active = false;
+  }, { passive: true });
+  node.addEventListener('touchmove', e => {
+    if (x0 == null) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!active){
+      if (Math.abs(mx) < 12 || Math.abs(mx) < Math.abs(my) * 1.4) return;
+      active = true;
+    }
+    dx = Math.max(-96, Math.min(0, mx));
+    inner.style.transform = dx ? `translateX(${dx}px)` : '';
+    node.classList.toggle('swipe-del', dx < -24);
+  }, { passive: true });
+  node.addEventListener('touchend', () => {
+    if (x0 == null) return;
+    x0 = null;
+    if (active){
+      endedAt = Date.now();
+      if (dx < -72){ inner.style.transform = ''; node.classList.remove('swipe-del'); vanish(); return; }
+    }
+    inner.style.transform = '';
+    node.classList.remove('swipe-del');
+  });
+  /* le clic fantôme qui suit un glissement n'ouvre rien */
+  node.addEventListener('click', e => {
+    if (Date.now() - endedAt < 400){ e.stopPropagation(); e.preventDefault(); }
+  }, true);
 }
 
 /* confirmation simple — remplace confirm() natif */

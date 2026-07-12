@@ -2,11 +2,18 @@
    OpenContact — moteur · recherche, filtres & tris
    Reçoit les pistes ET les critères en paramètres, rend la liste
    ordonnée : l'interface lit ses champs, le moteur ne lit jamais
-   l'écran.
+   l'écran. Chaque critère a un sens naturel (NATURAL_DIR) ; `dir`
+   l'inverse. Les pistes sans valeur (pas d'action, pas de
+   coordonnées) restent en fin de liste quel que soit le sens.
    ============================================================ */
 import { DOMAINS, STATUSES, POSITIONS } from './model.js';
 import { scoreOf } from './score.js';
 import { distKm } from './utils.js';
+
+export const NATURAL_DIR = {
+  recent: 'desc', action: 'asc', dist: 'asc', score: 'desc',
+  az: 'asc', status: 'asc', contacts: 'desc'
+};
 
 function blobOf(c){
   const cts = (c.contacts || []).map(t => [t.name, t.role, t.email, t.phone, t.note].join(' ')).join(' ');
@@ -15,7 +22,7 @@ function blobOf(c){
           DOMAINS[c.domain]?.label, pos, cts].join(' ').toLowerCase();
 }
 export function filterCompanies(companies, opts){
-  const { domain = '', status = '', sort = 'recent', userPos = null } = opts || {};
+  const { domain = '', status = '', sort = 'recent', dir = '', userPos = null } = opts || {};
   const q = String((opts && opts.q) || '').trim().toLowerCase();
   const arr = companies.filter(c => {
     if (domain && c.domain !== domain) return false;
@@ -23,25 +30,36 @@ export function filterCompanies(companies, opts){
     if (q && !blobOf(c).includes(q)) return false;
     return true;
   });
-  if (sort === 'score') arr.sort((a,b) => scoreOf(b) - scoreOf(a));
-  else if (sort === 'az') arr.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+  const s = (dir && dir !== (NATURAL_DIR[sort] || 'desc')) ? -1 : 1;
+  const rec = (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0);
+  if (sort === 'score') arr.sort((a, b) => s * (scoreOf(b) - scoreOf(a)) || rec(a, b));
+  else if (sort === 'az') arr.sort((a, b) => s * a.name.localeCompare(b.name, 'fr'));
   else if (sort === 'action'){
-    /* la prochaine action la plus proche d'abord (le retard en tête),
-       les pistes sans rien de prévu à la fin */
-    const k = c => c.nextAction || '9999-99-99';
-    arr.sort((a,b) => k(a) < k(b) ? -1 : k(a) > k(b) ? 1 : (b.updatedAt || 0) - (a.updatedAt || 0));
+    /* la prochaine action la plus proche d'abord (le retard en tête) */
+    arr.sort((a, b) => {
+      if (!a.nextAction && !b.nextAction) return rec(a, b);
+      if (!a.nextAction) return 1;
+      if (!b.nextAction) return -1;
+      return s * a.nextAction.localeCompare(b.nextAction) || rec(a, b);
+    });
   }
   else if (sort === 'dist' && userPos){
     const dv = c => (c.lat == null) ? Infinity : distKm(userPos.lat, userPos.lng, c.lat, c.lng);
-    arr.sort((a,b) => dv(a) - dv(b) || (b.updatedAt || 0) - (a.updatedAt || 0));
+    arr.sort((a, b) => {
+      const da = dv(a), db = dv(b);
+      if (da === Infinity && db === Infinity) return rec(a, b);
+      if (da === Infinity) return 1;
+      if (db === Infinity) return -1;
+      return s * (da - db) || rec(a, b);
+    });
   }
   else if (sort === 'status'){
     const ord = Object.keys(STATUSES);
-    arr.sort((a,b) => ord.indexOf(a.status) - ord.indexOf(b.status) || (b.updatedAt || 0) - (a.updatedAt || 0));
+    arr.sort((a, b) => s * (ord.indexOf(a.status) - ord.indexOf(b.status)) || rec(a, b));
   }
   else if (sort === 'contacts'){
-    arr.sort((a,b) => ((b.contacts || []).length - (a.contacts || []).length) || (scoreOf(b) - scoreOf(a)));
+    arr.sort((a, b) => s * ((b.contacts || []).length - (a.contacts || []).length) || (scoreOf(b) - scoreOf(a)));
   }
-  else arr.sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  else arr.sort((a, b) => s * rec(a, b));
   return arr;
 }
