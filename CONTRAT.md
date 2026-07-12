@@ -121,8 +121,10 @@ avec les anciens fichiers. Un contenu altéré est refusé (`altéré`).
 
 ### Garde-fous à la lecture
 
-Entrée de plus de 4 Mo refusée (`troplourd`) ; plus de 2 000 pistes refusées
-(`tropdepistes`) ; entrées sans `name` ignorées silencieusement.
+Entrée de plus de 4 Mo refusée (`troplourd`) ; un OCQ1 dont le contenu
+**décompressé** dépasse 4 Mo est refusé aussi (`troplourd` — bombe de
+décompression) ; plus de 2 000 pistes refusées (`tropdepistes`) ; entrées
+sans `name` ignorées silencieusement.
 
 ## 3. Le schéma d'une piste — intouchable
 
@@ -143,6 +145,13 @@ Ni `id`, ni `demo`, ni `createdAt` ne circulent non plus.
 `link` est toujours en `http(s)` après normalisation : tout autre schéma
 (`javascript:` et consorts) est neutralisé — un lien piégé dans un fichier
 reçu ne doit jamais devenir cliquable.
+
+**Normalisation défensive** (piste et contact) : un `id` n'est accepté
+que sous forme de jeton `[A-Za-z0-9._-]{1,64}` (sinon régénéré — il finit
+en attribut DOM) ; les dates `nextAction`, `appliedAt`, `closedAt`,
+`verifiedAt` n'acceptent que la forme `AAAA-MM-JJ` (un horodatage complet
+est tronqué au jour, le reste est vidé) ; les clés `__proto__`,
+`constructor` et `prototype` d'un objet reçu sont ignorées.
 
 **Vocabulaires fermés** :
 - `domain` : `esn`, `cyber`, `cloud`, `dsi`, `public`, `startup`,
