@@ -10,6 +10,7 @@
      aperçu avant fusion que par fichier. Bêta discrète.
    ============================================================ */
 import { esc } from '../engine/utils.js';
+import { fnv } from '../engine/crypto.js';
 import { sharePayload } from '../engine/exchange.js';
 import { PROMO_KEY, kvGet, kvSet } from '../engine/storage.js';
 import { S, bus, isClosed, logJ } from './state.js';
@@ -238,8 +239,13 @@ export function openPromo(){
       if (!obj || obj.kind !== 'share' || !Array.isArray(obj.companies)) return;
       obj.companies = obj.companies.filter(x => x && typeof x === 'object' && x.name).slice(0, 2000);
       if (!obj.companies.length) return;
-      /* le même envoi (re-clic, rediffusion) ne réapparaît pas */
-      const key = JSON.stringify(obj.companies);
+      /* le même envoi (re-clic, rediffusion) ne réapparaît pas —
+         une empreinte, pas le JSON entier : 30 envois retenus ne
+         doivent pas peser 120 Mo. Envoi obèse refusé comme par
+         fichier (D4, 4 Mo). */
+      const json = JSON.stringify(obj.companies);
+      if (json.length > 4000000) return;
+      const key = json.length + ':' + fnv(json).toString(36);
       if (seen.has(key)) return;
       seen.add(key);
       if (seen.size > 30) seen.delete(seen.values().next().value);

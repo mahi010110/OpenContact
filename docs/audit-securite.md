@@ -111,6 +111,21 @@ restaure aussi.
    relais sont personnalisables (`oc_relays_v1`). Une liste fermée de
    relais durcirait la CSP mais casserait cette fonctionnalité.
 
+## Deuxième passe (durcissements complémentaires)
+
+- **CSP** : `form-action 'none'` (aucun formulaire ne soumet — un `<form>`
+  injecté ne peut plus exfiltrer) et `frame-src 'none'` ajoutés.
+- **`<meta name="referrer" content="no-referrer">`** : les liens sortants
+  (sites d'entreprises, LinkedIn, itinéraires, wa.me) ne disent plus d'où
+  ils viennent.
+- **Canaux P2P communautaires** (partage en groupe, QR de rendez-vous) :
+  même borne de 4 Mo que par fichier (D4) sur les payloads reçus — le
+  transport n'était pas borné, seul le fichier l'était. Le dédoublonnage
+  du partage en groupe retient une empreinte (fnv + taille), plus le JSON
+  entier (30 envois retenus ne doivent pas peser 120 Mo).
+- La sync « Mes appareils » reste volontairement non bornée : les deux
+  côtés sont à la même personne (canal de confiance).
+
 ## Tests ajoutés (`tests.js`, section sécurité)
 
 - OC2 : contenu altéré (octet retourné) → refusé par le tag GCM ;
