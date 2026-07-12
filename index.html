@@ -21,6 +21,14 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo/piste-a-reseau.svg">
 <link rel="apple-touch-icon" href="icon.svg">
+<!-- tokens puis mise en écran : en <link> plutôt qu'en @import, le
+     navigateur télécharge tout en parallèle dès l'analyse du HTML -->
+<link rel="stylesheet" href="styles/tokens/fonts.css">
+<link rel="stylesheet" href="styles/tokens/colors.css">
+<link rel="stylesheet" href="styles/tokens/typography.css">
+<link rel="stylesheet" href="styles/tokens/spacing.css">
+<link rel="stylesheet" href="styles/tokens/effects.css">
+<link rel="stylesheet" href="styles/tokens/base.css">
 <link rel="stylesheet" href="styles/app.css">
 </head>
 <body>

@@ -22,6 +22,18 @@ import { openProspect } from './prospect.js';
 let q = '';
 const st = sortState('recent');
 
+/* au-delà de ce cap, la suite s'ouvre d'un tap (« Voir les N autres ») :
+   2 000 lignes d'un coup gelaient l'écran ~250 ms à chaque frappe */
+const CAP_LIST = 60;
+const CAP_COL = 40;
+const expanded = new Set();          /* tranches dépliées (le temps de la session) */
+function capped(items, key, cap){
+  if (items.length <= cap || expanded.has(key)) return { shown: items, more: 0 };
+  return { shown: items.slice(0, cap), more: items.length - cap };
+}
+const moreBtn = (key, n) =>
+  `<button class="linklike tr-more" data-more="${key}">Voir les ${n} autres</button>`;
+
 /* liste ⇄ tableau : on re-rend au franchissement du breakpoint */
 const mqWide = matchMedia('(min-width:901px)');
 mqWide.addEventListener('change', () => { if (S.route === 'pistes') renderPistes(); });
@@ -77,9 +89,10 @@ function cardHTML(c){
 function boardHTML(alive){
   return `<div class="board">${Object.keys(STATUSES).map(k => {
     const col = alive.filter(c => c.status === k);
+    const { shown, more } = capped(col, 'col-' + k, CAP_COL);
     return `<section class="bcol" aria-label="${STATUSES[k].label}">
               <h3 class="bcol-h" style="--c:${STATUSES[k].color}">${STATUSES[k].label} <span class="tr-n">${col.length}</span></h3>
-              <div class="bcol-rows">${col.map(cardHTML).join('') || '<div class="bcol-empty">—</div>'}</div>
+              <div class="bcol-rows">${shown.map(cardHTML).join('') || '<div class="bcol-empty">—</div>'}${more ? moreBtn('col-' + k, more) : ''}</div>
             </section>`;
   }).join('')}</div>`;
 }
@@ -166,12 +179,17 @@ export function renderPistes(){
     } else if (!all.length){
       html += `<div class="empty-list">Rien ne correspond à « ${esc(q)} ».</div>`;
     } else {
-      html += wide ? boardHTML(alive) : `<div class="rows">${alive.map(rowHTML).join('')}</div>`;
+      if (wide) html += boardHTML(alive);
+      else {
+        const { shown, more } = capped(alive, 'list', CAP_LIST);
+        html += `<div class="rows">${shown.map(rowHTML).join('')}${more ? moreBtn('list', more) : ''}</div>`;
+      }
       if (closed.length){
+        const { shown, more } = capped(closed, 'closed', CAP_LIST);
         html +=
           `<details class="tranche tr-closed">
              <summary class="tr-h">${ic('archive', 'ic-14')} Clôturées <span class="tr-n">${closed.length}</span></summary>
-             <div class="rows">${closed.map(rowHTML).join('')}</div>
+             <div class="rows">${shown.map(rowHTML).join('')}${more ? moreBtn('closed', more) : ''}</div>
            </details>`;
       }
     }
@@ -195,6 +213,12 @@ export function renderPistes(){
       });
       r.querySelector('[data-attach]').addEventListener('click', () => { const ct = o(); if (ct) openAttach(ct); });
     });
+    body.querySelectorAll('[data-more]').forEach(b =>
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        expanded.add(b.dataset.more);
+        renderBody();
+      }));
     body.querySelector('#piAdd')?.addEventListener('click', () => openCapture());
     body.querySelector('#piDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le depuis « Aujourd’hui ».'); });
   };

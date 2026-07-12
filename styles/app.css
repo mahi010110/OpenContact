@@ -5,12 +5,8 @@
    Les tokens (styles/tokens/) portent l'identité ; ici, la mise
    en écran. Le moteur n'est jamais concerné par ce fichier.
    ============================================================ */
-@import 'tokens/fonts.css';
-@import 'tokens/colors.css';
-@import 'tokens/typography.css';
-@import 'tokens/spacing.css';
-@import 'tokens/effects.css';
-@import 'tokens/base.css';
+/* les tokens sont chargés par index.html (<link>, en parallèle) —
+   ne pas remettre d'@import ici : il sérialise les téléchargements */
 
 :root{
   --nav-h:53px;

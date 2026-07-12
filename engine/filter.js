@@ -32,7 +32,11 @@ export function filterCompanies(companies, opts){
   });
   const s = (dir && dir !== (NATURAL_DIR[sort] || 'desc')) ? -1 : 1;
   const rec = (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0);
-  if (sort === 'score') arr.sort((a, b) => s * (scoreOf(b) - scoreOf(a)) || rec(a, b));
+  /* le score est calculé une fois par piste, pas à chaque comparaison
+     (scoreOf parse des dates — O(n log n) appels ruinaient le tri) */
+  const sv = (sort === 'score' || sort === 'contacts')
+    ? new Map(arr.map(c => [c, scoreOf(c)])) : null;
+  if (sort === 'score') arr.sort((a, b) => s * (sv.get(b) - sv.get(a)) || rec(a, b));
   else if (sort === 'az') arr.sort((a, b) => s * a.name.localeCompare(b.name, 'fr'));
   else if (sort === 'action'){
     /* la prochaine action la plus proche d'abord (le retard en tête) */
@@ -58,7 +62,7 @@ export function filterCompanies(companies, opts){
     arr.sort((a, b) => s * (ord.indexOf(a.status) - ord.indexOf(b.status)) || rec(a, b));
   }
   else if (sort === 'contacts'){
-    arr.sort((a, b) => s * ((b.contacts || []).length - (a.contacts || []).length) || (scoreOf(b) - scoreOf(a)));
+    arr.sort((a, b) => s * ((b.contacts || []).length - (a.contacts || []).length) || (sv.get(b) - sv.get(a)));
   }
   else arr.sort((a, b) => s * rec(a, b));
   return arr;
