@@ -11,8 +11,9 @@ import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
 import { fullPayload, parseInput } from '../engine/exchange.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
+import { mergeTombs } from '../engine/sync.js';
 import { docGet, docPut, docDel } from '../engine/storage.js';
-import { S, bus, saveData, saveProfile, saveOrphans, logJ, isClosed } from './state.js';
+import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ, isClosed } from './state.js';
 import { $, ic, toast, btn, openSheet, confirmSheet, showUndo, bindDeleteGesture } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
@@ -21,7 +22,7 @@ import { getSync } from './synclive.js';
 /* ---------- sauvegarde (.oc complet) ---------- */
 export function downloadBackup(pass){
   const doIt = async () => {
-    const payload = fullPayload(S.companies, S.profile, S.orphans);
+    const payload = fullPayload(S.companies, S.profile, S.orphans, S.tombs);
     const txt = pass ? await encryptOC2(payload, pass) : JSON.stringify(payload);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([txt], { type: 'application/octet-stream' }));
@@ -86,19 +87,24 @@ async function treatRestore(raw, pass){
   const snap = {
     companies: JSON.stringify(S.companies),
     profile: JSON.stringify(S.profile),
-    orphans: JSON.stringify(S.orphans)
+    orphans: JSON.stringify(S.orphans),
+    tombs: JSON.stringify(S.tombs)
   };
   S.companies = obj.companies.map(normalizeCompany);
   if (obj.profile) S.profile = normalizeProfile(obj.profile);
   S.orphans = Array.isArray(obj.orphans) ? obj.orphans.map(normalizeContact) : [];
-  saveData(); saveProfile(); saveOrphans();
+  /* les suppressions repartent de la sauvegarde : sans ça, une vieille
+     pierre tombale re-supprimerait une piste restaurée à la sync suivante */
+  S.tombs = mergeTombs(Array.isArray(obj.tombs) ? obj.tombs : [], []);
+  saveData(); saveProfile(); saveOrphans(); saveTombs();
   logJ('Sauvegarde restaurée : ' + n + ' piste(s)');
   bus.refresh();
   showUndo(`${ic('check', 'ic-14')} Restauré : ${n} piste${n > 1 ? 's' : ''}.`, () => {
     S.companies = JSON.parse(snap.companies).map(normalizeCompany);
     S.profile = normalizeProfile(JSON.parse(snap.profile));
     S.orphans = JSON.parse(snap.orphans).map(normalizeContact);
-    saveData(); saveProfile(); saveOrphans();
+    S.tombs = mergeTombs(JSON.parse(snap.tombs), []);
+    saveData(); saveProfile(); saveOrphans(); saveTombs();
     logJ('Restauration annulée');
     bus.refresh();
     toast('Restauration annulée — tout est revenu comme avant.');
