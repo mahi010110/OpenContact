@@ -25,9 +25,9 @@ export function openRecevoir(){
     sh.setTitle('Recevoir');
     sh.body.innerHTML =
       `<div class="pick-list">
-         <button class="pick" id="rcScan"><b>${ic('grid-3x3', 'ic-14')} Scanner un QR</b><span>l’écran d’un camarade, ou ton ordinateur</span></button>
-         <button class="pick" id="rcFile"><b>${ic('folder', 'ic-14')} Ouvrir un fichier .oc</b><span>reçu par mail, WhatsApp, clé USB…</span></button>
-         <button class="pick" id="rcPaste"><b>${ic('clipboard', 'ic-14')} Coller du texte</b><span>un partage copié-collé</span></button>
+         <button class="pick" id="rcScan"><b>${ic('grid-3x3', 'ic-14')} Scanner</b></button>
+         <button class="pick" id="rcFile"><b>${ic('folder', 'ic-14')} Ouvrir un fichier</b><span>.oc</span></button>
+         <button class="pick" id="rcPaste"><b>${ic('clipboard', 'ic-14')} Coller</b></button>
        </div>
        <p class="hint">${ic('shield', 'ic-14')} Aperçu avant fusion — annulable.</p>
        <input type="file" id="rcInput" accept=".oc,.txt,.json,application/octet-stream,text/plain,application/json" hidden>`;
@@ -73,8 +73,7 @@ export function openRecevoir(){
     sh.setTitle('Coller');
     sh.body.innerHTML =
       `<div class="field"><label for="rcTxt">Le texte reçu</label>
-         <textarea id="rcTxt" style="min-height:140px" placeholder="Colle ici le contenu partagé"></textarea>
-         <p class="hint">Astuce : « Mes emails → pistes » (Moi → Coup de pouce IA) fabrique un texte à coller ici.</p></div>`;
+         <textarea id="rcTxt" style="min-height:140px" placeholder="Colle ici le contenu partagé"></textarea></div>`;
     sh.setFoot([btn('← Retour', 'btn-ghost', menu), btn('Lire', 'btn-primary', () => treat(q('#rcTxt').value))]);
     q('#rcTxt').focus();
   };

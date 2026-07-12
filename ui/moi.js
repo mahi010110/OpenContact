@@ -15,6 +15,8 @@ import { docGet, docPut, docDel } from '../engine/storage.js';
 import { S, bus, saveData, saveProfile, saveOrphans, logJ, isClosed } from './state.js';
 import { $, ic, toast, btn, openSheet, confirmSheet, showUndo } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
+import { openAppareils } from './direct.js';
+import { getSync } from './synclive.js';
 
 /* ---------- sauvegarde (.oc complet) ---------- */
 export function downloadBackup(pass){
@@ -202,6 +204,13 @@ function editPrompt(i){
 }
 
 /* ---------- l'écran ---------- */
+function syncLabel(){
+  const sy = getSync();
+  if (!sy.phrase) return 'non relié';
+  if (sy.state === 'on') return 'relié — ' + sy.peers + ' en face';
+  if (sy.state === 'err') return 'relié — hors ligne';
+  return 'relié — en attente';
+}
 export function renderMoi(){
   const root = $('#view-moi');
   const p = S.profile;
@@ -232,11 +241,19 @@ export function renderMoi(){
          <h3>${ic('save', 'ic-14')} Ma sauvegarde <span class="tag-priv">privé inclus</span></h3>
          <p class="pd">${S.companies.length} piste${S.companies.length > 1 ? 's' : ''} (${alive} vivante${alive > 1 ? 's' : ''}), suivi et profil dans un fichier <b>.oc</b> — à refaire régulièrement.</p>
          <div class="pc-actions">
-           <button class="btn btn-primary" id="moiBackup">${ic('download', 'ic-14')} Télécharger</button>
+           <button class="btn ${pReady ? 'btn-primary' : ''}" id="moiBackup">${ic('download', 'ic-14')} Télécharger</button>
            <button class="btn" id="moiRestore">${ic('reload', 'ic-14')} Restaurer</button>
            <input type="file" id="moiRestoreFile" accept=".oc,.txt,.json,application/octet-stream,application/json,text/plain" hidden>
          </div>
          <div class="stor-line" id="moiStor"></div>
+       </div>
+
+       <div class="pcard">
+         <div class="ec-row" style="border:0;padding:2px 0">
+           <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
+             <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
+           <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
+         </div>
        </div>
 
        <details class="pcard pcard-details">
@@ -259,7 +276,9 @@ export function renderMoi(){
          <ul class="help-list">
            <li><b>Local-first.</b> Tout vit sur tes appareils — pas de compte, pas de serveur.</li>
            <li><b>Une piste = une entreprise</b>, avec une prochaine action + une date : c’est ce qui nourrit « Aujourd’hui ».</li>
-           <li><b>Échanger</b> synchronise tes appareils et fait circuler les fiches — jamais ton suivi.</li>
+           <li><b>Échanger</b> fait circuler les fiches dans la promo — jamais ton suivi privé.</li>
+           <li><b>Mes appareils</b> (ci-dessus) garde téléphone et ordinateur synchronisés en continu, suivi compris.</li>
+           <li><b>Supprimer :</b> glisse une ligne (ou survole-la) — annulable 30 s.</li>
            <li><b>Raccourci :</b> « / » saute à la recherche.</li>
          </ul>
        </details>
@@ -270,6 +289,17 @@ export function renderMoi(){
   root.querySelector('#moiProfil').addEventListener('click', () => openProfil());
   root.querySelector('#moiTpl').addEventListener('click', openTemplates);
   root.querySelector('#moiBackup').addEventListener('click', openBackupSheet);
+  root.querySelector('#moiSync').addEventListener('click', openAppareils);
+  /* l'état du lien vit : peers, liaison, rupture */
+  if (root.__onSync) document.removeEventListener('oc:sync', root.__onSync);
+  root.__onSync = () => {
+    if (root.hidden){ document.removeEventListener('oc:sync', root.__onSync); root.__onSync = null; return; }
+    const lbl = root.querySelector('#moiSyncSt');
+    const b = root.querySelector('#moiSync');
+    if (lbl) lbl.textContent = syncLabel();
+    if (b) b.textContent = getSync().phrase ? 'Gérer' : 'Relier';
+  };
+  document.addEventListener('oc:sync', root.__onSync);
   const rf = root.querySelector('#moiRestoreFile');
   root.querySelector('#moiRestore').addEventListener('click', () => rf.click());
   rf.addEventListener('change', () => { if (rf.files[0]) restoreFile(rf.files[0]); });

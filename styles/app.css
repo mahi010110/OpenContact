@@ -481,6 +481,14 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 }
 .sy-log{margin-top:10px}
 .pr-send{width:100%;margin-top:12px}
+/* ---- Échanger : deux verbes héros + pied discret ---- */
+.hero2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.hero2 .hero{min-height:76px;flex-direction:column;gap:7px;font-size:var(--text-14)}
+.ec-foot{text-align:center;margin-top:16px}
+/* ---- Donner : ce qui part (compteur + élagage) ---- */
+.dn-what{display:flex;align-items:center;gap:8px;margin-top:12px}
+.dn-count{flex:1;font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted)}
+
 .qr-prog,.scan-prog{
   margin-top:8px;text-align:center;
   font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted);

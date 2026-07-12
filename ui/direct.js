@@ -55,7 +55,7 @@ export function openAppareils(){
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
-       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Échanger → Mes appareils</b>, puis cette phrase.<br>Le lien reste actif en arrière-plan — tu peux fermer.</p>
+       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils</b>, puis cette phrase.<br>Le lien reste actif en arrière-plan — tu peux fermer.</p>
        <div class="sy-status" id="syStatus">${statusHTML()}</div>
        <div class="sy-log">${st ? `
          <ul class="rc-lines">
