@@ -13,7 +13,7 @@ import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
 import { docGet, docPut, docDel } from '../engine/storage.js';
 import { S, bus, saveData, saveProfile, saveOrphans, logJ, isClosed } from './state.js';
-import { $, ic, toast, btn, openSheet, confirmSheet, showUndo } from './dom.js';
+import { $, ic, toast, btn, openSheet, confirmSheet, showUndo, bindDeleteGesture } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
 import { getSync } from './synclive.js';
@@ -162,7 +162,26 @@ async function docLine(key, label){
 /* ---------- prompts IA : les SIENS — créés, modifiés, bornés ----------
    Un seul livré d'origine (« Mes emails → pistes », qui fabrique un JSON
    à coller dans Recevoir) ; le reste appartient à l'utilisateur. Ils
-   vivent dans le profil, donc voyagent entre ses appareils. */
+   vivent dans le profil, donc voyagent entre ses appareils.
+   Supprimer = le geste (glisser / poubelle) + Annuler ~30 s. Le moteur
+   ressuscite les défauts quand la liste est vide : le dernier reste. */
+function delPrompt(i){
+  const list = S.profile.prompts;
+  if (list.length <= 1){
+    toast('Le dernier prompt reste — modifie-le plutôt.');
+    bus.refresh();
+    return;
+  }
+  const gone = list.splice(i, 1)[0];
+  saveProfile();
+  bus.refresh();
+  showUndo(`${ic('check', 'ic-14')} « ${esc(gone.name)} » supprimé.`, () => {
+    S.profile.prompts.splice(Math.min(i, S.profile.prompts.length), 0, gone);
+    saveProfile();
+    bus.refresh();
+    toast('Prompt restauré.');
+  });
+}
 function editPrompt(i){
   const isNew = i < 0;
   const src = isNew ? { name: '', text: '' } : S.profile.prompts[i];
@@ -189,17 +208,6 @@ function editPrompt(i){
       toast('Prompt enregistré ✓');
     })
   ];
-  if (!isNew && S.profile.prompts.length > 1){
-    foot.unshift(btn('Supprimer', 'btn-danger', async () => {
-      const ok = await confirmSheet({ title: 'Supprimer ce prompt ?', danger: true, okLabel: 'Supprimer', icon: 'trash',
-        msg: `<b>${esc(src.name)}</b> sera retiré de tes prompts.` });
-      if (!ok) return;
-      S.profile.prompts.splice(i, 1);
-      saveProfile();
-      sh.close();
-      bus.refresh();
-    }));
-  }
   sh.setFoot(foot);
 }
 
@@ -258,17 +266,20 @@ export function renderMoi(){
 
        <details class="pcard pcard-details">
          <summary><h3>${ic('sparkles', 'ic-14')} Coup de pouce IA</h3></summary>
-         <p class="pd">Tes prompts, à coller dans l’assistant de ton choix. « Mes emails → pistes » fabrique un JSON à coller dans <b>Échanger → Recevoir</b>.</p>
          ${p.prompts.map((pr, i) =>
            `<div class="prompt-row">
-              <b>${esc(pr.name)}</b>
-              <button class="btn btn-sm" data-prompt="${i}">${ic('copy', 'ic-14')} Copier</button>
-              <button class="abtn abtn-sm" data-pedit="${i}" aria-label="Modifier ${esc(pr.name)}" title="Modifier">${ic('pencil', 'ic-14')}</button>
+              <div class="sw-in">
+                <button class="pr-name" data-copy="${i}" title="Copier">${esc(pr.name)}</button>
+                <span class="pr-hint" aria-hidden="true">${ic('copy', 'ic-14')}</span>
+                <button class="abtn abtn-sm" data-pedit="${i}" aria-label="Modifier ${esc(pr.name)}" title="Modifier">${ic('pencil', 'ic-14')}</button>
+              </div>
             </div>`).join('')}
-         ${p.prompts.length < PROMPTS_MAX
-           ? `<button class="btn btn-sm" id="moiPromptAdd" style="margin-top:10px">${ic('plus', 'ic-14')} Nouveau prompt</button>`
-           : `<p class="hint" style="margin-top:8px">${PROMPTS_MAX} prompts max — supprime-en un pour en créer un autre.</p>`}
-         <button class="linklike" id="moiPromptReset" style="margin-top:8px">Revenir au prompt d’origine</button>
+         <div class="pr-foot">
+           ${p.prompts.length < PROMPTS_MAX
+             ? `<button class="btn btn-sm" id="moiPromptAdd">${ic('plus', 'ic-14')} Nouveau prompt</button>`
+             : `<span class="hint" style="margin:0">${PROMPTS_MAX} max — supprime-en un</span>`}
+           <button class="linklike" id="moiPromptReset">Revenir au prompt d’origine</button>
+         </div>
        </details>
 
        <details class="pcard pcard-details">
@@ -278,6 +289,7 @@ export function renderMoi(){
            <li><b>Une piste = une entreprise</b>, avec une prochaine action + une date : c’est ce qui nourrit « Aujourd’hui ».</li>
            <li><b>Échanger</b> fait circuler les fiches dans la promo — jamais ton suivi privé.</li>
            <li><b>Mes appareils</b> (ci-dessus) garde téléphone et ordinateur synchronisés en continu, suivi compris.</li>
+           <li><b>Coup de pouce IA :</b> taper un prompt le copie, à coller dans ton assistant. « Mes emails → pistes » fabrique un texte pour <b>Échanger → Recevoir → Coller</b>.</li>
            <li><b>Supprimer :</b> glisse une ligne (ou survole-la) — annulable 30 s.</li>
            <li><b>Raccourci :</b> « / » saute à la recherche.</li>
          </ul>
@@ -303,13 +315,16 @@ export function renderMoi(){
   const rf = root.querySelector('#moiRestoreFile');
   root.querySelector('#moiRestore').addEventListener('click', () => rf.click());
   rf.addEventListener('change', () => { if (rf.files[0]) restoreFile(rf.files[0]); });
-  root.querySelectorAll('[data-prompt]').forEach(b =>
+  root.querySelectorAll('[data-copy]').forEach(b =>
     b.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(S.profile.prompts[+b.dataset.prompt].text); toast('Copié — colle-le dans ton assistant.'); }
+      try { await navigator.clipboard.writeText(S.profile.prompts[+b.dataset.copy].text); toast('Copié ✓'); }
       catch (e) { toast('Copie impossible ici.'); }
     }));
   root.querySelectorAll('[data-pedit]').forEach(b =>
     b.addEventListener('click', () => editPrompt(+b.dataset.pedit)));
+  /* supprimer un prompt = le même geste que partout */
+  root.querySelectorAll('.prompt-row').forEach((r, i) =>
+    bindDeleteGesture(r, () => delPrompt(i)));
   root.querySelector('#moiPromptAdd')?.addEventListener('click', () => editPrompt(-1));
   root.querySelector('#moiPromptReset')?.addEventListener('click', async () => {
     const ok = await confirmSheet({ title: 'Revenir au prompt d’origine ?', okLabel: 'Réinitialiser',

@@ -389,11 +389,21 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 .doc-row:last-of-type{border-bottom:0}
 .doc-name{flex:1;min-width:0;font-size:var(--text-13);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-name.doc-none{color:var(--text-muted)}
-.prompt-row{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:7px 0;border-bottom:1px dashed var(--border-soft);font-size:var(--text-13);
+/* coup de pouce IA : une ligne = un prompt — taper copie, ✎ édite,
+   supprimer au geste (glisser / poubelle, comme partout) */
+.prompt-row{border-bottom:1px dashed var(--border-soft);font-size:var(--text-13)}
+.prompt-row:last-of-type{border-bottom:0}
+.prompt-row .sw-in{display:flex;align-items:center;gap:8px;min-height:var(--ctl);padding:2px 0}
+.pr-name{
+  flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;
+  font:inherit;font-weight:var(--weight-semibold);color:var(--text-body);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-height:var(--ctl);
 }
-.prompt-row:last-child{border-bottom:0}
+.pr-name:hover{color:var(--text-link)}
+.pr-hint{flex:none;color:var(--text-muted)}
+.prompt-row .abtn-sm{margin-left:0;flex:none}
+.prompt-row .hov-del{right:44px}
+.pr-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 .help-list{list-style:none;margin:0;padding:0}
 .help-list li{
   font-size:var(--text-13);color:var(--text-muted);line-height:1.6;
