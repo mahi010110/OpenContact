@@ -192,19 +192,8 @@ html[data-theme="dark"] .field select{
 @media (max-width:349px){.grid2{grid-template-columns:1fr}}
 .hint{font-size:var(--text-12);color:var(--text-muted);margin-top:7px;line-height:1.5}
 .hint.warn{color:var(--amber)}
-/* recherche + tri restent collés en haut pendant le défilement (le
-   conteneur de défilement est .view) ; le fond masque ce qui passe
-   dessous, la marge négative absorbe le padding du conteneur */
-.search-wrap{
-  position:sticky;top:-18px;z-index:40;display:flex;gap:8px;   /* -18 = marge -16 compensée */
-  background:var(--surface-desktop);
-  padding:16px 0 10px;margin:-16px 0 4px;
-}
+.search-wrap{position:relative;display:flex;gap:8px;margin-bottom:14px}
 .search-wrap .search{flex:1;min-width:0}
-.view.scrolled .search-wrap{border-bottom:1px solid var(--border-soft)}
-/* la tête de page s'efface dès qu'on descend — bascule nette, style 98 */
-.td-head{transition:opacity var(--dur-2) var(--ease-steps)}
-.view.scrolled .td-head{opacity:0}
 .search{
   width:100%;height:var(--ctl);
   background:var(--surface-field);border:1px solid var(--border-field);border-radius:var(--radius-1);
@@ -214,16 +203,18 @@ html[data-theme="dark"] .field select{
 .search::-webkit-search-cancel-button,.search::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
 /* tri actif (critère changé ou ordre inversé) : marqué, sans voler le teal du héros */
 .sort-on{background:var(--teal-wash);border-color:var(--accent);color:var(--accent)}
-/* barre au-dessus d'une liste de choix (tri dans les feuilles) — collée
-   en haut du corps de la feuille pendant le défilement */
+/* barre au-dessus d'une liste de choix (tri dans les feuilles) */
 .listbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .listbar .linklike,.listbar>span{flex:1;min-width:0}
-.modal-b .listbar{
-  position:sticky;top:-9px;z-index:5;                          /* -9 = marge -8 compensée */
-  background:var(--surface-window);
-  padding:8px 0;margin:-8px 0 2px;
+/* feuille « Trier » : la pile des niveaux (principal + départages) */
+.srt-stack{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.srt-lv{
+  display:flex;align-items:center;gap:8px;min-height:var(--ctl);
+  background:var(--surface-window);border:1px solid var(--border-strong);
+  border-radius:var(--radius-0);box-shadow:var(--shadow-raised);padding:2px 6px 2px 12px;
 }
-.modal-b>.listbar{top:-17px;padding:16px 0 8px;margin:-16px 0 6px}
+.srt-lv .srt-n{font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted)}
+.srt-lv b{flex:1;min-width:0;font-size:var(--text-13)}
 
 /* ============ TÊTE DE PAGE ============ */
 .td-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
@@ -336,13 +327,16 @@ details.tranche[open]>summary::before{
 }
 .swipe-del .sw-under{opacity:1}
 .sw-gone{transition:opacity 150ms var(--ease-steps),transform 150ms var(--ease-steps);opacity:0;transform:translateX(-20px)}
+/* poubelle au survol (desktop) : un élément du flux, pas un survol
+   flottant — la colonne est réservée, rien ne saute ni ne déborde */
 .hov-del{
-  position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+  display:none;flex:none;width:32px;height:32px;
+  align-items:center;justify-content:center;align-self:center;
   background:var(--surface-window);color:var(--red);border:1px solid var(--border-strong);
   border-radius:var(--radius-1);box-shadow:var(--bevel-up), var(--shadow-raised);padding:0;
   opacity:0;pointer-events:none;
 }
+@media (hover:hover) and (pointer:fine){ .hov-del{display:inline-flex} }
 @media (hover:hover){
   .sw:hover .hov-del,.sw:focus-within .hov-del{opacity:1;pointer-events:auto}
 }
@@ -416,7 +410,6 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 .pr-name:hover{color:var(--text-link)}
 .pr-hint{flex:none;color:var(--text-muted)}
 .prompt-row .abtn-sm{margin-left:0;flex:none}
-.prompt-row .hov-del{right:44px}
 .pr-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 .help-list{list-style:none;margin:0;padding:0}
 .help-list li{
@@ -703,8 +696,9 @@ a.fk-v{display:inline-flex;align-items:center;gap:5px}
   box-shadow:var(--bevel-up), var(--shadow-raised);cursor:pointer;
   font-family:var(--font-ui);color:var(--text-body);
 }
-.bcard .sw-in{padding:9px 11px}
-.bcard .bc-main{display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.bcard .sw-in{display:flex;align-items:flex-start;gap:8px;padding:9px 11px}
+.bcard .bc-main{flex:1;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.bcard .hov-del{align-self:flex-start}
 .bcard:hover .sw-in{background:var(--surface-field)}
 .bcard b{font-size:var(--text-13);font-weight:var(--weight-semibold)}
 .bc-sub,.bc-foot{

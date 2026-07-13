@@ -13,7 +13,7 @@ import { filterCompanies } from '../engine/filter.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { S, isClosed, logJ } from './state.js';
 import { openSheet, toast, btn, ic } from './dom.js';
-import { sortState, sortBarHTML, bindSortBar } from './sort.js';
+import { sortState, sortArgs, sortBarHTML, bindSortBar } from './sort.js';
 import { openRoom } from './synclive.js';
 import { makeQrSvg } from './qr.js';
 
@@ -59,7 +59,7 @@ export function openDonner(){
     const renderList = () => {
       const zone = q('#dnList');
       if (!choosing){ zone.hidden = true; zone.innerHTML = ''; syncCount(); return; }
-      const list = filterCompanies(alive(), { sort: st.sort, dir: st.dir, userPos: st.userPos });
+      const list = filterCompanies(alive(), sortArgs(st));
       zone.hidden = false;
       zone.innerHTML =
         `<div class="listbar"><button class="linklike" id="dnAll">Tout cocher / décocher</button>${sortBarHTML(st)}</div>
@@ -92,7 +92,7 @@ export function openDonner(){
     const need = fn => () => { if (!chosen().length){ toast('Coche au moins une piste.'); return; } fn(); };
     q('#dnQR').addEventListener('click', need(stepQR));
     q('#dnFile').addEventListener('click', need(stepFile));
-    sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close())]);
+    sh.setFoot(null);
     renderList();
     syncCount();
   };
@@ -134,7 +134,7 @@ export function openDonner(){
       }, 900);
     }
     logJ('Donné (QR) : ' + n + ' piste(s)');
-    sh.setFoot([btn('← Retour', 'btn-ghost', stepHow), btn('Fichier plutôt', '', stepFile), btn('Terminé', 'btn-primary', () => sh.close())]);
+    sh.setFoot([btn('← Retour', 'btn-ghost', stepHow), btn('Fichier plutôt', '', stepFile)]);
   };
 
   /* le QR est un code de rendez-vous (OCR1) : l'autre appareil scanne
@@ -175,8 +175,6 @@ export function openDonner(){
       if (sent === 1) logJ('Donné (QR rendez-vous) : ' + n + ' piste(s)');
       const el = q('#dnRdvSt');
       if (el) el.innerHTML = `${ic('check', 'ic-14')} Envoyé ✓ — ${sent} appareil${sent > 1 ? 's' : ''}`;
-      const f = sh.ov.querySelector('.modal-f');
-      if (f && !f.querySelector('.btn-primary')) sh.setFoot([btn('← Retour', 'btn-ghost', stepHow), btn('Terminé', 'btn-primary', () => sh.close())]);
     };
   };
 
@@ -244,7 +242,7 @@ export function openDonner(){
       try { await navigator.clipboard.writeText(txt); toast('Copié — colle-le où tu veux.'); }
       catch (e) { toast('Copie impossible ici — passe par Télécharger.'); }
     });
-    sh.setFoot([btn('← Retour', 'btn-ghost', stepHow), btn('Terminé', 'btn-primary', () => sh.close())]);
+    sh.setFoot([btn('← Retour', 'btn-ghost', stepHow)]);
   };
 
   stepHow();

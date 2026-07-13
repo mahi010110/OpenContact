@@ -9,7 +9,7 @@ import { STATUSES } from '../engine/model.js';
 import { filterCompanies } from '../engine/filter.js';
 import { S, bus, isClosed } from './state.js';
 import { openSheet, toast, btn, ic } from './dom.js';
-import { sortState, sortBarHTML, bindSortBar } from './sort.js';
+import { sortState, sortArgs, sortBarHTML, bindSortBar } from './sort.js';
 import { openMail } from './mail.js';
 
 export function openProspect(){
@@ -32,7 +32,7 @@ export function openProspect(){
   };
 
   const render = () => {
-    const list = filterCompanies(alive(), { sort: st.sort, dir: st.dir, userPos: st.userPos });
+    const list = filterCompanies(alive(), sortArgs(st));
     sh.body.innerHTML =
       `<div class="listbar">
          ${nTodo ? `<button class="linklike" id="pkAllTodo">Cocher les ${nTodo} « À contacter »</button>` : '<span></span>'}
@@ -67,7 +67,7 @@ export function openProspect(){
     bindSortBar(sh.body, st, render);
     sync();
   };
-  sh.setFoot([btn('Annuler', 'btn-ghost', () => sh.close()), bGo]);
+  sh.setFoot([bGo]);
   render();
 }
 

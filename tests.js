@@ -469,6 +469,23 @@ export async function runSelfTests(){
       eq(filterCompanies(list, { sort: 'action', dir: 'desc' }).map(c => c.name), ['Alpha', 'Charlie', 'Bravo']);
       eq(filterCompanies(list, { sort: 'recent', dir: 'asc' }).map(c => c.name), ['Alpha', 'Charlie', 'Bravo']);
     },
+    'tri multi-niveaux : principal + départages, chacun son sens (3 max)': () => {
+      const list = [
+        normalizeCompany({ name: 'ActifLoin', status: 'active', nextAction: '2030-01-01', updatedAt: 1 }),
+        normalizeCompany({ name: 'ActifTot', status: 'active', nextAction: '2026-01-01', updatedAt: 2 }),
+        normalizeCompany({ name: 'Todo', status: 'todo', updatedAt: 3 })
+      ];
+      eq(filterCompanies(list, { sorts: [{ sort: 'status' }, { sort: 'action' }] }).map(c => c.name),
+         ['Todo', 'ActifTot', 'ActifLoin']);
+      /* le départage a SON sens, indépendant du principal */
+      eq(filterCompanies(list, { sorts: [{ sort: 'status' }, { sort: 'action', dir: 'desc' }] }).map(c => c.name),
+         ['Todo', 'ActifLoin', 'ActifTot']);
+      /* « dist » sans position et critère inconnu : ignorés sans casse */
+      eq(filterCompanies(list, { sorts: [{ sort: 'dist' }, { sort: 'zzz' }, { sort: 'az' }] }).map(c => c.name),
+         ['ActifLoin', 'ActifTot', 'Todo']);
+      /* au-delà de 3 niveaux : coupé — et rien ne se perd */
+      eq(filterCompanies(list, { sorts: [{ sort: 'az' }, { sort: 'recent' }, { sort: 'action' }, { sort: 'score' }] }).length, 3);
+    },
     'tri : dir absent = sens naturel du critère': () => {
       eq(NATURAL_DIR.recent, 'desc'); eq(NATURAL_DIR.az, 'asc'); eq(NATURAL_DIR.action, 'asc');
       const list = [normalizeCompany({ name: 'A', updatedAt: 1 }), normalizeCompany({ name: 'B', updatedAt: 2 })];
@@ -483,6 +500,25 @@ export async function runSelfTests(){
       eq(summarizeChanges({ status: 'todo', notes: '', nextAction: '2026-01-05', nextActionText: 'X' },
                           { status: 'todo', notes: '', nextAction: '', nextActionText: '' }),
          'Action retirée');
+    },
+    'prochaine action : changer le « Quoi ? » seul se valide (non-régression)': async () => {
+      const { askNextAction } = await import('./ui/actions.js');
+      const c = normalizeCompany({ name: 'TestQuoi', nextAction: '2030-01-02', nextActionText: 'Relancer' });
+      let got = null;
+      const sh = askNextAction(c, {
+        preset: 'Relancer', presetDate: '2030-01-02',
+        onPick: (txt, iso) => { got = { txt, iso }; }
+      });
+      try {
+        sh.body.querySelector('#naTxt').value = 'Relancer Mme Z';
+        const okBtn = sh.ov.querySelector('.modal-f .btn-primary');
+        ok(okBtn);                             /* le bouton de validation existe */
+        okBtn.click();
+        eq(got, { txt: 'Relancer Mme Z', iso: '2030-01-02' });
+        ok(!document.body.contains(sh.ov));    /* la feuille s'est refermée */
+      } finally {
+        try { sh.close(null, true); } catch (e) {}
+      }
     },
     'historique : pushHist plafonne à 40 entrées': () => {
       const c = normalizeCompany({ name: 'X' });

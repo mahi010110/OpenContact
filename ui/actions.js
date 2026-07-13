@@ -27,7 +27,9 @@ function bindDateOk(root, inputSel, okSel, pick){
   okB.addEventListener('click', () => { if (inp.value) pick(inp.value); });
 }
 
-/* « Et ensuite ? » — un verbe + une date ; taper une date valide et referme */
+/* « Et ensuite ? » — un verbe + une date ; taper une date valide et
+   referme. En modification (une date existe déjà — opts.presetDate),
+   « OK » valide un changement du « Quoi ? » seul en gardant la date. */
 export function askNextAction(c, opts){
   opts = opts || {};
   const sh = openSheet({
@@ -70,12 +72,14 @@ export function askNextAction(c, opts){
   /* la date précise se VALIDE : sur mobile, la roue déclenche des
      `change` intermédiaires — fermer au premier aurait pris la mauvaise date */
   bindDateOk(sh.body, '#naDate', '#naOk', pick);
-  sh.setFoot([opts.onPick
-    ? btn('Annuler', 'btn-ghost', () => sh.close())
-    : btn(opts.laterLabel || 'Plus tard', 'btn-ghost', () => {
-        sh.close();
-        toast('OK — la piste attend dans « Mes pistes ».');
-      })]);
+  /* une date existe déjà : changer seulement le « Quoi ? » se valide
+     (OK ou Entrée), la date en place est gardée */
+  if (opts.presetDate){
+    sh.body.querySelector('#naTxt').addEventListener('keydown', e => {
+      if (e.key === 'Enter') pick(opts.presetDate);
+    });
+    sh.setFoot([btn('OK — garder ' + frDate(opts.presetDate), 'btn-primary', () => pick(opts.presetDate))]);
+  }
   return sh;
 }
 

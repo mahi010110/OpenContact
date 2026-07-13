@@ -33,7 +33,6 @@ export function openProfil(onDone){
        <input id="pfPortfolio" type="url" value="${esc(p.portfolio)}" placeholder="https://…" autocomplete="off"></div>`;
   const v = s => sh.body.querySelector(s).value.trim();
   sh.setFoot([
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       p.name = v('#pfName'); p.formation = v('#pfFormation');
       p.phone = v('#pfPhone'); p.email = v('#pfEmail');
@@ -58,7 +57,7 @@ export function openTemplates(){
        <div class="pick-list">
          ${S.profile.templates.map((t, i) =>
            `<button class="pick" data-i="${i}">
-              <b>${esc(t.name)}</b><span>${esc(t.subject).slice(0, 40)}…</span>
+              <b>${esc(t.name)}</b><span>${esc(t.subject.slice(0, 40))}${t.subject.length > 40 ? '…' : ''}</span>
             </button>`).join('')}
        </div>`;
     sh.body.querySelectorAll('.pick').forEach(b =>
@@ -94,7 +93,6 @@ function editTemplate(t, onBack, isNew){
      <p class="hint">Variables : <code class="tpl-vars">${esc(VARS)}</code></p>`;
   const v = s => sh.body.querySelector(s).value;
   const foot = [
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       const name = v('#tpName').trim();
       if (!name){ toast('Donne un nom au modèle.'); return; }

@@ -104,8 +104,7 @@ export function openAppareils(){
         await breakLink();
         toast('Lien rompu — cet appareil vit sa vie.');
         render();
-      }),
-      btn('Fermer', 'btn-primary', () => sh.close())
+      })
     ]);
   }
 
@@ -119,9 +118,7 @@ export function openAppareils(){
          <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} Créer une phrase</b><span>je commence ici</span></button>
          <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} Entrer une phrase</b><span>j’en ai déjà une</span></button>
        </div>`;
-    sh.setFoot([changing
-      ? btn('← Retour', 'btn-ghost', render)
-      : btn('Fermer', 'btn-ghost', () => sh.close())]);
+    sh.setFoot(changing ? [btn('← Retour', 'btn-ghost', render)] : null);
     q('#syNew').addEventListener('click', () => { startSync(makePhrase()); render(); });
     q('#syJoin').addEventListener('click', () => {
       sh.body.innerHTML =
@@ -166,7 +163,7 @@ export function openPromo(){
          <input id="prPass" autocomplete="off" autocapitalize="off" placeholder="ex : promo-sio-2026" value="${esc(last)}"></div>`;
     const go = () => { const v = q('#prPass').value.trim(); if (v){ kvSet(PROMO_KEY, v); enter(v); } };
     q('#prPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-    sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close()), btn('Entrer', 'btn-primary', go)]);
+    sh.setFoot([btn('Entrer', 'btn-primary', go)]);
     q('#prPass').focus();
   };
 
@@ -175,7 +172,7 @@ export function openPromo(){
       `<div class="sy-status" id="prStatus">${ic('radio', 'ic-14')} Connexion…</div>
        <div id="prZone"></div>
        <p class="hint" id="prHint" style="text-align:center">Chacun garde la feuille ouverte ; chaque envoi montre un aperçu avant fusion.</p>`;
-    sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); }), btn('Fermer', 'btn-primary', () => sh.close())]);
+    sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); })]);
     const setStatus = txt => { const el = q('#prStatus'); if (el) el.innerHTML = txt; };
     try {
       room = await openRoom('promo', pass);   /* préfixe historique — compat */

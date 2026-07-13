@@ -78,7 +78,6 @@ export function openEditPiste(c, onDone){
   q('#edAddress').addEventListener('blur', () => setTimeout(acHide, 150));
 
   sh.setFoot([
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       const name = q('#edName').value.trim();
       if (!name){ toast('Le nom de la structure est obligatoire.'); q('#edName').focus(); return; }

@@ -48,7 +48,7 @@ export function openRecevoir(){
       r.onload = () => treat(String(r.result));
       r.readAsText(f);
     });
-    sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close())]);
+    sh.setFoot(null);
   };
 
   /* ---- scanner — QR de données (simple ou animé) OU QR de

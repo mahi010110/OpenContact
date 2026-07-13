@@ -12,7 +12,7 @@ import { scoreOf } from '../engine/score.js';
 import { filterCompanies } from '../engine/filter.js';
 import { S, bus, isClosed, hasDemo, addDemo, ctLabel, deletePiste, undeletePiste } from './state.js';
 import { $, ic, toast, showUndo, bindDeleteGesture } from './dom.js';
-import { sortState, sortBarHTML, bindSortBar } from './sort.js';
+import { sortState, sortArgs, sortHasDist, sortBarHTML, bindSortBar } from './sort.js';
 import { relLabel } from './dates.js';
 import { openFiche } from './fiche.js';
 import { openCapture } from './capture.js';
@@ -38,8 +38,8 @@ const moreBtn = (key, n) =>
 const mqWide = matchMedia('(min-width:901px)');
 mqWide.addEventListener('change', () => { if (S.route === 'pistes') renderPistes(); });
 
-/* en tri « Près de moi », la distance s'affiche — sinon rien ne change */
-const kmBit = c => (st.sort === 'dist' && st.userPos && c.lat != null)
+/* en tri « Près de moi » (à n'importe quel niveau), la distance s'affiche */
+const kmBit = c => (sortHasDist(st) && st.userPos && c.lat != null)
   ? Math.round(distKm(st.userPos.lat, st.userPos.lng, c.lat, c.lng)) + ' km' : '';
 
 function rowHTML(c){
@@ -133,8 +133,6 @@ export function renderPistes(){
   const root = $('#view-pistes');
   const wide = mqWide.matches;
   const nAlive = S.companies.filter(c => !isClosed(c)).length;
-  /* en descendant : la tête s'efface, recherche + tri restent collés (CSS) */
-  root.onscroll = () => root.classList.toggle('scrolled', root.scrollTop > 8);
 
   root.innerHTML =
     `<div class="page-inner${wide ? ' page-wide' : ''}">
@@ -160,7 +158,7 @@ export function renderPistes(){
      reste le même nœud, le curseur ne saute plus */
   const renderBody = () => {
     const body = root.querySelector('#piBody');
-    const all = filterCompanies(S.companies, { q, sort: st.sort, dir: st.dir, userPos: st.userPos });
+    const all = filterCompanies(S.companies, { q, ...sortArgs(st) });
     const alive = all.filter(c => !isClosed(c));
     const closed = all.filter(isClosed);
 

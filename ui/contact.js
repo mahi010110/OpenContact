@@ -24,11 +24,13 @@ export function waHref(p){
 
 /* ---------- éditeur ----------
    o.company : la piste cible (absent = mode générique / orphelin)
-   o.contact : contact existant à modifier (dans la piste ou le bac) */
+   o.contact : contact existant à modifier (dans la piste ou le bac)
+   o.prefill : valeurs de départ pour un NOUVEAU contact (ex. : la
+   capture qui bascule — l'entreprise déjà tapée suit dans extra.company) */
 export function openContactEditor(o){
   o = o || {};
   const c = o.company || null;
-  const src = o.contact || {};
+  const src = o.contact || o.prefill || {};
   const editing = !!o.contact;
   const inOrphans = editing && !c && S.orphans.some(x => x.id === src.id);
   const done = () => { bus.refresh(); if (o.onDone) o.onDone(); };
@@ -78,7 +80,6 @@ export function openContactEditor(o){
   }
 
   const foot = [
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       const data = {
         id: src.id || uid(),

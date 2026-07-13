@@ -26,7 +26,7 @@ export function openCapture(prefill){
        <p class="hint">Le lien sera rangé dans la fiche.</p>` : ''}
      <div class="dup-note" id="cpDup" hidden></div>
      <p class="hint">Un nom suffit.</p>
-     <button class="linklike" id="cpOrph">Plutôt une personne ? Contact seul</button>`;
+     <button class="linklike" id="cpOrph">Plutôt un contact ?</button>`;
   const q = s => sh.body.querySelector(s);
 
   let dup = null;
@@ -71,13 +71,19 @@ export function openCapture(prefill){
     logJ('Piste créée : ' + c.name, c.id);
     sh.close();
     bus.refresh();
-    askNextAction(c, { title: 'Enregistrée ✓ — prochaine action ?', preset: 'Contacter', laterLabel: 'Plus tard' });
+    askNextAction(c, { title: 'Enregistrée ✓ — prochaine action ?', preset: 'Contacter' });
   });
-  q('#cpOrph').addEventListener('click', () => { sh.close(); openContactEditor({}); });
+  /* bascule vers un contact : ce qui est déjà saisi suit — le nom tapé
+     devient l'indice d'entreprise du contact, rien ne se perd */
+  q('#cpOrph').addEventListener('click', () => {
+    const name = q('#cpName').value.trim();
+    sh.close();
+    openContactEditor(name ? { prefill: { extra: { company: name } } } : {});
+  });
   q('#cpName').addEventListener('input', debounce(checkDup, 250));
   q('#cpCity').addEventListener('input', debounce(checkDup, 250));
   q('#cpName').addEventListener('keydown', e => { if (e.key === 'Enter') bSave.click(); });
   q('#cpCity').addEventListener('keydown', e => { if (e.key === 'Enter') bSave.click(); });
-  sh.setFoot([btn('Annuler', 'btn-ghost', () => sh.close()), bSave]);
+  sh.setFoot([bSave]);
   checkDup();
 }

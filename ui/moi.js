@@ -45,7 +45,6 @@ function openBackupSheet(){
        <input id="bkPass" type="password" placeholder="Vide = lisible par tous" autocomplete="new-password">
        <p class="hint">Chiffré si tu en mets un — perdu = irrécupérable.</p></div>`;
   sh.setFoot([
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Télécharger', 'btn-primary', async () => {
       await downloadBackup(sh.body.querySelector('#bkPass').value || '');
       sh.close();
@@ -117,7 +116,7 @@ function askRestorePass(raw){
        <input id="rsPass" type="password" autocomplete="off"></div>`;
   const go = () => { const p = sh.body.querySelector('#rsPass').value; sh.close(); treatRestore(raw, p); };
   sh.body.querySelector('#rsPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-  sh.setFoot([btn('Annuler', 'btn-ghost', () => sh.close()), btn('Déverrouiller', 'btn-primary', go)]);
+  sh.setFoot([btn('Déverrouiller', 'btn-primary', go)]);
 }
 
 /* ---------- CV & lettre (PDF, IndexedDB — séparés des pistes) ---------- */
@@ -201,7 +200,6 @@ function editPrompt(i){
   const q = s => sh.body.querySelector(s);
   q('#ppText').addEventListener('input', () => { q('#ppCount').textContent = q('#ppText').value.length; });
   const foot = [
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       const name = q('#ppName').value.trim();
       const text = q('#ppText').value.trim();

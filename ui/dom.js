@@ -169,9 +169,11 @@ export function openSheet(o){
     ov, body, close,
     setTitle(t){ ov.querySelector('.modal-h h2 span').textContent = t; },
     setFoot(content){
-      /* remplace — les feuilles à étapes rappellent setFoot à chaque écran */
-      foot.hidden = false;
+      /* remplace — les feuilles à étapes rappellent setFoot à chaque
+         écran ; null = pas de pied (fermer = la croix ou le glisser) */
       foot.innerHTML = '';
+      foot.hidden = content == null;
+      if (content == null) return;
       if (typeof content === 'string') foot.innerHTML = content;
       else foot.append(...[].concat(content));
     }
