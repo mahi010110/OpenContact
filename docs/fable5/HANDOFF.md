@@ -4,20 +4,23 @@
   arbitrages D13–D16 consignés).
 - **Branche Git** : `claude/opencontact-repo-study-3bw0ju`
 - **Commit de base de l'app** : `9baa642` (inchangé tant que P0 n'a pas livré)
-- **Dernière tâche terminée** : P1 (verrou complet) — `ui/verrou.js`
-  (écran verrouillé plein écran, pavé réutilisable, création en feuille
-  avec phrase + sauvegarde bloquante, délai progressif persistant,
-  « Code oublié ? » → phrase → nouveau code, biométrie PRF optionnelle,
-  verrouillage auto 5/15 min, `requireCode`), bloc sécurité dans Moi,
-  re-auth branchée dans `moi.js`/`direct.js`, styles verrou, `sw.js`
-  → oc-v16. La clé RESTE attachée quand l'écran se verrouille (la sync
-  et une campagne validée continuent — D6).
-- **Tâche en cours** : P2-1 (identités d'appareil signées, `oc_devring_v1`).
-- **Tests exécutés** : `?test` **59/59 verts** ; E2E Playwright
-  (`scratchpad/e2e-verrou.mjs`) : création complète au tap, scellement
-  OCV1 vérifié dans IndexedDB, rechargement → verrou, mauvais code,
-  déverrouillage tactile + clavier, thèmes clair/sombre, zéro erreur
-  console. Reste manuel : biométrie PRF sur vrai matériel (P1-3).
+- **Dernière tâche terminée** : P2 (appareil principal) — `engine/ring.js`
+  (anneau Ed25519 signé en bloc par le principal, clé de secours dérivée
+  de la phrase → récupération vérifiable hors ligne, générations
+  anti-rétrogradation, seq monotone signé), intégration `synclive.js`
+  (hello+pub, action `ring`, auto-ajout par le principal, application
+  des commandes une seule fois, wipe local honnête), feuille d'appareil
+  dans `direct.js` (verrouiller/retirer/bannir/effacer/transférer, code
+  re-demandé), récupération d'urgence D7 complète dans `verrou.js`
+  (rotation coffre + rescellement + anneau repris + sauvegarde
+  bloquante). `sw.js` → oc-v17.
+- **Tâche en cours** : P3-1 (`engine/campaign.js`, machine à états pure).
+- **Tests exécutés** : `?test` **64/64 verts** ; E2E `e2e-verrou.mjs`
+  (régression P1) + `e2e-recuperation.mjs` (D7 bout en bout : coffre
+  gen 2, anneau gen 2, ancien code refusé, nouveau accepté, donnée
+  re-scellée relue), zéro erreur console. Restes manuels : biométrie
+  PRF sur vrai matériel ; commandes d'anneau entre deux vrais appareils
+  (le moteur est couvert, le transport Trystero n'est pas simulable ici).
 - **Décisions/blocages ouverts** : aucun blocage. Hypothèses externes à
   vérifier au moment concerné : scope Gmail `gmail.send` (P4), WebAuthn PRF
   (P1-3), Local Network Access / Trystero-Node (P7), abonnement Claude

@@ -32,9 +32,9 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P2-1 | Identités d'appareil signées + registre à générations (`oc_devring_v1`) | Compat sync existante préservée | P0-2 | à faire | Tests : signatures invalides rejetées, convergence |
-| P2-2 | Commandes signées : verrouiller, retirer, bannir+rotation, effacer (bonne foi), transfert du rôle + feuille d'appareil (UX-PLAN §3) | Appliquées à la reconnexion si hors ligne | P2-1 | à faire | Tests deux contextes : révocation hors ligne, retour d'un banni |
-| P2-3 | Récupération d'urgence par phrase de secours + sauvegarde obligatoire (D7) | Parcours complet UX | P2-2, P1-1 | à faire | Scénario Playwright bout en bout |
+| P2-1 | Identités d'appareil signées Ed25519 + registre à générations (`oc_devring_v1`, anneau signé en bloc, seq monotone) | Compat sync existante préservée | P0-2 | terminée | 5 tests anneau verts (TOFU, falsification, ban/gen, transfert, récupération) |
+| P2-2 | Commandes signées : verrouiller, retirer, bannir+gen+1, effacer (bonne foi), transfert du rôle + feuille d'appareil (UX-PLAN §3) | Appliquées à la reconnexion (elles voyagent dans l'anneau) | P2-1 | terminée | actionsFor idempotent testé ; retour d'un banni ignoré testé |
+| P2-3 | Récupération d'urgence par phrase de secours : rotation coffre + rescellement + anneau repris + sauvegarde obligatoire (D7) | Parcours complet UX | P2-2, P1-1 | terminée | E2E Playwright `e2e-recuperation.mjs` vert (gen coffre 2, gen anneau 2, ancien code refusé) |
 
 ## Phase 3 — Moteur de campagnes (avancé tôt : risqué et structurant)
 

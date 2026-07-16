@@ -26,6 +26,9 @@ import { VAULT_WORDS, PHRASE_LEN, makeVaultPhrase, normVaultPhrase, phraseUnknow
          createVault, unlockWithPin, unlockWithPhrase, unlockWithPrf,
          setPin, addPrfWrap, rotateVault,
          sealValue, openValue, isSealed } from './engine/vault.js';
+import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
+         ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor,
+         verifyRing, deviceIn } from './engine/ring.js';
 
 export async function runSelfTests(){
   const R = [];
@@ -597,6 +600,71 @@ export async function runSelfTests(){
       try { await unlockWithPin(rot.meta, '222222'); throw new Error('accepté !'); }
       catch (e) { eq(e.message, 'code'); }
       ok(!!(await unlockWithPin(rot.meta, '444444')).key);
+    },
+    'anneau : signé, vérifié, TOFU, falsification refusée': async () => {
+      if (!(await edAvailable())) return;   /* vieux navigateur : dégradé assumé */
+      const kA = await makeDeviceKeys(), kB = await makeDeviceKeys();
+      const rec = await recoveryKeys('aigle ancre avion', 15000);
+      let ring = await ringInit({ id: 'A', name: 'Pixel' }, kA.pub, kA.seed, rec.pub);
+      ok(await verifyRing(ring, kA.pub));
+      ring = await ringAddDevice(ring, kA.seed, { id: 'B', name: 'MacBook', pub: kB.pub });
+      eq(ring.devices.length, 2);
+      const mB = await mergeRing(null, ring);         /* B apprend l'anneau (TOFU) */
+      ok(mB.changed);
+      const forged = await ringCommand(ring, kB.seed, 'wipe', 'A');   /* signé par B */
+      ok(!(await mergeRing(mB.ring, forged)).changed);
+    },
+    'anneau : commandes ciblées, appliquées une seule fois': async () => {
+      if (!(await edAvailable())) return;
+      const kA = await makeDeviceKeys(), kB = await makeDeviceKeys();
+      const rec = await recoveryKeys('x', 15000);
+      let ring = await ringInit({ id: 'A', name: 'A' }, kA.pub, kA.seed, rec.pub);
+      ring = await ringAddDevice(ring, kA.seed, { id: 'B', name: 'B', pub: kB.pub });
+      ring = await ringCommand(ring, kA.seed, 'lock', 'B', 'c1');
+      const acts = actionsFor(ring, 'B', []);
+      eq(acts, [{ cid: 'c1', cmd: 'lock' }]);
+      eq(actionsFor(ring, 'B', ['c1']), []);          /* déjà appliquée */
+      eq(actionsFor(ring, 'A', []), []);              /* ne me vise pas */
+    },
+    'anneau : bannir = génération +1, le retour d’un banni est ignoré': async () => {
+      if (!(await edAvailable())) return;
+      const kA = await makeDeviceKeys(), kB = await makeDeviceKeys();
+      const rec = await recoveryKeys('x', 15000);
+      let ring = await ringInit({ id: 'A', name: 'A' }, kA.pub, kA.seed, rec.pub);
+      ring = await ringAddDevice(ring, kA.seed, { id: 'B', name: 'B', pub: kB.pub });
+      const banned = await ringCommand(ring, kA.seed, 'ban', 'B');
+      eq(banned.gen, 2);
+      ok(!deviceIn(banned, 'B'));
+      ok(!(await mergeRing(banned, ring)).changed);   /* l'ancien anneau ne redescend pas */
+    },
+    'anneau : transfert du rôle signé par l’ancien principal': async () => {
+      if (!(await edAvailable())) return;
+      const kA = await makeDeviceKeys(), kB = await makeDeviceKeys();
+      const rec = await recoveryKeys('x', 15000);
+      let ring = await ringInit({ id: 'A', name: 'A' }, kA.pub, kA.seed, rec.pub);
+      ring = await ringAddDevice(ring, kA.seed, { id: 'B', name: 'B', pub: kB.pub });
+      const mB = await mergeRing(null, ring);
+      const t = await ringTransfer(ring, kA.seed, 'B');
+      const mB2 = await mergeRing(mB.ring, t);
+      ok(mB2.changed);
+      eq(mB2.ring.main, 'B');
+      eq(deviceIn(mB2.ring, 'A').role, 'member');
+    },
+    'anneau : récupération par la phrase — vraie acceptée, fausse refusée': async () => {
+      if (!(await edAvailable())) return;
+      const kA = await makeDeviceKeys(), kB = await makeDeviceKeys();
+      const rec = await recoveryKeys('bonne phrase', 15000);
+      let ring = await ringInit({ id: 'A', name: 'A' }, kA.pub, kA.seed, rec.pub);
+      ring = await ringAddDevice(ring, kA.seed, { id: 'B', name: 'B', pub: kB.pub });
+      const newRec = await recoveryKeys('phrase renouvelee', 15000);
+      const good = await ringRecover(ring, rec.seed, { id: 'B', name: 'B' }, kB.pub, newRec.pub);
+      const mA = await mergeRing(ring, good);
+      ok(mA.changed && mA.recovered);
+      eq(mA.ring.main, 'B');
+      eq(mA.ring.gen, 2);
+      const badRec = await recoveryKeys('mauvaise phrase', 15000);
+      const bad = await ringRecover(ring, badRec.seed, { id: 'B', name: 'B' }, kB.pub, newRec.pub);
+      ok(!(await mergeRing(ring, bad)).changed);
     },
     'verrou : codes triviaux refusés (suites, répétitions)': async () => {
       const { isWeakPin } = await import('./ui/verrou.js');

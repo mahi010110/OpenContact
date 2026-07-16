@@ -14,7 +14,11 @@ import { uid } from '../engine/utils.js';
 import { normalizeProfile } from '../engine/model.js';
 import { fullPayload } from '../engine/exchange.js';
 import { syncMerge } from '../engine/sync.js';
-import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
+         ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor, deviceIn } from '../engine/ring.js';
+import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
+         DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, PROMO_KEY, VAULT_KEY,
+         kvGet, kvSet, kvDel } from '../engine/storage.js';
 import { S, bus, applySynced, saveProfile, logJ } from './state.js';
 import { ic, toast, showUndo } from './dom.js';
 
@@ -81,6 +85,128 @@ export async function removeDevice(id){
 }
 export const DEVICES_MAX = 5;
 
+/* ---------- l'anneau d'appareils (appareil principal) ----------
+   État persistant : { keys: {pub, seed}, ring, applied: [cid…] } —
+   scellé au repos quand le profil est protégé (SEALABLE). Les
+   commandes reçues me visant sont appliquées ici ; « verrouiller »
+   est délégué au verrou par événement (pas d'import croisé). */
+let ringSt = null;
+let ringLoaded = false;
+async function loadRingSt(){
+  if (ringLoaded) return ringSt;
+  ringLoaded = true;
+  try { ringSt = JSON.parse(await kvGet(RING_KEY) || 'null'); } catch (e) { ringSt = null; }
+  return ringSt;
+}
+const saveRingSt = () => kvSet(RING_KEY, JSON.stringify(ringSt));
+export const getRing = () => (ringSt && ringSt.ring) || null;
+export async function amMain(){
+  const r = getRing();
+  if (!r) return false;
+  return r.main === (await deviceSelf()).id;
+}
+/* les clés de CET appareil — créées au premier besoin */
+async function ensureKeys(){
+  await loadRingSt();
+  if (ringSt && ringSt.keys) return ringSt.keys;
+  if (!(await edAvailable())) return null;
+  const keys = await makeDeviceKeys();
+  ringSt = Object.assign({ ring: null, applied: [] }, ringSt || {}, { keys });
+  await saveRingSt();
+  return keys;
+}
+/* à l'activation de la protection : cet appareil devient le principal */
+export async function ensureRing(recoveryPhrase){
+  const keys = await ensureKeys();
+  if (!keys) return false;
+  if (ringSt.ring) return true;
+  const self = await deviceSelf();
+  const rec = await recoveryKeys(recoveryPhrase);
+  ringSt.ring = await ringInit(self, keys.pub, keys.seed, rec.pub);
+  await saveRingSt();
+  logJ('Appareil principal : ' + self.name);
+  sendRing();
+  emit();
+  return true;
+}
+/* récupération d'urgence (D7) : cet appareil devient le principal,
+   prouvé par l'ANCIENNE phrase, re-scellé par la NOUVELLE */
+export async function recoverRing(oldPhrase, newPhrase){
+  const keys = await ensureKeys();
+  if (!keys) return false;
+  const self = await deviceSelf();
+  const newRec = await recoveryKeys(newPhrase);
+  if (ringSt.ring){
+    const oldRec = await recoveryKeys(oldPhrase);
+    ringSt.ring = await ringRecover(ringSt.ring, oldRec.seed, self, keys.pub, newRec.pub);
+  } else {
+    ringSt.ring = await ringInit(self, keys.pub, keys.seed, newRec.pub);
+  }
+  ringSt.applied = [];
+  await saveRingSt();
+  logJ('Récupération : cet appareil devient le principal');
+  sendRing();
+  emit();
+  return true;
+}
+/* commandes du principal (l'appelant a déjà re-demandé le code) */
+export async function ringDo(cmd, targetId){
+  if (!(await amMain())) return false;
+  ringSt.ring = await ringCommand(ringSt.ring, ringSt.keys.seed, cmd, targetId);
+  await saveRingSt();
+  if (cmd === 'remove' || cmd === 'ban' || cmd === 'wipe') await removeDevice(targetId);
+  logJ('Commande appareil : ' + cmd + ' → ' + targetId);
+  sendRing();
+  emit();
+  return true;
+}
+export async function ringMakeMain(targetId){
+  if (!(await amMain())) return false;
+  ringSt.ring = await ringTransfer(ringSt.ring, ringSt.keys.seed, targetId);
+  await saveRingSt();
+  logJ('Rôle principal transféré');
+  sendRing();
+  emit();
+  return true;
+}
+/* réception d'un anneau distant : fusion vérifiée, puis les
+   commandes qui me visent — appliquées UNE fois, même hors ligne
+   au moment de l'émission (elles voyagent dans l'anneau) */
+async function onRingMsg(incoming){
+  await loadRingSt();
+  const mine = getRing();
+  const r = await mergeRing(mine, incoming);
+  if (!r.changed) return;
+  ringSt = Object.assign({ keys: null, applied: [] }, ringSt || {}, { ring: r.ring });
+  await saveRingSt();
+  if (r.recovered) toast('Ton appareil principal a changé — récupération d’urgence.');
+  const self = await deviceSelf();
+  const acts = actionsFor(r.ring, self.id, ringSt.applied);
+  for (const a of acts){
+    ringSt.applied = (ringSt.applied || []).concat([a.cid]).slice(-80);
+    await saveRingSt();
+    if (a.cmd === 'lock'){
+      document.dispatchEvent(new CustomEvent('oc:ringlock'));
+      toast('Verrouillé depuis ton appareil principal.');
+    } else if (a.cmd === 'remove' || a.cmd === 'ban'){
+      await breakLink();
+      toast('Cet appareil a été retiré de tes appareils.');
+    } else if (a.cmd === 'wipe'){
+      logJ('Effacement demandé par l’appareil principal');
+      for (const k of [DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY,
+                       SYNC_KEY, PROMO_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY]) await kvDel(k);
+      location.replace(location.pathname);
+      return;
+    }
+  }
+  emit();
+}
+let sendRingRaw = null;
+function sendRing(){
+  const r = getRing();
+  if (r && sendRingRaw) sendRingRaw(r);
+}
+
 /* ---------- l'état vivant ---------- */
 const live = {
   state: 'off',        /* off · wait (personne en face) · on · err */
@@ -117,6 +243,7 @@ function closeRoom(){
   if (room){ try { room.leave(); } catch (e) {} room = null; }
   sendFull = null;
   sendHello = null;
+  sendRingRaw = null;
   lastSent = '';
   live.peers = 0;
 }
@@ -140,13 +267,24 @@ async function join(phrase){
   if (my !== gen){ try { r.leave(); } catch (e) {} return; }
   room = r;
 
+  const keys = await ensureKeys();          /* identité signée de cet appareil */
   const hello = room.makeAction('hello');
-  sendHello = () => hello.send({ id: self.id, name: self.name });
+  sendHello = () => hello.send({ id: self.id, name: self.name, pub: keys ? keys.pub : '' });
   hello.onMessage = async obj => {
     if (!obj || !obj.id || obj.id === self.id) return;
     await upsertDevice(obj.id, obj.name);
+    /* je suis le principal : un appareil du canal authentifié qui
+       annonce sa clé entre dans l'anneau (signé, propagé) */
+    if (obj.pub && await amMain() && !deviceIn(getRing(), obj.id)){
+      ringSt.ring = await ringAddDevice(getRing(), ringSt.keys.seed, obj);
+      await saveRingSt();
+      sendRing();
+    }
     emit();
   };
+  const ringAct = room.makeAction('ring');
+  sendRingRaw = d => { try { ringAct.send(d); } catch (e) {} };
+  ringAct.onMessage = obj => { onRingMsg(obj).catch(() => {}); };
 
   const full = room.makeAction('full');
   sendFull = d => full.send(d);
@@ -187,6 +325,7 @@ async function join(phrase){
     live.state = 'on';
     emit();
     if (sendHello) sendHello();
+    sendRing();
     sendState();
   };
   room.onPeerLeave = () => {

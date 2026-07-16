@@ -27,6 +27,7 @@ doit être repensée, pas forcée.
 | `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
 | `oc_promo_v1` | Dernier mot de passe de partage en groupe (confort de saisie) | chaîne |
 | `oc_vault_v1` | Métadonnée du coffre (profil protégé) : enveloppes de la clé maîtresse par code / phrase de secours / PRF — **jamais la clé en clair** | JSON : `{v, gen, at, wraps}` |
+| `oc_devring_v1` | Anneau d'appareils : registre signé (appareil principal, membres, commandes) + clés Ed25519 de CET appareil + commandes déjà appliquées | JSON : `{ring, keys, applied}` |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
@@ -222,6 +223,15 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    `promo-` et la clé `oc_promo_v1` ne changent pas), lui, passe exclusivement par `sharePayload`
    (vue communautaire, §3) et l'aperçu avant fusion (§4) — mêmes règles que
    par fichier, quel que soit le canal.
+7. **L'anneau d'appareils** (`engine/ring.js`, quand le profil est protégé) :
+   le registre voyage avec la sync, signé **en bloc** (Ed25519) par
+   l'appareil principal ; une commande (verrouiller, retirer, effacer,
+   transférer) n'est appliquée que si la signature vérifie contre la clé
+   publique du principal déjà connue. La **génération** ne descend jamais
+   (bannir = génération +1 — l'anneau d'un banni est ignoré). La
+   **récupération d'urgence** est signée par la clé de secours, dérivée
+   de la phrase de secours (déterministe) : elle prouve la phrase,
+   exige une génération strictement supérieure, et se vérifie hors ligne.
 
 ---
 

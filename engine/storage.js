@@ -28,6 +28,7 @@ export const DEVICE_KEY = 'oc_device_v1';     /* cet appareil : {id, name} */
 export const DEVICES_KEY = 'oc_devices_v1';   /* appareils reliés déjà vus : [{id, name, seen}] */
 export const PROMO_KEY = 'oc_promo_v1';       /* dernier mot de passe de partage en groupe */
 export const VAULT_KEY = 'oc_vault_v1';       /* métadonnée du coffre (enveloppes de la clé maîtresse) */
+export const RING_KEY = 'oc_devring_v1';      /* anneau d'appareils signé + clés de CET appareil */
 export const THEME_KEY = 'oc_theme';
 export const VIEW_KEY = 'oc_view';
 export const OLD_V2 = 'oc_data_v2';
@@ -111,7 +112,7 @@ export async function kvDel(k){
    lecture scellée SANS clé attachée lève `verrou` — jamais un
    `null` silencieux qui ferait croire à une base vide. */
 export const SEALABLE = new Set([DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY,
-  TOMBS_KEY, SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY]);
+  TOMBS_KEY, SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, RING_KEY]);
 let vKey = null;
 export function vaultAttach(key){ vKey = key || null; }
 export function vaultDetach(){ vKey = null; }

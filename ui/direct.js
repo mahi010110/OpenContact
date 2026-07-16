@@ -17,7 +17,9 @@ import { S, bus, isClosed, logJ } from './state.js';
 import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mergePreviewInto } from './recevoir.js';
 import { getSync, startSync, breakLink, keepMyProfile, makePhrase, openRoom,
-         deviceSelf, loadDevices, removeDevice, DEVICES_MAX } from './synclive.js';
+         deviceSelf, loadDevices, removeDevice, DEVICES_MAX,
+         getRing, amMain, ringDo, ringMakeMain } from './synclive.js';
+import { deviceIn } from '../engine/ring.js';
 import { requireCode } from './verrou.js';
 
 const agoLabel = t => {
@@ -28,6 +30,51 @@ const agoLabel = t => {
   if (h < 24) return 'il y a ' + h + ' h';
   return 'il y a ' + Math.round(h / 24) + ' j';
 };
+
+/* ---------- feuille d'un appareil : les commandes du principal ----------
+   Chaque geste re-demande le code ; la commande voyage dans l'anneau
+   signé et s'applique quand l'appareil se reconnecte — l'interface
+   est honnête sur cette limite. */
+function openDeviceSheet(d, onDone){
+  const sh = openSheet({ title: d.name, icon: 'switch' });
+  sh.body.innerHTML =
+    `<p class="hint" style="margin:0 0 10px">Vu ${agoLabel(d.seen || 0)}. Une commande s’applique quand il se reconnecte.</p>
+     <div class="pick-list">
+       <button class="pick" id="dvLock"><b>Verrouiller cet appareil</b><span>il se verrouillera dès qu’il se reconnectera</span></button>
+       <button class="pick" id="dvMain"><b>En faire l’appareil principal</b><span>celui-ci redevient un appareil ordinaire</span></button>
+       <button class="pick" id="dvRemove"><b>Retirer de mes appareils</b><span>il ne se synchronisera plus</span></button>
+       <button class="pick" id="dvBan"><b>Retirer et changer les clés</b><span>appareil perdu ou douteux</span></button>
+       <button class="pick pick-danger" id="dvWipe"><b>Effacer ses données</b><span>de bonne foi — à sa prochaine connexion</span></button>
+     </div>`;
+  const q = s => sh.body.querySelector(s);
+  const doCmd = async (cmd, confirmOpts, doneMsg) => {
+    if (confirmOpts && !await confirmSheet(confirmOpts)) return;
+    if (!await requireCode('Ton code, pour confirmer')) return;
+    if (cmd === 'main') await ringMakeMain(d.id);
+    else await ringDo(cmd, d.id);
+    sh.close(null, true);
+    toast(doneMsg);
+    onDone();
+  };
+  q('#dvLock').addEventListener('click', () =>
+    doCmd('lock', null, 'Il se verrouillera dès qu’il se reconnectera.'));
+  q('#dvMain').addEventListener('click', () =>
+    doCmd('main', { title: 'Transférer le rôle ?', okLabel: 'Transférer', icon: 'switch',
+      msg: `<b>${esc(d.name)}</b> devient ton appareil principal. Celui-ci redevient un appareil ordinaire.` },
+      'Rôle transféré ✓'));
+  q('#dvRemove').addEventListener('click', () =>
+    doCmd('remove', { title: 'Retirer cet appareil ?', danger: true, okLabel: 'Retirer', icon: 'trash',
+      msg: `<b>${esc(d.name)}</b> sort de tes appareils et ne se synchronisera plus. Rien n’y est effacé.` },
+      'Retiré — il l’apprendra à sa prochaine connexion.'));
+  q('#dvBan').addEventListener('click', () =>
+    doCmd('ban', { title: 'Retirer et changer les clés ?', danger: true, okLabel: 'Retirer', icon: 'trash',
+      msg: `<b>${esc(d.name)}</b> est écarté et les clés du groupe changent. Il connaît encore la phrase de liaison — <b>change-la aussi</b> pour l’écarter vraiment.` },
+      'Écarté. Pense à changer la phrase de liaison.'));
+  q('#dvWipe').addEventListener('click', () =>
+    doCmd('wipe', { title: 'Effacer ses données ?', danger: true, okLabel: 'Effacer', icon: 'square-alert',
+      msg: `<b>${esc(d.name)}</b> effacera ses données OpenContact à sa prochaine connexion. Si quelqu’un l’en empêche, change aussi les clés et la phrase.` },
+      'Demandé — il effacera à sa prochaine connexion.'));
+}
 
 /* ============ Mes appareils : gestion du lien persistant ============ */
 export function openAppareils(){
@@ -49,11 +96,25 @@ export function openAppareils(){
     return `${ic('clock', 'ic-14')} Connexion…`;
   };
 
+  /* le rôle d'un appareil dans l'anneau — '' si pas d'anneau */
+  const roleOf = id => {
+    const r = getRing();
+    const d = r && deviceIn(r, id);
+    return d ? (r.main === id ? 'main' : d.role) : '';
+  };
+  const roleTag = id => {
+    const role = roleOf(id);
+    if (role === 'main') return ' <span class="tag-main">principal</span>';
+    if (role === 'companion') return ' <span class="tag-beta">compagnon</span>';
+    return '';
+  };
+
   async function renderLinked(){
     const sy = getSync();
     const self = await deviceSelf();
     const devs = await loadDevices();
     const st = sy.lastStats;
+    const iAmMain = await amMain();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
@@ -70,11 +131,14 @@ export function openAppareils(){
          </ul>` : ''}</div>
        <div class="sy-devs">
          <div class="lbl-row" style="margin-bottom:6px"><label>Appareils reliés</label></div>
-         <div class="dev-row"><b>${esc(self.name)}</b><span class="dev-sub">cet appareil</span></div>
-         ${devs.map(d =>
-           `<div class="dev-row"><b>${esc(d.name)}</b><span class="dev-sub">${agoLabel(d.seen || 0)}</span>
-              <button class="abtn abtn-sm" data-rm="${esc(d.id)}" aria-label="Retirer ${esc(d.name)}" title="Retirer">${ic('trash', 'ic-14')}</button>
-            </div>`).join('')}
+         <div class="dev-row"><b>${esc(self.name)}</b>${roleTag(self.id)}<span class="dev-sub">cet appareil</span></div>
+         ${devs.map(d => iAmMain && roleOf(d.id)
+           ? `<button class="dev-row dev-open" data-dev="${esc(d.id)}"><b>${esc(d.name)}</b>${roleTag(d.id)}
+                <span class="dev-sub">${agoLabel(d.seen || 0)} · gérer ›</span></button>`
+           : `<div class="dev-row"><b>${esc(d.name)}</b>${roleTag(d.id)}<span class="dev-sub">${agoLabel(d.seen || 0)}</span>
+                <button class="abtn abtn-sm" data-rm="${esc(d.id)}" aria-label="Retirer ${esc(d.name)}" title="Retirer">${ic('trash', 'ic-14')}</button>
+              </div>`).join('')}
+         ${getRing() && !iAmMain ? `<p class="hint" style="margin-top:6px">Seul ton appareil principal peut gérer les autres.</p>` : ''}
          ${1 + devs.length > DEVICES_MAX
            ? `<p class="hint warn" style="margin-top:6px">Plus de ${DEVICES_MAX} appareils — change la phrase de liaison pour écarter ceux que tu ne reconnais pas.</p>`
            : ''}
@@ -97,6 +161,12 @@ export function openAppareils(){
         if (!await requireCode('Ton code, pour retirer')) return;
         await removeDevice(b.dataset.rm);
         render();
+      }));
+    /* je suis le principal : chaque appareil s'ouvre en feuille de gestion */
+    sh.body.querySelectorAll('[data-dev]').forEach(b =>
+      b.addEventListener('click', () => {
+        const d = devs.find(x => x.id === b.dataset.dev);
+        if (d) openDeviceSheet(d, render);
       }));
     sh.setFoot([
       btn('Rompre le lien', 'btn-ghost', async () => {
