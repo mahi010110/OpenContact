@@ -56,16 +56,29 @@ export function safeUrl(u){
   if (/^[\w-]+(\.[\w-]+)+(:\d+)?([\/?#]\S*)?$/i.test(u)) return 'https://' + u;
   return '';
 }
+/* un id finit en attribut DOM et voyage entre appareils : seul un jeton
+   sobre est accepté, tout le reste est régénéré — un id piégé dans un
+   fichier reçu ne doit jamais casser le HTML (S2 de l'audit) */
+const ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
+const safeId = v => (typeof v === 'string' && ID_RE.test(v)) ? v : uid();
+/* une date s'affiche parfois telle quelle (frDate) : seule la forme
+   AAAA-MM-JJ passe — un horodatage complet est tronqué au jour, tout le
+   reste est vidé (S3 de l'audit) */
+const isoDay = v => { const m = /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(String(v || '')); return m ? m[1] : ''; };
+/* « __proto__ » et consorts, posés en clé d'un JSON reçu, détourneraient le
+   prototype de l'objet au lieu d'y poser une donnée (S4 de l'audit) */
+const BAD_KEYS = ['__proto__', 'constructor', 'prototype'];
 function keepExtra(x, known){
-  const base = (x.extra && typeof x.extra === 'object' && !Array.isArray(x.extra))
-    ? Object.assign({}, x.extra) : {};
-  for (const k of Object.keys(x)) if (!known.includes(k)) base[k] = x[k];
+  const base = {};
+  const src = (x.extra && typeof x.extra === 'object' && !Array.isArray(x.extra)) ? x.extra : null;
+  if (src) for (const k of Object.keys(src)) if (!BAD_KEYS.includes(k)) base[k] = src[k];
+  for (const k of Object.keys(x)) if (!known.includes(k) && !BAD_KEYS.includes(k)) base[k] = x[k];
   return Object.keys(base).length ? base : null;
 }
 export function normalizeContact(x){
   x = x || {};
   const out = {
-    id: x.id || uid(),
+    id: safeId(x.id),
     name: String(x.name || '').trim(),
     role: String(x.role || '').trim(),
     email: String(x.email || '').trim(),
@@ -87,7 +100,7 @@ export function normalizeCompany(x){
   contacts = contacts.filter(contactHasData);
   /* migration des statuts v5 : terminaux → clôture, intermédiaires → 3 crans */
   let status = x.status;
-  let closedAt = x.closedAt || '';
+  let closedAt = isoDay(x.closedAt);
   let closedReason = CLOSE_REASONS[x.closedReason] ? x.closedReason : '';
   if (status === 'won' || status === 'rejected'){
     if (!closedReason) closedReason = status === 'won' ? 'won' : 'rejected';
@@ -95,7 +108,7 @@ export function normalizeCompany(x){
     status = 'reply';
   } else if (LEGACY_STATUSES[status]) status = LEGACY_STATUSES[status];
   const out = {
-    id: x.id || uid(),
+    id: safeId(x.id),
     name: String(x.name || '').trim(),
     city: String(x.city || '').trim() || extractCity(x.address),
     domain: DOMAINS[x.domain] ? x.domain : 'autre',
@@ -110,11 +123,11 @@ export function normalizeCompany(x){
     lat: (typeof x.lat === 'number') ? x.lat : null,
     lng: (typeof x.lng === 'number') ? x.lng : null,
     status: STATUSES[status] ? status : 'todo',
-    notes: x.notes || '', appliedAt: x.appliedAt || '', nextAction: x.nextAction || '',
+    notes: x.notes || '', appliedAt: isoDay(x.appliedAt), nextAction: isoDay(x.nextAction),
     nextActionText: String(x.nextActionText || '').trim(),
     closedAt, closedReason,
     history: Array.isArray(x.history) ? x.history.slice(-40) : [],
-    verifiedAt: x.verifiedAt || '',
+    verifiedAt: isoDay(x.verifiedAt),
     confirmations: Number(x.confirmations) || 0,
     demo: !!x.demo,
     createdAt: x.createdAt || Date.now(), updatedAt: x.updatedAt || Date.now()
@@ -186,7 +199,9 @@ export function defaultProfile(){
 }
 /* remet un profil (chargé, importé ou restauré) aux invariants attendus */
 export function normalizeProfile(raw){
-  const profile = Object.assign(defaultProfile(), (raw && typeof raw === 'object') ? raw : {});
+  const profile = defaultProfile();
+  if (raw && typeof raw === 'object')
+    for (const k of Object.keys(raw)) if (!BAD_KEYS.includes(k)) profile[k] = raw[k];
   if (!Array.isArray(profile.templates) || !profile.templates.length) profile.templates = defaultTemplates();
   if (!Array.isArray(profile.prompts) || !profile.prompts.length) profile.prompts = defaultPrompts();
   profile.prompts = profile.prompts.slice(0, PROMPTS_MAX).map(p => ({

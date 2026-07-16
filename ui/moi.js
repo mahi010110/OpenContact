@@ -11,8 +11,9 @@ import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
 import { fullPayload, parseInput } from '../engine/exchange.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
+import { mergeTombs } from '../engine/sync.js';
 import { docGet, docPut, docDel } from '../engine/storage.js';
-import { S, bus, saveData, saveProfile, saveOrphans, logJ, isClosed } from './state.js';
+import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ, isClosed } from './state.js';
 import { $, ic, toast, btn, openSheet, confirmSheet, showUndo, bindDeleteGesture } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
@@ -21,7 +22,7 @@ import { getSync } from './synclive.js';
 /* ---------- sauvegarde (.oc complet) ---------- */
 export function downloadBackup(pass){
   const doIt = async () => {
-    const payload = fullPayload(S.companies, S.profile, S.orphans);
+    const payload = fullPayload(S.companies, S.profile, S.orphans, S.tombs);
     const txt = pass ? await encryptOC2(payload, pass) : JSON.stringify(payload);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([txt], { type: 'application/octet-stream' }));
@@ -44,7 +45,6 @@ function openBackupSheet(){
        <input id="bkPass" type="password" placeholder="Vide = lisible par tous" autocomplete="new-password">
        <p class="hint">Chiffré si tu en mets un — perdu = irrécupérable.</p></div>`;
   sh.setFoot([
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Télécharger', 'btn-primary', async () => {
       await downloadBackup(sh.body.querySelector('#bkPass').value || '');
       sh.close();
@@ -86,19 +86,24 @@ async function treatRestore(raw, pass){
   const snap = {
     companies: JSON.stringify(S.companies),
     profile: JSON.stringify(S.profile),
-    orphans: JSON.stringify(S.orphans)
+    orphans: JSON.stringify(S.orphans),
+    tombs: JSON.stringify(S.tombs)
   };
   S.companies = obj.companies.map(normalizeCompany);
   if (obj.profile) S.profile = normalizeProfile(obj.profile);
   S.orphans = Array.isArray(obj.orphans) ? obj.orphans.map(normalizeContact) : [];
-  saveData(); saveProfile(); saveOrphans();
+  /* les suppressions repartent de la sauvegarde : sans ça, une vieille
+     pierre tombale re-supprimerait une piste restaurée à la sync suivante */
+  S.tombs = mergeTombs(Array.isArray(obj.tombs) ? obj.tombs : [], []);
+  saveData(); saveProfile(); saveOrphans(); saveTombs();
   logJ('Sauvegarde restaurée : ' + n + ' piste(s)');
   bus.refresh();
   showUndo(`${ic('check', 'ic-14')} Restauré : ${n} piste${n > 1 ? 's' : ''}.`, () => {
     S.companies = JSON.parse(snap.companies).map(normalizeCompany);
     S.profile = normalizeProfile(JSON.parse(snap.profile));
     S.orphans = JSON.parse(snap.orphans).map(normalizeContact);
-    saveData(); saveProfile(); saveOrphans();
+    S.tombs = mergeTombs(JSON.parse(snap.tombs), []);
+    saveData(); saveProfile(); saveOrphans(); saveTombs();
     logJ('Restauration annulée');
     bus.refresh();
     toast('Restauration annulée — tout est revenu comme avant.');
@@ -111,7 +116,7 @@ function askRestorePass(raw){
        <input id="rsPass" type="password" autocomplete="off"></div>`;
   const go = () => { const p = sh.body.querySelector('#rsPass').value; sh.close(); treatRestore(raw, p); };
   sh.body.querySelector('#rsPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-  sh.setFoot([btn('Annuler', 'btn-ghost', () => sh.close()), btn('Déverrouiller', 'btn-primary', go)]);
+  sh.setFoot([btn('Déverrouiller', 'btn-primary', go)]);
 }
 
 /* ---------- CV & lettre (PDF, IndexedDB — séparés des pistes) ---------- */
@@ -195,7 +200,6 @@ function editPrompt(i){
   const q = s => sh.body.querySelector(s);
   q('#ppText').addEventListener('input', () => { q('#ppCount').textContent = q('#ppText').value.length; });
   const foot = [
-    btn('Annuler', 'btn-ghost', () => sh.close()),
     btn('Enregistrer', 'btn-primary', () => {
       const name = q('#ppName').value.trim();
       const text = q('#ppText').value.trim();

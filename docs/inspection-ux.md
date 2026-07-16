@@ -49,3 +49,38 @@ Aucune fonctionnalité coupée. Aucun backend, aucun compte, aucune dépendance 
 2. **Livraison 2+** : l'inspection — **montre-moi d'abord la liste des trouvailles classées** (par friction/gravité) **avant** de coder les grosses, pour qu'on priorise ensemble.
 
 Vérifie chaque livraison en **lançant réellement** l'app (390 + 1280, clair + sombre, `?test` vert, zéro erreur console). Règle d'or v6.3 : **moins de texte, moins de clics.**
+
+---
+
+## Rapport (Fable 5, juillet 2026)
+
+Les trois corrections sont livrées, vérifiées à 390 px et 1280 px, clair
+et sombre, avec 30 pistes réalistes — `?test` 51/51, zéro erreur console.
+
+1. **« Mes appareils »** (`ui/direct.js`) : le choix est recadré sur
+   l'action — « **Créer une phrase** / *je commence ici* » et « **Entrer
+   une phrase** / *j'en ai déjà une* » (sous-titres de 3-4 mots). Les
+   hints longs sont coupés (une ligne au lieu de deux partout) ; le mode
+   « changer de phrase » réutilise les mêmes verbes.
+2. **Tri** (`ui/sort.js`) : quand un tri non-défaut est actif (bouton
+   `sort-on`), un appui **réinitialise directement** critère + ordre au
+   défaut de l'écran, sans rouvrir la feuille ; le `title`/`aria-label`
+   du bouton l'annonce. Actif partout (Mes pistes, Prospecter, Donner) ;
+   le re-tap de l'actif dans la feuille reste possible.
+3. **Défilement** (`styles/app.css`, `ui/pistes.js`, `ui/today.js`) :
+   sur les longues listes, la tête de page **s'efface** en descendant
+   (bascule `steps()`, courte) et la barre **recherche + tri reste
+   collée** en haut (mobile et desktop) ; dans les feuilles à liste
+   (Prospecter, Donner), la `listbar` colle en haut du corps. Piège
+   d'implémentation documenté dans le CSS : l'offset `sticky` s'applique
+   à la boîte de **marge** — les marges négatives sont compensées dans
+   les `top`.
+
+**Inspection générale** : passée écran par écran (Aujourd'hui, Mes
+pistes liste + tableau, Échanger, Moi, fiche, Prospecter, Donner,
+Recevoir, Mes appareils) avec 0 / 1 / 30 pistes. Rien de bloquant en
+plus : les libellés, la hiérarchie (un héros par écran), les états
+vides, les cibles 44 px, les `aria-label` des boutons-icônes et le thème
+sombre sont conformes à la grille de `CLAUDE.md`. Les trouvailles de
+fond (ids/dates piégés, tombstones à la restauration) relevaient de la
+sécurité/fiabilité et sont traitées dans `docs/audit-securite.md`.

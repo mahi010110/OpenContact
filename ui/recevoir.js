@@ -48,7 +48,7 @@ export function openRecevoir(){
       r.onload = () => treat(String(r.result));
       r.readAsText(f);
     });
-    sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close())]);
+    sh.setFoot(null);
   };
 
   /* ---- scanner — QR de données (simple ou animé) OU QR de
@@ -117,6 +117,8 @@ export function openRecevoir(){
       if (got || !obj || obj.kind !== 'share' || !Array.isArray(obj.companies)) return;
       obj.companies = obj.companies.filter(x => x && typeof x === 'object' && x.name).slice(0, 2000);
       if (!obj.companies.length) return;
+      /* même borne que par fichier (D4) : un envoi obèse est ignoré */
+      if (JSON.stringify(obj.companies).length > 4000000) return;
       got = true;
       leaveRdv();
       mergePreviewInto(sh, obj, { onCancel: menu });

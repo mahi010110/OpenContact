@@ -161,7 +161,7 @@ function finishRow(row, c){
   setTimeout(() => {
     markDone(c);
     bus.refresh();
-    askNextAction(c, { title: 'Fait ✓ — et ensuite ?', laterLabel: 'Rien pour l’instant' });
+    askNextAction(c, { title: 'Fait ✓ — et ensuite ?' });
   }, 160);
 }
 

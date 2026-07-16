@@ -5,12 +5,8 @@
    Les tokens (styles/tokens/) portent l'identité ; ici, la mise
    en écran. Le moteur n'est jamais concerné par ce fichier.
    ============================================================ */
-@import 'tokens/fonts.css';
-@import 'tokens/colors.css';
-@import 'tokens/typography.css';
-@import 'tokens/spacing.css';
-@import 'tokens/effects.css';
-@import 'tokens/base.css';
+/* les tokens sont chargés par index.html (<link>, en parallèle) —
+   ne pas remettre d'@import ici : il sérialise les téléchargements */
 
 :root{
   --nav-h:53px;
@@ -210,6 +206,15 @@ html[data-theme="dark"] .field select{
 /* barre au-dessus d'une liste de choix (tri dans les feuilles) */
 .listbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .listbar .linklike,.listbar>span{flex:1;min-width:0}
+/* feuille « Trier » : la pile des niveaux (principal + départages) */
+.srt-stack{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.srt-lv{
+  display:flex;align-items:center;gap:8px;min-height:var(--ctl);
+  background:var(--surface-window);border:1px solid var(--border-strong);
+  border-radius:var(--radius-0);box-shadow:var(--shadow-raised);padding:2px 6px 2px 12px;
+}
+.srt-lv .srt-n{font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted)}
+.srt-lv b{flex:1;min-width:0;font-size:var(--text-13)}
 
 /* ============ TÊTE DE PAGE ============ */
 .td-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
@@ -322,13 +327,16 @@ details.tranche[open]>summary::before{
 }
 .swipe-del .sw-under{opacity:1}
 .sw-gone{transition:opacity 150ms var(--ease-steps),transform 150ms var(--ease-steps);opacity:0;transform:translateX(-20px)}
+/* poubelle au survol (desktop) : un élément du flux, pas un survol
+   flottant — la colonne est réservée, rien ne saute ni ne déborde */
 .hov-del{
-  position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+  display:none;flex:none;width:32px;height:32px;
+  align-items:center;justify-content:center;align-self:center;
   background:var(--surface-window);color:var(--red);border:1px solid var(--border-strong);
   border-radius:var(--radius-1);box-shadow:var(--bevel-up), var(--shadow-raised);padding:0;
   opacity:0;pointer-events:none;
 }
+@media (hover:hover) and (pointer:fine){ .hov-del{display:inline-flex} }
 @media (hover:hover){
   .sw:hover .hov-del,.sw:focus-within .hov-del{opacity:1;pointer-events:auto}
 }
@@ -402,7 +410,6 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 .pr-name:hover{color:var(--text-link)}
 .pr-hint{flex:none;color:var(--text-muted)}
 .prompt-row .abtn-sm{margin-left:0;flex:none}
-.prompt-row .hov-del{right:44px}
 .pr-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px}
 .help-list{list-style:none;margin:0;padding:0}
 .help-list li{
@@ -689,8 +696,9 @@ a.fk-v{display:inline-flex;align-items:center;gap:5px}
   box-shadow:var(--bevel-up), var(--shadow-raised);cursor:pointer;
   font-family:var(--font-ui);color:var(--text-body);
 }
-.bcard .sw-in{padding:9px 11px}
-.bcard .bc-main{display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.bcard .sw-in{display:flex;align-items:flex-start;gap:8px;padding:9px 11px}
+.bcard .bc-main{flex:1;display:flex;flex-direction:column;gap:3px;text-align:left;min-width:0}
+.bcard .hov-del{align-self:flex-start}
 .bcard:hover .sw-in{background:var(--surface-field)}
 .bcard b{font-size:var(--text-13);font-weight:var(--weight-semibold)}
 .bc-sub,.bc-foot{

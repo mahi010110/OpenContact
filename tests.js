@@ -149,6 +149,61 @@ export async function runSelfTests(){
       catch (e) { eq(e.message, 'tropdepistes'); }
     },
 
+    /* — tests de sécurité (docs/audit-securite.md) — */
+    'OC2 : contenu altéré → refusé (tag GCM)': async () => {
+      const enc = await encryptOC2({ a: 1 }, 'mdp');
+      const p = enc.split('.');
+      const ct = Array.from(atob(p[5]), ch => ch.charCodeAt(0));
+      ct[0] ^= 0xFF;                                     /* un octet retourné */
+      p[5] = btoa(String.fromCharCode.apply(null, ct));
+      try { await decryptOC2(p.join('.'), 'mdp'); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'motdepasse'); }
+    },
+    'OCQ1 : bombe de décompression → refusée (troplourd)': async () => {
+      if (typeof CompressionStream === 'undefined') return;
+      /* quelques Ko compressés qui gonflent au-delà de la borne de 4 Mo */
+      const raw = new TextEncoder().encode('"' + 'x'.repeat(4200000) + '"');
+      const stream = new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+      const u8 = new Uint8Array(await new Response(stream).arrayBuffer());
+      ok(u8.length < 100000);                            /* la bombe est bien petite */
+      const b64url = bytesToB64(u8).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      try { await parseInput('OCQ1.' + b64url); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'troplourd'); }
+    },
+    'sécurité : un id piégé est régénéré, un id normal est gardé (S2)': () => {
+      eq(normalizeCompany({ name: 'X', id: 'c_abc_12345' }).id, 'c_abc_12345');
+      const evil = normalizeCompany({ name: 'X', id: '"><img src=x onerror=alert(1)>' });
+      ok(/^[A-Za-z0-9._-]{1,64}$/.test(evil.id));
+      const ct = normalizeContact({ name: 'A', id: '"><b>' });
+      ok(/^[A-Za-z0-9._-]{1,64}$/.test(ct.id));
+    },
+    'sécurité : une date piégée est vidée, une date ISO passe (S3)': () => {
+      const c = normalizeCompany({ name: 'X', nextAction: '<img src=x>', appliedAt: 'zzz',
+        closedAt: '2026-01-05T10:00:00Z', closedReason: 'won', verifiedAt: '2026-02-03' });
+      eq(c.nextAction, ''); eq(c.appliedAt, '');
+      eq(c.closedAt, '2026-01-05');                      /* horodatage → tronqué au jour */
+      eq(c.verifiedAt, '2026-02-03');
+      eq(normalizeCompany({ name: 'X', nextAction: '2026-03-01' }).nextAction, '2026-03-01');
+    },
+    'sécurité : « __proto__ » reçu = donnée ignorée, jamais un détournement (S4)': () => {
+      const evil = JSON.parse('{"name":"X","futur":1,"__proto__":{"pwned":1},"extra":{"__proto__":{"pwned":2},"garde":3}}');
+      const c = normalizeCompany(evil);
+      ok(!('pwned' in {}));                              /* Object.prototype intact */
+      ok(!('pwned' in c));
+      eq(c.extra.futur, 1); eq(c.extra.garde, 3);
+      ok(!Object.keys(c.extra).includes('__proto__'));
+      const p = normalizeProfile(JSON.parse('{"name":"Moi","__proto__":{"pwned":4}}'));
+      ok(!('pwned' in {}));
+      eq(p.name, 'Moi');
+      /* un id littéralement « __proto__ » reste une simple clé de la sync */
+      const r = syncMerge({ companies: [{ id: '__proto__', name: 'Y', updatedAt: 5 }],
+                            tombs: [{ id: '__proto__', t: 1 }] },
+                          { companies: [], tombs: [] });
+      ok(!('pwned' in {}));
+      eq(r.companies.length, 1);
+      eq(r.companies[0].name, 'Y');
+    },
+
     /* — tests de contrat (CONTRAT.md) : ce qui ne doit JAMAIS casser — */
     'contrat : clés de stockage inchangées': () => {
       eq(DATA_KEY, 'oc_data_v3');
@@ -414,6 +469,23 @@ export async function runSelfTests(){
       eq(filterCompanies(list, { sort: 'action', dir: 'desc' }).map(c => c.name), ['Alpha', 'Charlie', 'Bravo']);
       eq(filterCompanies(list, { sort: 'recent', dir: 'asc' }).map(c => c.name), ['Alpha', 'Charlie', 'Bravo']);
     },
+    'tri multi-niveaux : principal + départages, chacun son sens (3 max)': () => {
+      const list = [
+        normalizeCompany({ name: 'ActifLoin', status: 'active', nextAction: '2030-01-01', updatedAt: 1 }),
+        normalizeCompany({ name: 'ActifTot', status: 'active', nextAction: '2026-01-01', updatedAt: 2 }),
+        normalizeCompany({ name: 'Todo', status: 'todo', updatedAt: 3 })
+      ];
+      eq(filterCompanies(list, { sorts: [{ sort: 'status' }, { sort: 'action' }] }).map(c => c.name),
+         ['Todo', 'ActifTot', 'ActifLoin']);
+      /* le départage a SON sens, indépendant du principal */
+      eq(filterCompanies(list, { sorts: [{ sort: 'status' }, { sort: 'action', dir: 'desc' }] }).map(c => c.name),
+         ['Todo', 'ActifLoin', 'ActifTot']);
+      /* « dist » sans position et critère inconnu : ignorés sans casse */
+      eq(filterCompanies(list, { sorts: [{ sort: 'dist' }, { sort: 'zzz' }, { sort: 'az' }] }).map(c => c.name),
+         ['ActifLoin', 'ActifTot', 'Todo']);
+      /* au-delà de 3 niveaux : coupé — et rien ne se perd */
+      eq(filterCompanies(list, { sorts: [{ sort: 'az' }, { sort: 'recent' }, { sort: 'action' }, { sort: 'score' }] }).length, 3);
+    },
     'tri : dir absent = sens naturel du critère': () => {
       eq(NATURAL_DIR.recent, 'desc'); eq(NATURAL_DIR.az, 'asc'); eq(NATURAL_DIR.action, 'asc');
       const list = [normalizeCompany({ name: 'A', updatedAt: 1 }), normalizeCompany({ name: 'B', updatedAt: 2 })];
@@ -428,6 +500,25 @@ export async function runSelfTests(){
       eq(summarizeChanges({ status: 'todo', notes: '', nextAction: '2026-01-05', nextActionText: 'X' },
                           { status: 'todo', notes: '', nextAction: '', nextActionText: '' }),
          'Action retirée');
+    },
+    'prochaine action : changer le « Quoi ? » seul se valide (non-régression)': async () => {
+      const { askNextAction } = await import('./ui/actions.js');
+      const c = normalizeCompany({ name: 'TestQuoi', nextAction: '2030-01-02', nextActionText: 'Relancer' });
+      let got = null;
+      const sh = askNextAction(c, {
+        preset: 'Relancer', presetDate: '2030-01-02',
+        onPick: (txt, iso) => { got = { txt, iso }; }
+      });
+      try {
+        sh.body.querySelector('#naTxt').value = 'Relancer Mme Z';
+        const okBtn = sh.ov.querySelector('.modal-f .btn-primary');
+        ok(okBtn);                             /* le bouton de validation existe */
+        okBtn.click();
+        eq(got, { txt: 'Relancer Mme Z', iso: '2030-01-02' });
+        ok(!document.body.contains(sh.ov));    /* la feuille s'est refermée */
+      } finally {
+        try { sh.close(null, true); } catch (e) {}
+      }
     },
     'historique : pushHist plafonne à 40 entrées': () => {
       const c = normalizeCompany({ name: 'X' });

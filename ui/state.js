@@ -80,17 +80,19 @@ export function logJ(txt, cid){
 
 export async function loadAll(){
   await kvInit();
-  const t = await kvGet(THEME_KEY);
+  /* les six clés se lisent en parallèle : sept allers-retours IndexedDB
+     séquentiels, ça se paie cher sur un vrai téléphone */
+  const [t, pRaw, jRaw, oRaw, tbRaw, raw] = await Promise.all(
+    [THEME_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, DATA_KEY].map(kvGet));
   S.theme = (t === 'light' || t === 'dark') ? t
     : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   let p = null;
-  try { p = JSON.parse(await kvGet(PROFILE_KEY)); } catch (e) {}
+  try { p = JSON.parse(pRaw); } catch (e) {}
   S.profile = normalizeProfile(p);
-  try { S.journal = JSON.parse(await kvGet(JOURNAL_KEY)) || []; } catch (e) { S.journal = []; }
+  try { S.journal = JSON.parse(jRaw) || []; } catch (e) { S.journal = []; }
   if (!Array.isArray(S.journal)) S.journal = [];
-  try { S.orphans = (JSON.parse(await kvGet(ORPHANS_KEY)) || []).map(normalizeContact); } catch (e) { S.orphans = []; }
-  try { S.tombs = mergeTombs(JSON.parse(await kvGet(TOMBS_KEY)) || [], []); } catch (e) { S.tombs = []; }
-  const raw = await kvGet(DATA_KEY);
+  try { S.orphans = (JSON.parse(oRaw) || []).map(normalizeContact); } catch (e) { S.orphans = []; }
+  try { S.tombs = mergeTombs(JSON.parse(tbRaw) || [], []); } catch (e) { S.tombs = []; }
   if (raw){
     try { S.companies = (JSON.parse(raw) || []).map(normalizeCompany); } catch (e) { S.companies = []; }
   }

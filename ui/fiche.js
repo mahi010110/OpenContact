@@ -169,6 +169,7 @@ export function openFiche(c){
     const na = sh.body.querySelector('#fiNa');
     if (na) na.addEventListener('click', () => askNextAction(c, {
       preset: val('nextActionText'),
+      presetDate: val('nextAction'),
       onPick: (txt, iso) => { touch('nextActionText', txt); touch('nextAction', iso); },
       onDone: render
     }));

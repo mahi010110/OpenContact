@@ -10,6 +10,7 @@
      aperçu avant fusion que par fichier. Bêta discrète.
    ============================================================ */
 import { esc } from '../engine/utils.js';
+import { fnv } from '../engine/crypto.js';
 import { sharePayload } from '../engine/exchange.js';
 import { PROMO_KEY, kvGet, kvSet } from '../engine/storage.js';
 import { S, bus, isClosed, logJ } from './state.js';
@@ -55,7 +56,7 @@ export function openAppareils(){
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
-       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils</b>, puis cette phrase.<br>Le lien reste actif en arrière-plan — tu peux fermer.</p>
+       <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils → Entrer une phrase</b>.</p>
        <div class="sy-status" id="syStatus">${statusHTML()}</div>
        <div class="sy-log">${st ? `
          <ul class="rc-lines">
@@ -103,8 +104,7 @@ export function openAppareils(){
         await breakLink();
         toast('Lien rompu — cet appareil vit sa vie.');
         render();
-      }),
-      btn('Fermer', 'btn-primary', () => sh.close())
+      })
     ]);
   }
 
@@ -112,19 +112,17 @@ export function openAppareils(){
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 12px">${changing
-         ? 'Nouvelle phrase = nouveau lien : les autres appareils devront la retaper. Utile si tu ne reconnais pas un appareil.'
-         : 'Téléphone + ordinateur : une <b>phrase de liaison</b>, et tout reste synchronisé en continu — suivi privé compris (ce sont tes appareils).'}</p>
+         ? 'Nouvelle phrase = nouveau lien — à retaper sur les autres appareils.'
+         : 'Une phrase de liaison, et tes appareils restent à jour — suivi compris.'}</p>
        <div class="pick-list">
-         <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} ${changing ? 'Créer une nouvelle phrase' : 'Premier appareil'}</b><span>${changing ? 'à retaper sur les autres appareils' : 'créer ma phrase de liaison'}</span></button>
-         <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} ${changing ? 'Taper une autre phrase' : 'Appareil suivant'}</b><span>taper la phrase déjà créée</span></button>
+         <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} Créer une phrase</b><span>je commence ici</span></button>
+         <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} Entrer une phrase</b><span>j’en ai déjà une</span></button>
        </div>`;
-    sh.setFoot([changing
-      ? btn('← Retour', 'btn-ghost', render)
-      : btn('Fermer', 'btn-ghost', () => sh.close())]);
+    sh.setFoot(changing ? [btn('← Retour', 'btn-ghost', render)] : null);
     q('#syNew').addEventListener('click', () => { startSync(makePhrase()); render(); });
     q('#syJoin').addEventListener('click', () => {
       sh.body.innerHTML =
-        `<div class="field"><label for="syPhrase">La phrase de l’autre appareil</label>
+        `<div class="field"><label for="syPhrase">Phrase de l’autre appareil</label>
            <input id="syPhrase" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex : k7m3p-9xq2f"></div>`;
       const go = () => {
         const v = q('#syPhrase').value.trim().toLowerCase();
@@ -165,7 +163,7 @@ export function openPromo(){
          <input id="prPass" autocomplete="off" autocapitalize="off" placeholder="ex : promo-sio-2026" value="${esc(last)}"></div>`;
     const go = () => { const v = q('#prPass').value.trim(); if (v){ kvSet(PROMO_KEY, v); enter(v); } };
     q('#prPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-    sh.setFoot([btn('Fermer', 'btn-ghost', () => sh.close()), btn('Entrer', 'btn-primary', go)]);
+    sh.setFoot([btn('Entrer', 'btn-primary', go)]);
     q('#prPass').focus();
   };
 
@@ -174,7 +172,7 @@ export function openPromo(){
       `<div class="sy-status" id="prStatus">${ic('radio', 'ic-14')} Connexion…</div>
        <div id="prZone"></div>
        <p class="hint" id="prHint" style="text-align:center">Chacun garde la feuille ouverte ; chaque envoi montre un aperçu avant fusion.</p>`;
-    sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); }), btn('Fermer', 'btn-primary', () => sh.close())]);
+    sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); })]);
     const setStatus = txt => { const el = q('#prStatus'); if (el) el.innerHTML = txt; };
     try {
       room = await openRoom('promo', pass);   /* préfixe historique — compat */
@@ -238,8 +236,13 @@ export function openPromo(){
       if (!obj || obj.kind !== 'share' || !Array.isArray(obj.companies)) return;
       obj.companies = obj.companies.filter(x => x && typeof x === 'object' && x.name).slice(0, 2000);
       if (!obj.companies.length) return;
-      /* le même envoi (re-clic, rediffusion) ne réapparaît pas */
-      const key = JSON.stringify(obj.companies);
+      /* le même envoi (re-clic, rediffusion) ne réapparaît pas —
+         une empreinte, pas le JSON entier : 30 envois retenus ne
+         doivent pas peser 120 Mo. Envoi obèse refusé comme par
+         fichier (D4, 4 Mo). */
+      const json = JSON.stringify(obj.companies);
+      if (json.length > 4000000) return;
+      const key = json.length + ':' + fnv(json).toString(36);
       if (seen.has(key)) return;
       seen.add(key);
       if (seen.size > 30) seen.delete(seen.values().next().value);

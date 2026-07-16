@@ -38,11 +38,31 @@ export async function encodeOCQ(list){
   const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('deflate-raw'));
   return 'OCQ1.' + b64url(new Uint8Array(await new Response(stream).arrayBuffer()));
 }
+export const OCQ_OUT_MAX = 4000000;   /* octets décompressés : même borne que l'entrée (D4) */
 export async function decodeOCQ(compact){
   if (typeof DecompressionStream === 'undefined') throw new Error('noqr');
   const bytes = b64urlToBytes(String(compact).slice(5));
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  try { return JSON.parse(await new Response(stream).text()); }
+  /* lecture bornée : un blob de quelques Ko peut gonfler en Go
+     (bombe de décompression) — au-delà de la borne, on refuse */
+  const reader = stream.getReader();
+  const parts = [];
+  let size = 0;
+  try {
+    for (;;){
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > OCQ_OUT_MAX){
+        reader.cancel().catch(() => {});
+        throw new Error('troplourd');
+      }
+      parts.push(value);
+    }
+  } catch (e) {
+    throw new Error(e.message === 'troplourd' ? 'troplourd' : 'format');
+  }
+  try { return JSON.parse(await new Blob(parts).text()); }
   catch (e) { throw new Error('format'); }
 }
 

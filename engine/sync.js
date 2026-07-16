@@ -14,9 +14,11 @@ import { normalizeCompany, normalizeContact, normalizeProfile } from './model.js
 
 export const TOMBS_MAX = 500;
 
-/* union de deux listes de tombstones — par id, la plus récente gagne */
+/* union de deux listes de tombstones — par id, la plus récente gagne.
+   Les maps indexées par id sont sans prototype : une clé « __proto__ »
+   venue du réseau doit rester une donnée, pas un détournement. */
 export function mergeTombs(a, b){
-  const by = {};
+  const by = Object.create(null);
   for (const t of [...(a || []), ...(b || [])]){
     if (!t || !t.id) continue;
     const ts = Number(t.t) || 0;
@@ -33,11 +35,11 @@ export function syncMerge(remote, local){
   local = local || {};
   const stats = { addedC: 0, updatedC: 0, removedC: 0, addedO: 0, profile: 'local' };
   const tombs = mergeTombs(local.tombs, remote.tombs);
-  const dead = {};
+  const dead = Object.create(null);
   tombs.forEach(t => { dead[t.id] = t.t; });
 
-  const byId = {};
-  const wasLocal = {};
+  const byId = Object.create(null);
+  const wasLocal = Object.create(null);
   for (const c of (local.companies || [])){
     byId[c.id] = c;
     wasLocal[c.id] = true;
@@ -64,7 +66,7 @@ export function syncMerge(remote, local){
 
   /* contacts « à rattacher » : union par id (pas d'horodatage → l'existant gagne) */
   const orphans = (local.orphans || []).slice();
-  const oIds = {};
+  const oIds = Object.create(null);
   orphans.forEach(o => { oIds[o.id] = true; });
   for (const raw of (remote.orphans || [])){
     if (!raw || !raw.id || oIds[raw.id]) continue;

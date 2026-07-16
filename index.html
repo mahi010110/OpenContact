@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <!-- CSP : filet de sécurité — un contenu piégé reçu de la promo ne peut ni
      charger ni exécuter quoi que ce soit d'extérieur. wss: = P2P (relais). -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://nominatim.openstreetmap.org wss:; media-src 'self' blob:; object-src 'none'; base-uri 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://nominatim.openstreetmap.org wss:; media-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'">
+<!-- aucun lien sortant ne dit d'où il vient (vie privée) -->
+<meta name="referrer" content="no-referrer">
 <title>OpenContact — le fil de ta recherche, partagé avec ta promo</title>
 <meta name="description" content="OpenContact répond à « je fais quoi maintenant ? » dans ta recherche de stage, d'alternance ou d'emploi — et fait circuler les bonnes pistes dans ta promo. Local-first, sans compte, open source.">
 <meta name="theme-color" id="metaTheme" content="#F7F6F1">
@@ -19,6 +21,14 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/logo/piste-a-reseau.svg">
 <link rel="apple-touch-icon" href="icon.svg">
+<!-- tokens puis mise en écran : en <link> plutôt qu'en @import, le
+     navigateur télécharge tout en parallèle dès l'analyse du HTML -->
+<link rel="stylesheet" href="styles/tokens/fonts.css">
+<link rel="stylesheet" href="styles/tokens/colors.css">
+<link rel="stylesheet" href="styles/tokens/typography.css">
+<link rel="stylesheet" href="styles/tokens/spacing.css">
+<link rel="stylesheet" href="styles/tokens/effects.css">
+<link rel="stylesheet" href="styles/tokens/base.css">
 <link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
