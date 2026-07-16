@@ -46,8 +46,8 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P4-1 | `engine/mime.js` + fournisseurs Gmail / Outlook isolés (client OAuth configurable, PKCE) ; CSP élargie | « Envoyer » dans la feuille Écrire ; adresse d'envoi visible ; brouillon jamais perdu | P1-2 | à faire | Doubles de fournisseurs testés ; essai réel dès qu'un client OAuth est déclaré |
-| P4-2 | Feuille « Connexions » dans Moi (messagerie) | États connecté/expiré/déconnecté | P4-1 | à faire | Matrice d'états UX |
+| P4-1 | `engine/mailer.js` (MIME RFC 2047/2822, Gmail implicite + Outlook PKCE, envoi confirmé par le fournisseur seulement) + `oauth.html` ; CSP élargie au strict nécessaire | « Envoyer » primaire dans Écrire quand connecté ; « Depuis {adresse} » visible ; expiration → feuille Reconnecter, brouillon intact ; `mailto:` intact sinon | P1-2 | terminée | 2 tests moteur + E2E interception réseau (`e2e-envoi.mjs`) vert — **essai réel bloqué : déclarer les apps OAuth Google/Microsoft (mainteneur)** |
+| P4-2 | Feuille « Connexions » dans Moi (messagerie) — exige le verrou (D9), code re-demandé, option avancée « son propre client OAuth » | États connecté (adresse) / expiré / non connecté | P4-1 | terminée | E2E : ligne Moi + états ; jetons scellés (`oc_mail_v1`) |
 
 ## Phase 5 — Campagnes (UX)
 

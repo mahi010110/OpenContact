@@ -65,6 +65,7 @@ function applyTheme(t, persist){
     : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), false);
   await initVerrou();
   await loadAll();
+  await import('./ui/connexions.js').then(m => m.loadMail()).catch(() => {});
   applyTheme(S.theme, false);
   $('#sbVer').textContent = APP_VERSION;
 

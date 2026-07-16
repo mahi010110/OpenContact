@@ -14,13 +14,21 @@
   re-demandé), récupération d'urgence D7 complète dans `verrou.js`
   (rotation coffre + rescellement + anneau repris + sauvegarde
   bloquante). `sw.js` → oc-v17.
-- **P3-1 terminée** : `engine/campaign.js` — modèle Fixe pur (J0/J+7/J+14
-  sur dates d'envoi réelles, 15/jour glissant, opposition imposée au
-  montage, messages personnalisés figés, arrêt sur réponse non
-  débrayable, ids d'envoi stables `id.cible.étape` → rejouer le journal
-  ne double jamais). `oc_campaigns_v1` scellée, au CONTRAT.
-- **Tâche en cours** : P4-1 (envoi direct : `engine/mime.js` +
-  fournisseurs Gmail/Outlook + feuille Écrire).
+- **P3-1 terminée** : `engine/campaign.js` (modèle Fixe pur,
+  anti-double-envoi par ids stables + journal). `oc_campaigns_v1` scellée.
+- **P4 terminée** : envoi direct — `engine/mailer.js` (MIME, Gmail
+  implicite / Outlook PKCE, clients OAuth publics configurables,
+  « parti » seulement sur confirmation du fournisseur), `oauth.html`
+  (popup → postMessage même origine), `ui/connexions.js` (feuille
+  Connexions : verrou exigé, code re-demandé, états connecté/expiré/
+  déconnecté, option avancée client OAuth), feuille Écrire connectée
+  (« Depuis {adresse} », Envoyer primaire, Ctrl/Cmd+Entrée, expiration
+  → Reconnecter sans perte du brouillon, mailto intact sinon), ligne
+  Connexions dans Moi, CSP élargie, `oc_mail_v1` scellée. **Blocage
+  externe assumé : les apps OAuth Google/Microsoft restent à déclarer
+  par le mainteneur (IDs publics à renseigner dans MAIL_CLIENTS).**
+- **Tâche en cours** : P5-1 (parcours campagne : bifurcation Prospecter,
+  contrôle, ligne quotidienne dans Aujourd'hui — D13).
 - **Tests exécutés** : `?test` **64/64 verts** ; E2E `e2e-verrou.mjs`
   (régression P1) + `e2e-recuperation.mjs` (D7 bout en bout : coffre
   gen 2, anneau gen 2, ancien code refusé, nouveau accepté, donnée

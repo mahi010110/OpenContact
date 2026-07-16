@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>OpenContact — connexion</title>
+<meta name="referrer" content="no-referrer">
+</head>
+<body>
+<p style="font-family:system-ui;padding:20px;text-align:center">Connexion en cours… Tu peux fermer cette fenêtre.</p>
+<script>
+/* retour d'autorisation : l'URL (hash + query) repart vers l'app qui a
+   ouvert la fenêtre — même origine uniquement — puis on se ferme. */
+(function(){
+  try {
+    if (window.opener) window.opener.postMessage({ oc: 'oauth', url: location.href }, location.origin);
+  } catch (e) {}
+  setTimeout(function(){ window.close(); }, 400);
+})();
+</script>
+</body>
+</html>

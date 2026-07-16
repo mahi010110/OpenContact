@@ -19,6 +19,7 @@ import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
 import { getSync } from './synclive.js';
 import { isProtected, openProtectFlow, openManageSheet, verrouLabel, requireCode } from './verrou.js';
+import { openConnexions, mailStateLabel, mailAccount } from './connexions.js';
 
 /* ---------- sauvegarde (.oc complet) ---------- */
 export function downloadBackup(pass){
@@ -267,10 +268,15 @@ export function renderMoi(){
              <span class="ec-sub">${verrouLabel()}</span></div>
            <button class="btn" id="moiVerrou">${isProtected() ? 'Gérer' : 'Protéger'}</button>
          </div>
-         <div class="ec-row" style="border:0;padding:8px 0 2px">
+         <div class="ec-row" style="padding:8px 0">
            <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
              <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
            <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
+         </div>
+         <div class="ec-row" style="border:0;padding:8px 0 2px">
+           <div class="ec-row-m"><b>${ic('zap', 'ic-14')} Connexions</b>
+             <span class="ec-sub">${mailStateLabel()}</span></div>
+           <button class="btn" id="moiCx">${mailAccount() ? 'Gérer' : 'Connecter'}</button>
          </div>
        </div>
 
@@ -314,6 +320,7 @@ export function renderMoi(){
   root.querySelector('#moiVerrou').addEventListener('click', () =>
     isProtected() ? openManageSheet() : openProtectFlow());
   root.querySelector('#moiSync').addEventListener('click', openAppareils);
+  root.querySelector('#moiCx').addEventListener('click', openConnexions);
   /* l'état du lien vit : peers, liaison, rupture */
   if (root.__onSync) document.removeEventListener('oc:sync', root.__onSync);
   root.__onSync = () => {

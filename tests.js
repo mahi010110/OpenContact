@@ -32,6 +32,7 @@ import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
 import { DAILY_CAP, buildCampaign, dueSends, markSent, markReplied, markError,
          pauseCampaign, resumeCampaign, stopCampaign, campaignStats,
          addDays as cAddDays } from './engine/campaign.js';
+import { buildMime, encodeHeader, toB64Url, authUrl, parseCallback, pkcePair } from './engine/mailer.js';
 
 export async function runSelfTests(){
   const R = [];
@@ -668,6 +669,29 @@ export async function runSelfTests(){
       const badRec = await recoveryKeys('mauvaise phrase', 15000);
       const bad = await ringRecover(ring, badRec.seed, { id: 'B', name: 'B' }, kB.pub, newRec.pub);
       ok(!(await mergeRing(ring, bad)).changed);
+    },
+    'envoi direct : MIME — entêtes UTF-8, corps base64, base64url': () => {
+      eq(encodeHeader('Hello'), 'Hello');                       /* ASCII : inchangé */
+      eq(encodeHeader('Candidature — été'), '=?UTF-8?B?Q2FuZGlkYXR1cmUg4oCUIMOpdMOp?=');
+      const m = buildMime({ from: 'moi@x.fr', to: 'rh@y.fr', subject: 'Stage été', body: 'Bonjour à vous.' });
+      ok(m.startsWith('From: moi@x.fr\r\nTo: rh@y.fr\r\nSubject: =?UTF-8?B?'));
+      ok(m.includes('Content-Type: text/plain; charset=UTF-8'));
+      ok(m.includes('Content-Transfer-Encoding: base64'));
+      const body64 = m.split('\r\n\r\n')[1].replace(/\r\n/g, '');
+      eq(atob(body64), unescape(encodeURIComponent('Bonjour à vous.')));
+      eq(toB64Url('a+b/c'), btoa('a+b/c').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+    },
+    'envoi direct : URLs OAuth et retour de popup': async () => {
+      const g = authUrl('gmail', 'CID', 'https://x/oauth.html', { state: 's1' });
+      ok(g.startsWith('https://accounts.google.com/o/oauth2/v2/auth?'));
+      ok(g.includes('response_type=token') && g.includes('state=s1') && g.includes('gmail.send'));
+      const o = authUrl('outlook', 'CID', 'https://x/oauth.html', { state: 's2', challenge: 'CH' });
+      ok(o.includes('code_challenge=CH') && o.includes('code_challenge_method=S256'));
+      eq(parseCallback('https://x/oauth.html#access_token=T&expires_in=3599&state=s1'),
+         { access_token: 'T', expires_in: '3599', state: 's1' });
+      eq(parseCallback('https://x/oauth.html?code=C&state=s2').code, 'C');
+      const pk = await pkcePair();
+      ok(pk.verifier.length >= 43 && /^[A-Za-z0-9_-]+$/.test(pk.challenge));
     },
     'campagne : montage — opposition imposée, personnalisation figée': () => {
       const steps = [
