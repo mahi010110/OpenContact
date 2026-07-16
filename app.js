@@ -6,7 +6,8 @@
    engine/ — il ne lit jamais l'écran. Auto-tests : ?test.
    ============================================================ */
 import { APP_VERSION } from './engine/model.js';
-import { THEME_KEY, kvSet } from './engine/storage.js';
+import { THEME_KEY, kvInit, kvGet, kvSet } from './engine/storage.js';
+import { initVerrou } from './ui/verrou.js';
 import { S, bus, loadAll, reloadFromStorage } from './ui/state.js';
 import { $, $$, toast } from './ui/dom.js';
 import { renderToday } from './ui/today.js';
@@ -56,6 +57,13 @@ function applyTheme(t, persist){
 
 (async function init(){
   console.info('OpenContact', APP_VERSION);
+  /* le thème d'abord (l'écran verrouillé doit être du bon côté),
+     puis le verrou s'il existe — RIEN ne se charge avant lui */
+  await kvInit();
+  const t0 = await kvGet(THEME_KEY);
+  applyTheme((t0 === 'light' || t0 === 'dark') ? t0
+    : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), false);
+  await initVerrou();
   await loadAll();
   applyTheme(S.theme, false);
   $('#sbVer').textContent = APP_VERSION;

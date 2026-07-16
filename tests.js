@@ -598,6 +598,14 @@ export async function runSelfTests(){
       catch (e) { eq(e.message, 'code'); }
       ok(!!(await unlockWithPin(rot.meta, '444444')).key);
     },
+    'verrou : codes triviaux refusés (suites, répétitions)': async () => {
+      const { isWeakPin } = await import('./ui/verrou.js');
+      ok(isWeakPin('000000'));
+      ok(isWeakPin('123456'));
+      ok(isWeakPin('654321'));
+      ok(isWeakPin('901234'));
+      ok(!isWeakPin('280941'));
+    },
     'stockage : valeur scellée sans clé = `verrou`, jamais un null': async () => {
       if (vaultActive()) return;   /* un vrai coffre est ouvert : ne pas interférer */
       const probe = 'oc_probe_vault';

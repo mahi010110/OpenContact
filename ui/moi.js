@@ -18,6 +18,7 @@ import { $, ic, toast, btn, openSheet, confirmSheet, showUndo, bindDeleteGesture
 import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
 import { getSync } from './synclive.js';
+import { isProtected, openProtectFlow, openManageSheet, verrouLabel, requireCode } from './verrou.js';
 
 /* ---------- sauvegarde (.oc complet) ---------- */
 export function downloadBackup(pass){
@@ -261,7 +262,12 @@ export function renderMoi(){
        </div>
 
        <div class="pcard">
-         <div class="ec-row" style="border:0;padding:2px 0">
+         <div class="ec-row" style="padding:6px 0 8px">
+           <div class="ec-row-m"><b>${ic('lock', 'ic-14')} Verrouillage</b>
+             <span class="ec-sub">${verrouLabel()}</span></div>
+           <button class="btn" id="moiVerrou">${isProtected() ? 'Gérer' : 'Protéger'}</button>
+         </div>
+         <div class="ec-row" style="border:0;padding:8px 0 2px">
            <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
              <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
            <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
@@ -305,6 +311,8 @@ export function renderMoi(){
   root.querySelector('#moiProfil').addEventListener('click', () => openProfil());
   root.querySelector('#moiTpl').addEventListener('click', openTemplates);
   root.querySelector('#moiBackup').addEventListener('click', openBackupSheet);
+  root.querySelector('#moiVerrou').addEventListener('click', () =>
+    isProtected() ? openManageSheet() : openProtectFlow());
   root.querySelector('#moiSync').addEventListener('click', openAppareils);
   /* l'état du lien vit : peers, liaison, rupture */
   if (root.__onSync) document.removeEventListener('oc:sync', root.__onSync);
@@ -317,7 +325,10 @@ export function renderMoi(){
   };
   document.addEventListener('oc:sync', root.__onSync);
   const rf = root.querySelector('#moiRestoreFile');
-  root.querySelector('#moiRestore').addEventListener('click', () => rf.click());
+  /* restaurer = geste sensible : le code d'abord, si les données sont protégées */
+  root.querySelector('#moiRestore').addEventListener('click', async () => {
+    if (await requireCode('Ton code, pour restaurer')) rf.click();
+  });
   rf.addEventListener('change', () => { if (rf.files[0]) restoreFile(rf.files[0]); });
   root.querySelectorAll('[data-copy]').forEach(b =>
     b.addEventListener('click', async () => {

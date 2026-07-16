@@ -816,3 +816,57 @@ body:has(.overlay) .toast{bottom:auto;top:calc(env(safe-area-inset-top) + 62px)}
 .overlay{animation:oc-fade var(--dur-2) var(--ease-steps)}
 .overlay .modal{animation:oc-up var(--dur-3) var(--ease-steps)}
 .view:not([hidden])>.page-inner{animation:oc-fade var(--dur-2) var(--ease-steps)}
+
+/* ============ LE VERROUILLAGE (profil protégé) ============
+   Plein écran au-dessus de tout ; pavé 44 px au pouce (mobile),
+   saisie clavier (ordinateur). Bevels francs, steps() — pas de flou. */
+.lock{
+  /* au-dessus de l'en-tête (1300) et de la nav (1500), sous les
+     feuilles (3000) — « Code oublié ? » s'ouvre par-dessus */
+  position:fixed;inset:0;z-index:2500;display:flex;align-items:center;justify-content:center;
+  background:var(--surface-desktop);
+}
+.lock-in{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;width:min(340px,92vw)}
+.lock-title{font-family:var(--font-pixel);font-size:24px;letter-spacing:.02em;color:var(--text-body)}
+.lock-state{font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted);text-transform:uppercase;letter-spacing:.14em}
+.lock-body{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.lock-dots{display:flex;gap:12px;justify-content:center;padding:16px 0 10px}
+.lock-dots .dot{
+  width:12px;height:12px;border:1px solid var(--border-strong);
+  background:var(--surface-field);box-shadow:var(--bevel-field);
+}
+.lock-dots .dot.on{background:var(--accent);box-shadow:none}
+.lock-err{animation:lock-shake .28s steps(4)}
+@keyframes lock-shake{
+  25%{transform:translateX(-7px)} 50%{transform:translateX(7px)}
+  75%{transform:translateX(-4px)} 100%{transform:translateX(0)}
+}
+.lock-pad{display:grid;grid-template-columns:repeat(3,72px);gap:10px;justify-content:center}
+.pad-k{
+  height:56px;font-family:var(--font-mono);font-size:20px;font-weight:var(--weight-semibold);
+  color:var(--text-body);background:var(--surface-raised);
+  border:1px solid var(--border-strong);box-shadow:var(--bevel-up);
+  display:flex;align-items:center;justify-content:center;
+}
+.pad-k:active{box-shadow:var(--bevel-down);transform:translate(1px,1px)}
+.pad-side{color:var(--text-muted)}
+.pad-off .pad-k{opacity:.45;pointer-events:none}
+.lock-msg{min-height:18px;font-size:var(--text-12);color:var(--amber);margin:2px 0 0;text-align:center}
+.modal .lock-pad{grid-template-columns:repeat(3,64px)}
+.modal .pad-k{height:48px}
+@media (min-width:901px){
+  .lock-pad{grid-template-columns:repeat(3,64px);gap:8px}
+  .pad-k{height:44px;font-size:17px}
+}
+/* la phrase de secours : 12 mots numérotés, mono, à recopier */
+.phrase-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin:0 0 12px;
+  padding:12px 14px 12px 34px;border:1px solid var(--border-strong);
+  background:var(--surface-field);box-shadow:var(--bevel-field);
+  font-family:var(--font-mono);font-size:var(--text-14);
+}
+.phrase-grid li{padding:2px 0}
+.phrase-grid li::marker{color:var(--text-muted);font-size:var(--text-11)}
+/* les trois lignes de valeur du parcours de création */
+.lk-why{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border-soft);background:var(--surface-raised)}
+.lk-why .ic{color:var(--accent);flex:none}

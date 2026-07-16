@@ -18,6 +18,7 @@ import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mergePreviewInto } from './recevoir.js';
 import { getSync, startSync, breakLink, keepMyProfile, makePhrase, openRoom,
          deviceSelf, loadDevices, removeDevice, DEVICES_MAX } from './synclive.js';
+import { requireCode } from './verrou.js';
 
 const agoLabel = t => {
   const m = Math.round((Date.now() - t) / 60000);
@@ -82,7 +83,9 @@ export function openAppareils(){
 
     q('#syRetry')?.addEventListener('click', () => startSync(sy.phrase));
     q('#syKeepProf')?.addEventListener('click', keepMyProfile);
-    q('#syNewPhrase')?.addEventListener('click', () => renderStart(true));
+    q('#syNewPhrase')?.addEventListener('click', async () => {
+      if (await requireCode('Ton code, pour changer la phrase')) renderStart(true);
+    });
     sh.body.querySelectorAll('[data-rm]').forEach(b =>
       b.addEventListener('click', async () => {
         const d = devs.find(x => x.id === b.dataset.rm);
@@ -91,6 +94,7 @@ export function openAppareils(){
           msg: `<b>${esc(d ? d.name : 'Appareil')}</b> sort de la liste. Il connaît encore la phrase — pour l’écarter vraiment, change aussi la phrase de liaison.`
         });
         if (!ok) return;
+        if (!await requireCode('Ton code, pour retirer')) return;
         await removeDevice(b.dataset.rm);
         render();
       }));
@@ -101,6 +105,7 @@ export function openAppareils(){
           msg: 'Cet appareil ne se synchronisera plus. Rien n’est effacé — tes pistes restent ici, les autres appareils gardent les leurs.'
         });
         if (!ok) return;
+        if (!await requireCode('Ton code, pour rompre le lien')) return;
         await breakLink();
         toast('Lien rompu — cet appareil vit sa vie.');
         render();
