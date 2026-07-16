@@ -14,7 +14,13 @@
   re-demandé), récupération d'urgence D7 complète dans `verrou.js`
   (rotation coffre + rescellement + anneau repris + sauvegarde
   bloquante). `sw.js` → oc-v17.
-- **Tâche en cours** : P3-1 (`engine/campaign.js`, machine à états pure).
+- **P3-1 terminée** : `engine/campaign.js` — modèle Fixe pur (J0/J+7/J+14
+  sur dates d'envoi réelles, 15/jour glissant, opposition imposée au
+  montage, messages personnalisés figés, arrêt sur réponse non
+  débrayable, ids d'envoi stables `id.cible.étape` → rejouer le journal
+  ne double jamais). `oc_campaigns_v1` scellée, au CONTRAT.
+- **Tâche en cours** : P4-1 (envoi direct : `engine/mime.js` +
+  fournisseurs Gmail/Outlook + feuille Écrire).
 - **Tests exécutés** : `?test` **64/64 verts** ; E2E `e2e-verrou.mjs`
   (régression P1) + `e2e-recuperation.mjs` (D7 bout en bout : coffre
   gen 2, anneau gen 2, ancien code refusé, nouveau accepté, donnée

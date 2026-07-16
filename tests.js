@@ -29,6 +29,9 @@ import { VAULT_WORDS, PHRASE_LEN, makeVaultPhrase, normVaultPhrase, phraseUnknow
 import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
          ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor,
          verifyRing, deviceIn } from './engine/ring.js';
+import { DAILY_CAP, buildCampaign, dueSends, markSent, markReplied, markError,
+         pauseCampaign, resumeCampaign, stopCampaign, campaignStats,
+         addDays as cAddDays } from './engine/campaign.js';
 
 export async function runSelfTests(){
   const R = [];
@@ -665,6 +668,78 @@ export async function runSelfTests(){
       const badRec = await recoveryKeys('mauvaise phrase', 15000);
       const bad = await ringRecover(ring, badRec.seed, { id: 'B', name: 'B' }, kB.pub, newRec.pub);
       ok(!(await mergeRing(ring, bad)).changed);
+    },
+    'campagne : montage — opposition imposée, personnalisation figée': () => {
+      const steps = [
+        { subject: 'Candidature — {{entreprise}}', body: 'Bonjour {{contact}}.' },
+        { subject: 'Re', body: 'Relance 1' },
+        { subject: 'Re', body: 'Relance 2' }
+      ];
+      const c = buildCampaign({ name: 'T', steps, launchAt: '2026-07-16',
+        targets: [{ cid: 'c1', name: 'Ana', company: 'Orange', email: 'a@x.fr' }] });
+      ok(c.steps.every(s => /je m’arrête là/.test(s.body)));   /* imposée, jamais retirée */
+      eq(c.targets[0].msgs[0].subject, 'Candidature — Orange');
+      ok(/Bonjour Ana/.test(c.targets[0].msgs[0].body));
+      eq(c.state, 'ready');
+      /* sans email = pas de cible ; zéro cible = erreur */
+      try { buildCampaign({ steps, launchAt: '2026-07-16', targets: [{ cid: 'c2', name: 'X' }] }); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'cibles'); }
+    },
+    'campagne : cadence 15/jour, glissement, idempotence (rejeu du journal)': () => {
+      const steps = [{ subject: 's', body: 'b' }, { subject: 's', body: 'b' }, { subject: 's', body: 'b' }];
+      const targets = Array.from({ length: 20 }, (_, i) => ({ cid: 'c' + i, email: 'p' + i + '@x.fr' }));
+      let c = buildCampaign({ steps, targets, launchAt: '2026-07-16' });
+      const due = dueSends(c, '2026-07-16');
+      eq(due.length, DAILY_CAP);
+      for (const d of due) c = markSent(c, d.sid, '2026-07-16');
+      eq(dueSends(c, '2026-07-16').length, 0);          /* la cadence du jour est prise */
+      const n = c.log.length;
+      c = markSent(c, due[0].sid, '2026-07-16');        /* rejouer le même envoi */
+      eq(c.log.length, n);
+      eq(dueSends(c, '2026-07-17').length, 5);          /* le reste a glissé */
+    },
+    'campagne : relances J+7 sur la date d’envoi RÉELLE ; réponse = stop': () => {
+      const steps = [{ subject: 's', body: 'b' }, { subject: 's', body: 'b' }, { subject: 's', body: 'b' }];
+      let c = buildCampaign({ steps, launchAt: '2026-07-16',
+        targets: [{ cid: 'c1', email: 'a@x.fr' }, { cid: 'c2', email: 'b@x.fr' }] });
+      /* c1 part le 16, c2 seulement le 18 (l'utilisateur n'a pas appuyé) */
+      c = markSent(c, dueSends(c, '2026-07-16')[0].sid, '2026-07-16');
+      c = markSent(c, dueSends(c, '2026-07-18').find(d => d.cid === 'c2').sid, '2026-07-18');
+      eq(dueSends(c, '2026-07-22').length, 0);          /* rien avant J+7 */
+      const d23 = dueSends(c, '2026-07-23');
+      eq(d23.length, 1);                                 /* c1 seulement (16+7) */
+      eq(d23[0].cid, 'c1'); eq(d23[0].step, 1);
+      ok(dueSends(c, '2026-07-25').some(d => d.cid === 'c2' && d.step === 1));
+      /* réponse : plus jamais rien pour cette piste — non débrayable */
+      c = markReplied(c, 'c1');
+      ok(!dueSends(c, '2026-07-30').some(d => d.cid === 'c1'));
+      /* erreur d'envoi : marquée, jamais re-tentée en silence */
+      c = markError(c, 't2');
+      eq(dueSends(c, '2026-08-30').length, 0);
+      eq(c.state, 'done');                               /* plus aucune cible active */
+    },
+    'campagne : pause / reprise / arrêt ; bords de date': () => {
+      const steps = [{ subject: 's', body: 'b' }, { subject: 's', body: 'b' }, { subject: 's', body: 'b' }];
+      let c = buildCampaign({ steps, launchAt: '2026-07-16', targets: [{ cid: 'c1', email: 'a@x.fr' }] });
+      c = pauseCampaign(c);
+      eq(dueSends(c, '2026-07-16').length, 0);
+      c = resumeCampaign(c);
+      eq(dueSends(c, '2026-07-16').length, 1);
+      c = stopCampaign(c);
+      eq(c.state, 'stopped');
+      eq(dueSends(c, '2026-07-16').length, 0);
+      eq(cAddDays('2026-01-31', 7), '2026-02-07');
+      eq(cAddDays('2026-12-28', 7), '2027-01-04');
+      eq(cAddDays('2028-02-28', 7), '2028-03-06');       /* bissextile */
+      /* stats */
+      let cc = buildCampaign({ steps, launchAt: '2026-07-16', targets: [{ cid: 'c1', email: 'a@x.fr' }] });
+      let day = '2026-07-16';
+      for (let i = 0; i < 40 && cc.state === 'ready'; i++){
+        for (const d of dueSends(cc, day)) cc = markSent(cc, d.sid, day);
+        day = cAddDays(day, 1);
+      }
+      eq(cc.state, 'done');
+      eq(campaignStats(cc).sent, 3);
     },
     'verrou : codes triviaux refusés (suites, répétitions)': async () => {
       const { isWeakPin } = await import('./ui/verrou.js');

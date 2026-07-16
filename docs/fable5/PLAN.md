@@ -40,7 +40,7 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P3-1 | `engine/campaign.js` : machine à états pure, ids d'envoi idempotents, modèle Fixe (Cadré présent mais inactif), arrêt sur réponse | `oc_campaigns_v1` documentée au CONTRAT | P0-1 | à faire | Propriété anti-double-envoi (rejouer le journal) ; bords de date |
+| P3-1 | `engine/campaign.js` : machine à états pure, ids d'envoi stables `id.cible.étape`, modèle Fixe (relances calées sur l'envoi réel, cadence 15/j glissante, opposition imposée, arrêt sur réponse) | `oc_campaigns_v1` documentée au CONTRAT (scellée) | P0-1 | terminée | 4 tests verts : rejeu du journal sans doublon, cadence/glissement, J+7 réel, bords de date |
 
 ## Phase 4 — Envoi direct navigateur
 
