@@ -19,8 +19,13 @@ import { syncMerge, mergeTombs, TOMBS_MAX } from './engine/sync.js';
 import { filterCompanies, NATURAL_DIR } from './engine/filter.js';
 import { scoreOf } from './engine/score.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, SYNC_KEY,
-         RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY,
-         THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1 } from './engine/storage.js';
+         RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, VAULT_KEY,
+         THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1,
+         kvGet, kvSet, kvDel, vaultActive } from './engine/storage.js';
+import { VAULT_WORDS, PHRASE_LEN, makeVaultPhrase, normVaultPhrase, phraseUnknownWords,
+         createVault, unlockWithPin, unlockWithPhrase, unlockWithPrf,
+         setPin, addPrfWrap, rotateVault,
+         sealValue, openValue, isSealed } from './engine/vault.js';
 
 export async function runSelfTests(){
   const R = [];
@@ -216,6 +221,7 @@ export async function runSelfTests(){
       eq(DEVICE_KEY, 'oc_device_v1');
       eq(DEVICES_KEY, 'oc_devices_v1');
       eq(PROMO_KEY, 'oc_promo_v1');
+      eq(VAULT_KEY, 'oc_vault_v1');
       eq(THEME_KEY, 'oc_theme');
       eq(VIEW_KEY, 'oc_view');
       eq(OLD_V2, 'oc_data_v2');
@@ -531,6 +537,78 @@ export async function runSelfTests(){
       eq(contactKey({ phone: '06 01 02 03 04' }), 'p:0601020304');
       eq(contactKey({ name: 'Ana', role: 'RH' }), 'n:anarh');
       eq(contactKey({}), '');
+    },
+    /* ---------- le coffre (profil protégé) ---------- */
+    'coffre : liste de mots — 256, uniques, phrase normalisée': () => {
+      eq(VAULT_WORDS.length, 256);
+      eq(new Set(VAULT_WORDS).size, 256);
+      ok(VAULT_WORDS.every(w => /^[a-z]{3,9}$/.test(w)));
+      eq(normVaultPhrase('  Éclair   FORÊT, chien '), 'eclair foret chien');
+      eq(phraseUnknownWords('aigle zzz ancre'), ['zzz']);
+      const r = makeVaultPhrase(n => new Uint8Array(n));   /* octets à 0 → 12 × 1er mot */
+      eq(r, Array(PHRASE_LEN).fill(VAULT_WORDS[0]).join(' '));
+    },
+    'coffre : vecteurs stables — méta v1, OCV1, déverrouillage': async () => {
+      /* hasard compteur : la méta et l'enveloppe sont figées — si ce
+         test casse, le FORMAT a changé et les coffres existants aussi */
+      let n = 0;
+      const rnd = len => { const u = new Uint8Array(len); for (let i = 0; i < len; i++) u[i] = (n++) & 255; return u; };
+      const phrase = makeVaultPhrase(rnd);
+      eq(phrase, 'aigle ancre avion balai balle bambou banane barque bassin bateau biche bijou');
+      const { meta, key } = await createVault('123456', phrase, { rnd, iter: 15000, at: 1752624000000 });
+      eq(JSON.stringify(meta), '{"v":1,"gen":1,"at":1752624000000,"wraps":{"pin":{"it":15000,"s":"LC0uLzAxMjM0NTY3ODk6Ow==","i":"PD0+P0BBQkNERUZH","c":"orzOHlSEfKCq8U0YCZfi+MbyTvblwxdJyoJvZwsGA3F2YcW3woL6OQSh87xmSTcI"},"phrase":{"it":15000,"s":"SElKS0xNTk9QUVJTVFVWVw==","i":"WFlaW1xdXl9gYWJj","c":"MhygJSivFk2uv1yv13efdkeiCjokvjtsppmnWv0GRh9MWqj38reXiHqaDoQV5q7y"}}}');
+      const u = await unlockWithPin(meta, '123456');
+      const env = await sealValue(u.key, 'oc_test', 'secret-value', rnd);
+      eq(env, 'OCV1.ZGVmZ2hpamtsbW5v.CYeg+aWD3YHyn/RP7tmFlR8op+Fo22JbQ24ZGA==');
+      ok(isSealed(env));
+      eq(await openValue(key, 'oc_test', env), 'secret-value');
+    },
+    'coffre : mauvais code, phrase tolérante, AAD lié au nom': async () => {
+      const rnd = len => crypto.getRandomValues(new Uint8Array(len));
+      const phrase = makeVaultPhrase(rnd);
+      const { meta, key } = await createVault('123456', phrase, { iter: 15000 });
+      try { await unlockWithPin(meta, '000000'); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'code'); }
+      try { await unlockWithPhrase(meta, 'aigle aigle aigle'); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'phrase'); }
+      const u = await unlockWithPhrase(meta, '  ' + phrase.toUpperCase() + ' ');
+      ok(!!u.key);
+      const env = await sealValue(key, 'oc_sync_v1', 'ma phrase de liaison');
+      try { await openValue(key, 'oc_data_v3', env); throw new Error('ouvert !'); }
+      catch (e) { eq(e.message, 'coffre'); }
+    },
+    'coffre : nouveau code, PRF, rotation (gén. +1, ancien code refusé)': async () => {
+      const phrase = makeVaultPhrase();
+      const { meta } = await createVault('111111', phrase, { iter: 15000 });
+      /* changer le code exige de re-prouver un moyen d'accès */
+      const meta2 = await setPin(meta, { pin: '111111' }, '222222', { iter: 15000 });
+      ok(!!(await unlockWithPin(meta2, '222222')).key);
+      try { await setPin(meta, { pin: '999999' }, '333333', { iter: 15000 }); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'code'); }
+      /* PRF : un secret externe enveloppe et déverrouille */
+      const secret = new Uint8Array(32).fill(7);
+      const meta3 = await addPrfWrap(meta2, { pin: '222222' }, secret, 'cred-1', { iter: 15000 });
+      ok(!!(await unlockWithPrf(meta3, secret)).key);
+      try { await unlockWithPrf(meta3, new Uint8Array(32).fill(8)); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'secret'); }
+      /* rotation : nouvelle clé maîtresse, génération incrémentée */
+      const rot = await rotateVault(meta3, '444444', makeVaultPhrase(), { iter: 15000 });
+      eq(rot.meta.gen, 2);
+      try { await unlockWithPin(rot.meta, '222222'); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'code'); }
+      ok(!!(await unlockWithPin(rot.meta, '444444')).key);
+    },
+    'stockage : valeur scellée sans clé = `verrou`, jamais un null': async () => {
+      if (vaultActive()) return;   /* un vrai coffre est ouvert : ne pas interférer */
+      const probe = 'oc_probe_vault';
+      const { key } = await createVault('123456', makeVaultPhrase(), { iter: 15000 });
+      const env = await sealValue(key, probe, '{"x":1}');
+      await kvSet(probe, env);     /* déjà scellée : écrite telle quelle */
+      try { await kvGet(probe); throw new Error('lisible !'); }
+      catch (e) { eq(e.message, 'verrou'); }
+      eq(await openValue(key, probe, env), '{"x":1}');
+      await kvDel(probe);
+      eq(await kvGet(probe), null);
     }
   };
   for (const name of Object.keys(tests)){

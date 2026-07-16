@@ -4,12 +4,15 @@
   arbitrages D13–D16 consignés).
 - **Branche Git** : `claude/opencontact-repo-study-3bw0ju`
 - **Commit de base de l'app** : `9baa642` (inchangé tant que P0 n'a pas livré)
-- **Dernière tâche terminée** : E3 — arbitrages consignés (`CONTEXT.md`
-  D13–D16), `UX-PLAN.md` créé, `PLAN.md` réordonné (spécifications §15).
-- **Tâche en cours** : P0-1 (`engine/vault.js`).
-- **Fichiers modifiés** : uniquement `docs/fable5/*` à ce checkpoint.
-- **Tests exécutés** : aucun nécessaire (docs seulement) ; `?test` vert au
-  commit de base.
+- **Dernière tâche terminée** : P0 (coffre moteur) — `engine/vault.js`
+  (clé maîtresse, wraps code/phrase/PRF, enveloppes `OCV1.`, 256 mots) +
+  couche scellante dans `engine/storage.js` (`SEALABLE`, `vaultAttach`,
+  `vaultSealAll/OpenAll/Reseal`, `kvDel`) ; `CONTRAT.md` §1 et `sw.js`
+  (oc-v15) à jour.
+- **Tâche en cours** : P1-1 (verrou : bloc sécurité dans Moi, création,
+  écran verrouillé, verrouillage auto).
+- **Tests exécutés** : `?test` **58/58 verts** (Chromium headless), dont
+  5 tests coffre + 1 test stockage scellé ; vecteurs figés (méta v1, OCV1).
 - **Décisions/blocages ouverts** : aucun blocage. Hypothèses externes à
   vérifier au moment concerné : scope Gmail `gmail.send` (P4), WebAuthn PRF
   (P1-3), Local Network Access / Trystero-Node (P7), abonnement Claude

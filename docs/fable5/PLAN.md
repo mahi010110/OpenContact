@@ -17,8 +17,8 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P0-1 | `engine/vault.js` : clé maîtresse, wrap PIN / phrase de secours / PRF, enveloppe valeur `OCV1.` versionnée | Fonctions pures + vecteurs de test figés | E3 | à faire | `?test` : cycle chiffrer/déchiffrer, mauvais PIN, rotation, vecteurs stables |
-| P0-2 | Couche chiffrante dans `engine/storage.js` (mêmes clés, valeurs enveloppées) + clé méta `oc_vault_v1` | Activation/désactivation sans perte ; lecture des valeurs claires héritées | P0-1 | à faire | Migration aller/retour testée ; CONTRAT.md §1 mis à jour |
+| P0-1 | `engine/vault.js` : clé maîtresse, wrap PIN / phrase de secours / PRF, enveloppe valeur `OCV1.` versionnée | Fonctions pures + vecteurs de test figés | E3 | terminée | 5 tests coffre verts (vecteurs figés, mauvais code, AAD, rotation, PRF) |
+| P0-2 | Couche chiffrante dans `engine/storage.js` (mêmes clés, valeurs enveloppées) + clé méta `oc_vault_v1` | Activation/désactivation sans perte ; lecture des valeurs claires héritées | P0-1 | terminée | `verrou` testé ; CONTRAT.md §1 à jour ; seal-all/open-all couverts par le Playwright de P1 |
 
 ## Phase 1 — Verrou (UX profil protégé)
 

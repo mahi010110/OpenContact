@@ -26,6 +26,7 @@ doit être repensée, pas forcée.
 | `oc_device_v1` | Cet appareil — identité annoncée à la sync | JSON : `{id, name}` |
 | `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
 | `oc_promo_v1` | Dernier mot de passe de partage en groupe (confort de saisie) | chaîne |
+| `oc_vault_v1` | Métadonnée du coffre (profil protégé) : enveloppes de la clé maîtresse par code / phrase de secours / PRF — **jamais la clé en clair** | JSON : `{v, gen, at, wraps}` |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
@@ -42,6 +43,19 @@ lourd ne puisse jamais les bloquer ni les faire perdre.
 Renommer une clé = perte de données pour tous les utilisateurs existants.
 On ne renomme jamais ; si le format d'une clé doit évoluer, on crée une
 **nouvelle** clé versionnée et on migre à la lecture (comme v1 → v2 → v3).
+
+**Profil protégé (coffre)** : quand `oc_vault_v1` existe, les valeurs des
+clés de données et de secrets sont écrites **scellées** sous la forme
+`OCV1.<iv base64>.<contenu chiffré base64>` (AES-GCM 256 sous la clé
+maîtresse, AAD = nom de la clé — une enveloppe ne se rejoue pas sous un
+autre nom). Les **noms** de clés ne changent pas. Une valeur claire héritée
+reste lisible telle quelle (migration à l'écriture) ; une valeur scellée lue
+sans coffre déverrouillé est une **erreur** (`verrou`), jamais un `null`
+silencieux. La clé maîtresse est enveloppée (wrap AES-GCM) sous des clés
+dérivées : code PIN et phrase de secours par PBKDF2-SHA256 (600 000
+itérations à l'écriture, 10 000 à 2 000 000 acceptées à la lecture), secret
+PRF (WebAuthn) par HKDF-SHA256. Code perdu **et** phrase perdue = contenu
+irrécupérable — c'est le contrat du local-first.
 
 ## 2. Le format `.oc` — intouchable
 
