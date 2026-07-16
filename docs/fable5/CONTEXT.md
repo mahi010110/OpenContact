@@ -58,6 +58,8 @@ Celles de `CLAUDE.md` et `CONTRAT.md`, plus, pour ce chantier :
 - `CONTRAT.md` — contrat de données exécutable (`?test`).
 - `docs/refonte-brief.md`, `docs/degraissage-v6.3.md`, `docs/plan-v7.md` —
   histoire et feuille de route générale.
+- `docs/fable5/SPECIFICATIONS.md` — périmètre fonctionnel et technique
+  consolidé du chantier, comportements, limites et critères d'acceptation.
 - `docs/fable5/PLAN.md` — feuille de route opérationnelle du chantier.
 - `docs/fable5/HANDOFF.md` — point de reprise courant.
 - Les études détaillées (faisabilité v1/v2 du 2026-07, plan UX) ont été
@@ -70,9 +72,10 @@ Celles de `CLAUDE.md` et `CONTRAT.md`, plus, pour ce chantier :
 
 - Branche de travail : `claude/opencontact-repo-study-3bw0ju` (ne pas pousser
   ailleurs sans accord).
-- Démarrage d'une discussion : lire `CLAUDE.md`, `CONTRAT.md`, ce dossier,
-  puis `git status`/`git log` ; le dépôt et les tests font foi ; reprendre à
-  « prochaine action exacte » de `HANDOFF.md`.
+- Démarrage d'une discussion : lire `CLAUDE.md`, `CONTRAT.md`, `CONTEXT.md`,
+  `SPECIFICATIONS.md`, `PLAN.md` et `HANDOFF.md`, puis `git status`/`git log` ;
+  le dépôt et les tests font foi ; reprendre à « prochaine action exacte » de
+  `HANDOFF.md`.
 - Après chaque tâche : tests proportionnés, mise à jour `PLAN.md` +
   `HANDOFF.md`, commit petit et descriptif en français.
 - `?test` doit rester 100 % vert ; toute évolution du contrat = `CONTRAT.md`
