@@ -60,8 +60,8 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P6-1 | Aides sans IA : relances dues, priorisation locale, signature→contact (heuristique) | Actions directes dans les parcours existants | P3-1 | à faire | Tests moteur |
-| P6-2 | Connexions IA (clé Anthropic/Gemini navigateur ; OpenAI/OpenRouter marqués « via ton ordinateur ») + brouillon IA dans le composeur | Relecture obligatoire ; repli gabarit | P4-2 | à faire | États quota/indisponible/clé invalide |
+| P6-1 | Aides sans IA : `engine/assist.js` — priorisation locale des retards (retard puis pistes travaillées, branchée sur « En retard »), signature collée → contact (champs vides seulement, éditeur de contact) | Actions directes dans les parcours existants | P3-1 | terminée | 2 tests moteur verts |
+| P6-2 | Connexions IA (`engine/ai.js` : Anthropic/Gemini par clé navigateur ; OpenAI/OpenRouter/Ollama/ChatGPT marqués « via ton ordinateur ») + « Proposer un brouillon » dans le composeur (texte dans le champ éditable) + groupe IA dans Connexions (`oc_ai_v1` scellée) | Relecture obligatoire ; repli gabarit ; le prompt ne porte que la piste, jamais le suivi privé | P4-2 | terminée | 1 test moteur + E2E `e2e-ia.mjs` vert (proposition interceptée, quota, rien de perdu) |
 
 ## Phase 7 — Compagnon v1
 

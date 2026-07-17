@@ -33,6 +33,8 @@ import { DAILY_CAP, buildCampaign, dueSends, markSent, markReplied, markError,
          pauseCampaign, resumeCampaign, stopCampaign, campaignStats,
          addDays as cAddDays } from './engine/campaign.js';
 import { buildMime, encodeHeader, toB64Url, authUrl, parseCallback, pkcePair } from './engine/mailer.js';
+import { dueFollowups, contactFromSignature } from './engine/assist.js';
+import { AI_FAMILIES, browserProviders, aiComplete, draftPrompt } from './engine/ai.js';
 
 export async function runSelfTests(){
   const R = [];
@@ -669,6 +671,40 @@ export async function runSelfTests(){
       const badRec = await recoveryKeys('mauvaise phrase', 15000);
       const bad = await ringRecover(ring, badRec.seed, { id: 'B', name: 'B' }, kB.pub, newRec.pub);
       ok(!(await mergeRing(ring, bad)).changed);
+    },
+    'aides : relances dues — retard d’abord, pistes travaillées ensuite': () => {
+      const comps = [
+        { id: 'c1', name: 'A', nextAction: '2026-07-01', history: [{ t: 'Email envoyé' }, { t: 'Relance envoyée' }] },
+        { id: 'c2', name: 'B', nextAction: '2026-07-01' },
+        { id: 'c3', name: 'C', nextAction: '2026-07-16' },
+        { id: 'c4', name: 'D', nextAction: '2026-08-01' },          /* futur : exclu */
+        { id: 'c5', name: 'E', nextAction: '2026-07-01', closedReason: 'won' }
+      ];
+      eq(dueFollowups(comps, '2026-07-16').map(x => x.id), ['c1', 'c2', 'c3']);
+      eq(dueFollowups(comps, '2026-07-16')[0].lateDays, 15);
+    },
+    'aides : signature collée → contact, sans jamais inventer': () => {
+      const got = contactFromSignature(
+        'Nadia Rahmani\nResponsable RH — Orange Cyberdefense\nnadia.rahmani@orange.fr\nTél : +33 6 12 34 56 78\nwww.orangecyberdefense.com');
+      eq(got.name, 'Nadia Rahmani');
+      ok(/Responsable RH/.test(got.role));
+      eq(got.email, 'nadia.rahmani@orange.fr');
+      ok(got.phone.replace(/\D/g, '').length >= 9);
+      ok(/orangecyberdefense/.test(got.link));
+      eq(contactFromSignature('theo.vasseur@ovh.com').name, 'Theo Vasseur');  /* dérivé de l'email */
+      eq(contactFromSignature('Bonjour, cordialement'), null);
+    },
+    'IA : familles, prompt cadré, erreurs sans réseau': async () => {
+      eq(browserProviders().sort(), ['anthropic', 'gemini']);
+      ok(AI_FAMILIES.chatgpt.channel === 'companion');
+      const p = draftPrompt({ company: { name: 'OVHcloud', city: 'Roubaix' },
+        contactName: 'Théo', profile: { name: 'Mahé', formation: 'BTS SIO' } });
+      ok(/OVHcloud \(Roubaix\)/.test(p) && /Théo/.test(p) && /Mahé, BTS SIO/.test(p));
+      ok(/120 mots max/.test(p));
+      try { await aiComplete({ provider: 'openai', key: 'x' }, 'test'); throw new Error('parti !'); }
+      catch (e) { eq(e.message, 'viacompagnon'); }
+      try { await aiComplete({ provider: 'anthropic', key: '' }, 'test'); throw new Error('parti !'); }
+      catch (e) { eq(e.message, 'cle'); }
     },
     'envoi direct : MIME — entêtes UTF-8, corps base64, base64url': () => {
       eq(encodeHeader('Hello'), 'Hello');                       /* ASCII : inchangé */

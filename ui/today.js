@@ -6,6 +6,7 @@
    jamais culpabilisant. Jamais 40 lignes d'un coup.
    ============================================================ */
 import { esc, todayISO } from '../engine/utils.js';
+import { dueFollowups } from '../engine/assist.js';
 import { S, bus, isClosed, markDone, hasDemo, addDemo, removeDemo } from './state.js';
 import { $, ic, toast } from './dom.js';
 import { frToday, frDate, relLabel } from './dates.js';
@@ -77,7 +78,11 @@ export function renderToday(){
   const today = todayISO();
   const alive = S.companies.filter(c => !isClosed(c));
   const byDate = (a, b) => a.nextAction.localeCompare(b.nextAction) || (b.updatedAt || 0) - (a.updatedAt || 0);
-  const late = alive.filter(c => c.nextAction && c.nextAction < today).sort(byDate);
+  /* « En retard » : priorisation locale (retard, puis pistes déjà
+     travaillées — celles qu'il ne faut pas lâcher) */
+  const lateOrder = dueFollowups(alive, today).map(x => x.id);
+  const late = alive.filter(c => c.nextAction && c.nextAction < today)
+    .sort((a, b) => lateOrder.indexOf(a.id) - lateOrder.indexOf(b.id));
   const due = alive.filter(c => c.nextAction === today).sort(byDate);
   const soon = alive.filter(c => c.nextAction && c.nextAction > today).sort(byDate);
   const noAction = alive.filter(c => !c.nextAction);

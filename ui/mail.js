@@ -10,10 +10,11 @@
 import { esc, todayISO } from '../engine/utils.js';
 import { fillTpl, pushHist } from '../engine/model.js';
 import { sendMail } from '../engine/mailer.js';
+import { aiComplete, draftPrompt } from '../engine/ai.js';
 import { S, bus, saveData, logJ } from './state.js';
-import { openSheet, toast, btn, el } from './dom.js';
+import { openSheet, toast, btn, el, ic } from './dom.js';
 import { askNextAction } from './actions.js';
-import { mailAccount, freshToken, openConnexions } from './connexions.js';
+import { mailAccount, freshToken, openConnexions, aiConnection } from './connexions.js';
 
 export function openMail(c, opts){
   opts = opts || {};
@@ -40,7 +41,8 @@ export function openMail(c, opts){
          <select id="mTpl">${tpls.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('')}</select></div>
      </div>
      <div class="field"><label for="mSubj">Objet</label><input id="mSubj"></div>
-     <div class="field"><label for="mBody">Message</label><textarea id="mBody" style="min-height:170px"></textarea></div>
+     <div class="field"><label for="mBody">Message</label><textarea id="mBody" style="min-height:170px"></textarea>
+       ${aiConnection() ? `<button class="linklike" id="mAi" style="margin-top:2px">${ic('sparkles', 'ic-14')} Proposer un brouillon</button>` : ''}</div>
      <p class="hint" id="mHint"></p>
      ${!S.profile.name ? `<p class="hint warn">Profil vide — remplis-le dans « Moi » pour signer tes emails.</p>` : ''}`;
 
@@ -111,6 +113,27 @@ export function openMail(c, opts){
   q('#mSubj').addEventListener('input', sync);
   q('#mBody').addEventListener('input', sync);
   aMail.addEventListener('click', logPrep);
+  /* brouillon IA : le texte tombe dans le champ ÉDITABLE — relecture
+     par construction, le gabarit reste le repli */
+  q('#mAi')?.addEventListener('click', async () => {
+    const b = q('#mAi');
+    b.disabled = true;
+    b.textContent = 'L’IA rédige…';
+    try {
+      const ct = currentCt();
+      const txt = await aiComplete(aiConnection(), draftPrompt({
+        company: c, contactName: ct && ct.name, contactRole: ct && ct.role, profile: S.profile
+      }));
+      if (txt){ q('#mBody').value = txt; sync(); toast('Brouillon proposé — relis avant d’envoyer.'); }
+      else toast('L’IA n’a rien proposé — le modèle reste là.');
+    } catch (e) {
+      toast(e.message === 'quota' ? 'Quota IA atteint — le modèle reste là.'
+        : e.message === 'cle' ? 'Clé refusée — vérifie-la dans Connexions.'
+        : 'L’IA ne répond pas — le modèle reste là.');
+    }
+    b.disabled = false;
+    b.innerHTML = ic('sparkles', 'ic-14') + ' Proposer un brouillon';
+  });
 
   const bCopy = btn('Copier', '', async () => {
     logPrep();

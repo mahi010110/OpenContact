@@ -30,6 +30,7 @@ doit être repensée, pas forcée.
 | `oc_devring_v1` | Anneau d'appareils : registre signé (appareil principal, membres, commandes) + clés Ed25519 de CET appareil + commandes déjà appliquées | JSON : `{ring, keys, applied}` |
 | `oc_campaigns_v1` | Campagnes de prospection (privé — messages figés au montage, journal des envois faits ; chaque envoi porte un identifiant stable `id.cible.étape` : rejouer ne double jamais) | JSON : tableau de campagnes |
 | `oc_mail_v1` | Connexions messagerie : jetons OAuth et adresse d'envoi — **exige le profil protégé** (valeur toujours scellée) | JSON : `{gmail, outlook, clients}` |
+| `oc_ai_v1` | Connexions IA : fournisseur actif + clé API — **exige le profil protégé** (valeur toujours scellée) ; la clé ne sort jamais dans un log ni un export | JSON : `{provider, key, model}` |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |

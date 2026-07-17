@@ -6,6 +6,7 @@
    ============================================================ */
 import { esc, uid, todayISO, debounce, normName } from '../engine/utils.js';
 import { normalizeCompany, normalizeContact, contactHasData, pushHist, STATUSES } from '../engine/model.js';
+import { contactFromSignature } from '../engine/assist.js';
 import { findMatch } from '../engine/merge.js';
 import { S, bus, saveData, saveOrphans, logJ, isClosed,
          addOrphan, removeOrphan, attachContact, ctLabel } from './state.js';
@@ -60,9 +61,28 @@ export function openContactEditor(o){
        <p class="hint" id="ceCoNote" hidden></p></div>` : ''}
      <div class="field"><label for="ceNote">Note</label>
        <input id="ceNote" value="${esc(src.note || '')}" placeholder="Ex : rencontré au forum de l’IUT" autocomplete="off"></div>
-     <label class="ckline"><input type="checkbox" id="ceConf"${src.conf === 'ok' ? ' checked' : ''}> J’ai vérifié ces coordonnées</label>`;
+     <label class="ckline"><input type="checkbox" id="ceConf"${src.conf === 'ok' ? ' checked' : ''}> J’ai vérifié ces coordonnées</label>
+     ${!editing ? `<button class="linklike" id="ceSig">Coller une signature d’email ?</button>
+     <div class="field" id="ceSigZone" hidden><label for="ceSigTxt">La signature</label>
+       <textarea id="ceSigTxt" rows="4" placeholder="Colle la fin de l’email reçu — nom, rôle, téléphone…"></textarea>
+       <p class="hint">Lu ici, sur ton appareil — rien ne part nulle part.</p></div>` : ''}`;
   const q = s => sh.body.querySelector(s);
   const v = s => q(s).value.trim();
+
+  /* coller une signature : les champs VIDES se remplissent — jamais
+     d'écrasement de ce qui est déjà tapé (lecture locale, rien ne sort) */
+  q('#ceSig')?.addEventListener('click', () => {
+    q('#ceSig').hidden = true;
+    q('#ceSigZone').hidden = false;
+    q('#ceSigTxt').focus();
+    q('#ceSigTxt').addEventListener('input', debounce(() => {
+      const got = contactFromSignature(q('#ceSigTxt').value);
+      if (!got) return;
+      for (const [k, id] of [['name', '#ceName'], ['role', '#ceRole'], ['email', '#ceEmail'],
+                             ['phone', '#cePhone'], ['link', '#ceLink']])
+        if (got[k] && !v(id)) q(id).value = got[k];
+    }, 300));
+  });
 
   /* le champ entreprise dit tout de suite où ira le contact */
   const coNote = q('#ceCoNote');

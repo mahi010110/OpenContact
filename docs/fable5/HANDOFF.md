@@ -35,8 +35,17 @@
   reprise, arrêt, bilan une fois), réconciliation des réponses depuis le
   statut de la fiche (non débrayable), tags « en campagne » liste/board,
   historique de fiche alimenté. `sw.js` → oc-v20.
-- **Tâche en cours** : P6 (IA : aides sans IA, connexions IA, brouillon
-  dans le composeur).
+- **P6 terminée** : IA — `engine/assist.js` (priorisation locale des
+  retards branchée sur Aujourd'hui ; signature collée → contact dans
+  l'éditeur, champs vides seulement), `engine/ai.js` (3 familles D5 :
+  clé navigateur Anthropic/Gemini, le reste « via ton ordinateur » en
+  attendant le Compagnon ; erreurs cle/quota/indispo typées ; prompt
+  cadré sans données privées), groupe IA dans Connexions (`oc_ai_v1`
+  scellée), « Proposer un brouillon » dans le composeur (texte dans le
+  champ éditable — relecture par construction, gabarit repli). CSP +
+  api.anthropic.com / generativelanguage.googleapis.com. sw → oc-v21.
+- **Tâche en cours** : P7-1 côté PWA (contrat de missions idempotentes
+  du Compagnon) + P8-1 (« Depuis mes e-mails » dans Recevoir).
 - **Tests exécutés** : `?test` **64/64 verts** ; E2E `e2e-verrou.mjs`
   (régression P1) + `e2e-recuperation.mjs` (D7 bout en bout : coffre
   gen 2, anneau gen 2, ancien code refusé, nouveau accepté, donnée

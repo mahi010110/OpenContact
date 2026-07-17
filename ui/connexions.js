@@ -10,7 +10,8 @@
    ============================================================ */
 import { MAIL_CLIENTS, authUrl, parseCallback, pkcePair,
          exchangeOutlookCode, refreshOutlook, whoAmI } from '../engine/mailer.js';
-import { MAIL_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { AI_FAMILIES } from '../engine/ai.js';
+import { MAIL_KEY, AI_KEY, kvGet, kvSet } from '../engine/storage.js';
 import { esc } from '../engine/utils.js';
 import { S, bus, logJ } from './state.js';
 import { ic, btn, toast, openSheet, confirmSheet } from './dom.js';
@@ -21,13 +22,35 @@ const PROVIDERS = [
   { id: 'outlook', label: 'Outlook / Hotmail' }
 ];
 let mail = null;    /* { gmail:{token,exp,refresh?,email}, outlook:{…}, clients:{} } */
+let ai = null;      /* { provider, key, model } */
 
 export async function loadMail(){
   try { mail = JSON.parse(await kvGet(MAIL_KEY) || 'null') || {}; }
   catch (e) { mail = {}; }
+  try { ai = JSON.parse(await kvGet(AI_KEY) || 'null') || {}; }
+  catch (e) { ai = {}; }
   return mail;
 }
 const saveMail = () => kvSet(MAIL_KEY, JSON.stringify(mail || {}));
+const saveAi = () => kvSet(AI_KEY, JSON.stringify(ai || {}));
+
+/* la connexion IA utilisable (V1 : clé navigateur) — les familles
+   « via ordinateur » attendent le Compagnon */
+export function aiConnection(){
+  if (!ai || !ai.provider) return null;
+  const fam = AI_FAMILIES[ai.provider];
+  if (!fam) return null;
+  if (fam.channel === 'browser' && ai.key) return { provider: ai.provider, key: ai.key, model: ai.model || '' };
+  return null;   /* companion pas encore là : proposé mais pas actif */
+}
+export function aiStateLabel(){
+  if (ai && ai.provider && AI_FAMILIES[ai.provider]){
+    const fam = AI_FAMILIES[ai.provider];
+    if (fam.channel === 'browser' && ai.key) return AI_FAMILIES[ai.provider].label;
+    return AI_FAMILIES[ai.provider].label + ' — via ton ordinateur';
+  }
+  return 'aucune';
+}
 const acct = p => (mail && mail[p]) || null;
 const expired = a => !a.exp || a.exp <= Date.now() + 60000;
 
@@ -163,8 +186,12 @@ export async function openConnexions(){
              : `<button class="btn btn-sm" data-cx="${p.id}">Connecter</button>`}
          </div>`;
        }).join('')}
-       <div class="lbl-row" style="margin-top:14px"><label>IA</label></div>
-       <p class="hint" style="margin:2px 0 0">Arrive bientôt — rédaction et analyse, avec ta clé ou ton ordinateur.</p>
+       <div class="lbl-row" style="margin-top:14px"><label>IA <span class="lbl-soft">— rédaction, bientôt l’analyse</span></label></div>
+       <div class="ec-row">
+         <div class="ec-row-m"><b>${ic('sparkles', 'ic-14')} Assistant</b>
+           <span class="ec-sub">${esc(aiStateLabel())}</span></div>
+         <button class="btn btn-sm" id="cxAi">${aiConnection() ? 'Gérer' : 'Choisir'}</button>
+       </div>
        <p class="hint" style="margin-top:14px">${ic('lock', 'ic-14')} Tes accès restent chiffrés sur tes appareils. Rien ne passe par un serveur OpenContact.</p>`;
     sh.body.querySelectorAll('[data-cx]').forEach(b =>
       b.addEventListener('click', () => connect(b.dataset.cx, render)));
@@ -179,6 +206,75 @@ export async function openConnexions(){
         render();
         bus.refresh();
       }));
+    sh.body.querySelector('#cxAi').addEventListener('click', () => openAiSheet(render));
+  };
+  render();
+}
+
+/* la feuille IA : choisir une famille, coller une clé (navigateur) ou
+   noter « via ton ordinateur » (Compagnon à venir). Une seule active. */
+function openAiSheet(after){
+  const sh = openSheet({ title: 'Assistant IA', icon: 'sparkles' });
+  const q = s => sh.body.querySelector(s);
+  const render = () => {
+    sh.body.innerHTML =
+      `<p class="hint" style="margin:0 0 10px">L’IA propose un brouillon — tu le relis et tu décides. Sans elle, les modèles restent là.</p>
+       <div class="pick-list">
+         ${Object.keys(AI_FAMILIES).map(k => {
+           const f = AI_FAMILIES[k];
+           const on = ai && ai.provider === k;
+           const soon = f.channel === 'companion';
+           return `<button class="pick${on ? ' pick-on' : ''}" data-ai="${k}">
+                     <b>${esc(f.label)}</b>
+                     <span>${soon ? 'via ton ordinateur — bientôt' : (f.key ? 'colle ta clé' : 'local')}${on ? ' · actif' : ''}</span>
+                   </button>`;
+         }).join('')}
+       </div>
+       ${aiConnection() ? `<button class="linklike" id="aiOff" style="margin-top:12px;color:var(--red)">Retirer l’assistant</button>` : ''}`;
+    sh.body.querySelectorAll('[data-ai]').forEach(b =>
+      b.addEventListener('click', () => pick(b.dataset.ai)));
+    q('#aiOff')?.addEventListener('click', async () => {
+      ai = {};
+      await saveAi();
+      logJ('Assistant IA retiré');
+      render();
+      after && after();
+      bus.refresh();
+    });
+  };
+  const pick = k => {
+    const f = AI_FAMILIES[k];
+    if (f.channel === 'companion'){
+      /* pas de clé navigateur : on note l'intention, le Compagnon l'activera */
+      ai = { provider: k };
+      saveAi();
+      toast('Noté — actif quand ton ordinateur sera relié.');
+      render();
+      after && after();
+      return;
+    }
+    sh.setTitle(f.label);
+    sh.body.innerHTML =
+      `<div class="field"><label for="aiKey">Ta clé ${esc(f.label)}</label>
+         <input id="aiKey" type="password" autocomplete="off" value="${esc((ai && ai.provider === k && ai.key) || '')}">
+         <p class="hint">Elle reste chiffrée ici — jamais dans un log ni un export.</p></div>
+       <div class="field"><label for="aiModel">Modèle <span class="lbl-soft">— optionnel</span></label>
+         <input id="aiModel" autocomplete="off" placeholder="défaut raisonnable" value="${esc((ai && ai.model) || '')}"></div>`;
+    sh.setFoot([
+      btn('← Retour', 'btn-ghost', () => { sh.setFoot(null); render(); }),
+      btn('Enregistrer', 'btn-primary', async () => {
+        const key = q('#aiKey').value.trim();
+        if (!key){ toast('Colle ta clé, ou reviens en arrière.'); return; }
+        ai = { provider: k, key, model: q('#aiModel').value.trim() };
+        await saveAi();
+        logJ('Assistant IA : ' + k);
+        sh.setFoot(null);
+        toast('Assistant prêt ✓');
+        render();
+        after && after();
+        bus.refresh();
+      })
+    ]);
   };
   render();
 }
