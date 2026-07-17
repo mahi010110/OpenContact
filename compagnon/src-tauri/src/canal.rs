@@ -249,7 +249,8 @@ fn repondre_boite(
         /* le journal complet — la PWA replie (markSent idempotent) */
         Some("rapport") => {
             let em = EtatMissions::charger(&p.coffre);
-            serde_json::json!({ "t": "rapport", "journal": em.journal, "arrets": em.arrets })
+            serde_json::json!({ "t": "rapport", "journal": em.journal,
+                "arrets": em.arrets, "reponses": em.reponses })
         }
         _ => serde_json::json!({ "t": "?" }),
     }

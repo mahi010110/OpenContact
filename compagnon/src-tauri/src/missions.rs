@@ -25,6 +25,9 @@ pub struct EtatMissions {
     /// Cibles arrêtées (réponse reçue — non débrayable), par `cid`.
     #[serde(default)]
     pub arrets: Vec<String>,
+    /// Réponses DÉTECTÉES ici (IMAP) — la PWA les replie sur les fiches.
+    #[serde(default)]
+    pub reponses: Vec<String>,
 }
 
 impl EtatMissions {

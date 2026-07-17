@@ -85,8 +85,13 @@
     SMTP réels, kill −9 + relance = zéro doublon.
     Crochets de développement (jamais en prod) : OC_APPAIRAGE_AUTO,
     OC_SMTP_TEST, OC_TICK_MS, OC_FENETRE_TEST.
-  - Suite : C5 lecture des réponses (IMAP), C6 analyse d'e-mails,
-    C7 états & finitions (PLAN.md).
+  - **C5 livré — les réponses arrêtent les relances toutes seules** :
+    lecture IMAP en-têtes seulement (`FROM … SINCE …`), même mot de
+    passe d'application (D8), toutes les 10 min ; la cible s'arrête
+    côté Compagnon (non débrayable) et la PWA replie : fiche
+    « réponse », trace, relances annulées. E2E vrai binaire + faux
+    IMAP (OC_IMAP_TEST). Outlook OAuth : attend l'app du mainteneur.
+  - Suite : C6 analyse d'e-mails, C7 états & finitions (PLAN.md).
 - **Prochaine action exacte** : au choix du mainteneur — arbitrer l'étude
   Compagnon (D17/D18), déclarer les apps OAuth (débloque l'envoi réel).
   Côté PWA, tout nouveau travail = relire `UX-PLAN.md` et repartir des

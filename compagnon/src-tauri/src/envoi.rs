@@ -15,6 +15,11 @@ pub struct ReglageMail {
     pub securite: String, /* "tls" (465) | "starttls" (587) */
     pub utilisateur: String,
     pub de: String,
+    /* lecture des réponses (D8 : même mot de passe d'application) */
+    #[serde(default)]
+    pub imap_hote: String, /* défaut : imap.gmail.com */
+    #[serde(default)]
+    pub imap_port: u16, /* défaut : 993 */
 }
 
 #[derive(Debug)]

@@ -21,8 +21,15 @@ pub fn demarrer(p: Arc<Partage>) {
             .ok()
             .and_then(|v| v.parse().ok())
             .unwrap_or(60_000u64);
+        /* les réponses : toutes les 10 min (chaque tick en dev) */
+        let cadence_lecture = if std::env::var("OC_TICK_MS").is_ok() { 1 } else { 600_000 / tick.max(1) };
+        let mut n: u64 = 0;
         loop {
             cycle(&p);
+            if n % cadence_lecture.max(1) == 0 {
+                crate::reponses::detecter(&p);
+            }
+            n += 1;
             std::thread::sleep(std::time::Duration::from_millis(tick));
         }
     });

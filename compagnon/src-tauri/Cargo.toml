@@ -23,3 +23,5 @@ base64 = "0.22"
 hostname = "0.4"
 chrono = "0.4"
 lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "rustls-tls", "builder", "hostname", "pool"] }
+imap = "2.4"
+native-tls = "0.2"

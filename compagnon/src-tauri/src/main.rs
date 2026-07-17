@@ -17,6 +17,7 @@ mod envoi;
 mod missions;
 mod partage;
 mod planif;
+mod reponses;
 mod secrets;
 
 fn montrer(app: &tauri::AppHandle) {

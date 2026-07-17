@@ -24,3 +24,4 @@ binaire>`. Les captures vont dans `captures/` (non versionné).
 | `e2e-oauth-sw.mjs` | Le service worker ne détourne jamais `oauth.html` ; le jeton revient par postMessage |
 | `e2e-compagnon.mjs` | Appairage du Compagnon contre un faux au protocole exact : mauvais code refusé, clé de canal scellée, anneau (rôle companion), présence, rupture propre |
 | `e2e-compagnon-envoi.mjs` | Le VRAI binaire (xvfb) : campagne confiée par l'assistant, envois SMTP réels vers un puits local, kill −9 + relance = zéro doublon, rapport replié, reprise en main — sauté si `compagnon/target` n'est pas construit |
+| `e2e-compagnon-reponses.mjs` | Le VRAI binaire + faux IMAP : réponse détectée en boîte → relances arrêtées seules, fiche marquée « réponse » au repli — sauté sans binaire |

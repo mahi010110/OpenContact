@@ -111,8 +111,36 @@ export async function reconcileCompanion(){
   }
   try {
     const rap = await companionCall(found.base, assoc.k, { t: 'rapport' });
-    if (rap && rap.t === 'rapport' && Array.isArray(rap.journal)) foldJournal(rap.journal);
+    if (rap && rap.t === 'rapport'){
+      if (Array.isArray(rap.journal)) await foldJournal(rap.journal);
+      if (Array.isArray(rap.reponses) && rap.reponses.length) await foldReponses(rap.reponses);
+    }
   } catch (e) {}
+}
+/* les réponses DÉTECTÉES par l'ordinateur : relances arrêtées (déjà
+   fait là-bas), fiche marquée ici — la boucle produit ↔ suivi se ferme */
+async function foldReponses(cids){
+  let changed = false;
+  campaigns = all().map(c => {
+    if (!c.auto) return c;
+    let cc = c;
+    for (const cid of cids){
+      const t = cc.targets.find(x => x.cid === cid && x.state === 'active');
+      if (!t) continue;
+      cc = markReplied(cc, cid);
+      changed = true;
+      const p = S.companies.find(x => x.id === cid);
+      if (p){
+        pushHist(p, 'Campagne « ' + c.name + ' » — réponse détectée par ton ordinateur, relances arrêtées.');
+        if (p.status === 'todo' || p.status === 'active') p.status = 'reply';
+        p.updatedAt = Date.now();
+      }
+    }
+    return cc;
+  });
+  /* les fiches d'abord : quand la campagne repliée devient visible,
+     le statut « réponse » l'est déjà aussi */
+  if (changed){ saveData(); await save(); bus.refresh(); }
 }
 async function foldJournal(journal){
   let changed = false;

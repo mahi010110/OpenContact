@@ -64,7 +64,9 @@ q('#cgMailOk').addEventListener('click', async () => {
     utilisateur: de,
     hote: q('#cgHote').value.trim() || 'smtp.gmail.com',
     port: +q('#cgPort').value || 465,
-    securite: q('#cgSec').value || 'tls'
+    securite: q('#cgSec').value || 'tls',
+    imap_hote: q('#cgImapHote').value.trim() || 'imap.gmail.com',
+    imap_port: +q('#cgImapPort').value || 993
   };
   try {
     await invoke('mail_reglage_ecrire', { reglage, mdp: q('#cgMdp').value });
