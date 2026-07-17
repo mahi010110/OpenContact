@@ -32,6 +32,7 @@ export const RING_KEY = 'oc_devring_v1';      /* anneau d'appareils signé + cl�
 export const CAMPAIGNS_KEY = 'oc_campaigns_v1'; /* campagnes de prospection (privé) */
 export const MAIL_KEY = 'oc_mail_v1';         /* connexions messagerie (jetons — toujours sous coffre) */
 export const AI_KEY = 'oc_ai_v1';             /* connexions IA (clés — toujours sous coffre) */
+export const MISSIONS_KEY = 'oc_missions_v1'; /* bons de mission confiés au Compagnon */
 export const THEME_KEY = 'oc_theme';
 export const VIEW_KEY = 'oc_view';
 export const OLD_V2 = 'oc_data_v2';
@@ -116,7 +117,7 @@ export async function kvDel(k){
    `null` silencieux qui ferait croire à une base vide. */
 export const SEALABLE = new Set([DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY,
   TOMBS_KEY, SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, RING_KEY,
-  CAMPAIGNS_KEY, MAIL_KEY, AI_KEY]);
+  CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY]);
 let vKey = null;
 export function vaultAttach(key){ vKey = key || null; }
 export function vaultDetach(){ vKey = null; }

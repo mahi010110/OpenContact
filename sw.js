@@ -4,12 +4,12 @@
    arrière-plan — la version suivante s'applique à l'ouverture d'après.
    Jamais mis en cache : le géocodage (données fraîches) et les tuiles de
    carte (volume) — la carte demande donc du réseau, tout le reste non. */
-const CACHE = 'oc-v21';
+const CACHE = 'oc-v22';
 const PRECACHE = ['./', './index.html', './app.js', './tests.js',
   './engine/crypto.js', './engine/exchange.js', './engine/filter.js',
   './engine/geo.js', './engine/merge.js', './engine/model.js',
   './engine/score.js', './engine/storage.js', './engine/sync.js', './engine/utils.js',
-  './engine/vault.js', './engine/ring.js', './engine/campaign.js', './engine/mailer.js', './engine/assist.js', './engine/ai.js',
+  './engine/vault.js', './engine/ring.js', './engine/campaign.js', './engine/mailer.js', './engine/assist.js', './engine/ai.js', './engine/mission.js',
   './ui/dom.js', './ui/dates.js', './ui/state.js', './ui/actions.js', './ui/sort.js', './ui/verrou.js',
   './ui/mail.js', './ui/capture.js', './ui/fiche.js', './ui/today.js',
   './ui/pistes.js', './ui/moi.js', './ui/echanger.js', './ui/direct.js', './ui/synclive.js',

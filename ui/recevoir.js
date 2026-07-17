@@ -35,12 +35,14 @@ export function openRecevoir(){
          <button class="pick" id="rcScan"><b>${ic('grid-3x3', 'ic-14')} Scanner</b></button>
          <button class="pick" id="rcFile"><b>${ic('folder', 'ic-14')} Ouvrir un fichier</b><span>.oc</span></button>
          <button class="pick" id="rcPaste"><b>${ic('clipboard', 'ic-14')} Coller</b></button>
+         <button class="pick" id="rcMails"><b>${ic('sparkles', 'ic-14')} Depuis mes e-mails</b><span>l’IA propose, tu tries</span></button>
        </div>
        <p class="hint">${ic('shield', 'ic-14')} Aperçu avant fusion — annulable.</p>
        <input type="file" id="rcInput" accept=".oc,.txt,.json,application/octet-stream,text/plain,application/json" hidden>`;
     q('#rcScan').addEventListener('click', scan);
     q('#rcFile').addEventListener('click', () => q('#rcInput').click());
     q('#rcPaste').addEventListener('click', paste);
+    q('#rcMails').addEventListener('click', mails);
     q('#rcInput').addEventListener('change', e => {
       const f = e.target.files[0];
       if (!f) return;
@@ -129,6 +131,34 @@ export function openRecevoir(){
     };
   };
 
+  /* ---- depuis mes e-mails : l'IA lit chez toi, propose ici ----
+     Aujourd'hui : le prompt guidé (copier → coller le résultat) — le
+     même rail que tout le reste, avec un aperçu où l'on TRIE (une
+     proposition d'IA se trie, un fichier de camarade se prend en
+     bloc). Demain : le Compagnon fera la lecture tout seul, cette
+     feuille gagnera simplement le chemin automatique. */
+  const mails = () => {
+    sh.setTitle('Depuis mes e-mails');
+    const prompt = (S.profile.prompts.find(p => /mails?|e-?mails?/i.test(p.name)) || S.profile.prompts[0]);
+    sh.body.innerHTML =
+      `<div class="pick-list">
+         <div class="lk-why">${ic('copy', 'ic-14')} <span>Copie le prompt, colle-le dans ton assistant IA avec tes e-mails.</span></div>
+         <div class="lk-why">${ic('clipboard', 'ic-14')} <span>Rapporte ici sa réponse : chaque piste proposée se coche ou s’écarte.</span></div>
+         <div class="lk-why">${ic('shield', 'ic-14')} <span>Rien ne s’enregistre sans ton accord.</span></div>
+       </div>
+       <p class="hint">${ic('lightbulb', 'ic-14')} Bientôt : ton ordinateur fera la lecture tout seul (Compagnon).</p>
+       <div class="field" style="margin-top:10px"><label for="rcMailTxt">La réponse de l’IA</label>
+         <textarea id="rcMailTxt" style="min-height:120px" placeholder="Colle ici le texte produit par l’assistant"></textarea></div>`;
+    sh.setFoot([
+      btn('← Retour', 'btn-ghost', menu),
+      btn('Copier le prompt', '', async () => {
+        try { await navigator.clipboard.writeText(prompt.text); toast('Prompt copié — colle-le dans ton assistant.'); }
+        catch (e) { toast('Copie impossible ici — retrouve-le dans Moi → Coup de pouce IA.'); }
+      }, 'copy'),
+      btn('Lire', 'btn-primary', () => treat(q('#rcMailTxt').value, undefined, { select: true }))
+    ]);
+  };
+
   /* ---- coller ---- */
   const paste = () => {
     sh.setTitle('Coller');
@@ -162,7 +192,7 @@ export function openRecevoir(){
     altéré: 'Le contenu a été modifié depuis son scellement — refusé.',
     noqr: 'Ce navigateur ne sait pas lire ce format compact.'
   };
-  const treat = async (raw, pass) => {
+  const treat = async (raw, pass, extra) => {
     halt();
     let obj;
     try {
@@ -173,7 +203,7 @@ export function openRecevoir(){
       if (e.message === 'motdepasse') askPass(raw);
       return;
     }
-    mergePreviewInto(sh, obj, { onCancel: menu });
+    mergePreviewInto(sh, obj, Object.assign({ onCancel: menu }, extra || {}));
   };
 
   menu();
@@ -186,11 +216,14 @@ export function mergePreviewInto(sh, obj, opts){
   /* fusion à blanc sur une copie : l'aperçu dit tout, rien n'est touché */
   const dry = mergeIncoming(obj.companies, JSON.parse(JSON.stringify(S.companies)));
   const n = obj.companies.length;
+  /* une proposition d'IA se TRIE (opts.select) — un partage de
+     camarade se prend en bloc : mêmes règles de fusion ensuite */
+  const unsel = new Set();
   sh.setTitle('Aperçu avant fusion');
   sh.body.innerHTML =
     `<div class="rc-recap">
        ${opts.from ? `<p class="hint" style="margin:0 0 8px">${ic('radio', 'ic-14')} Reçu en direct de <b>${esc(opts.from)}</b></p>` : ''}
-       <div class="rc-big">${n} piste${n > 1 ? 's' : ''} reçue${n > 1 ? 's' : ''}</div>
+       <div class="rc-big">${n} piste${n > 1 ? 's' : ''} ${opts.select ? 'proposée' : 'reçue'}${n > 1 ? 's' : ''}</div>
        <ul class="rc-lines">
          <li>${ic('plus', 'ic-14')} <b>${dry.addedC}</b> nouvelle${dry.addedC > 1 ? 's' : ''}</li>
          ${dry.enriched ? `<li>${ic('pencil', 'ic-14')} <b>${dry.enriched}</b> complétée${dry.enriched > 1 ? 's' : ''}</li>` : ''}
@@ -198,20 +231,45 @@ export function mergePreviewInto(sh, obj, opts){
          ${dry.conflicts ? `<li class="rc-warn">${ic('square-alert', 'ic-14')} <b>${dry.conflicts}</b> divergence${dry.conflicts > 1 ? 's' : ''} — l’existant est gardé</li>` : ''}
        </ul>
        ${obj.kind === 'full' ? `<p class="hint">${ic('info-box', 'ic-14')} Sauvegarde complète : seules les pistes fusionnent ici. Pour tout restaurer, passe par « Moi ».</p>` : ''}
+       ${opts.select && n ? `<div class="pick-list" style="margin:10px 0 4px">
+         ${obj.companies.slice(0, 200).map((c, i) =>
+           `<button class="pick pk on" data-sel="${i}" aria-pressed="true">
+              ${ic('checkbox', 'ic-20 ic-off')}${ic('checkbox-on', 'ic-20 ic-on')}
+              <div class="pk-m"><b>${esc(c.name || '')}</b>
+                <span>${esc([c.city, (c.contacts || []).length ? (c.contacts.length + ' contact' + (c.contacts.length > 1 ? 's' : '')) : ''].filter(Boolean).join(' · '))}</span></div>
+            </button>`).join('')}
+       </div>` : ''}
        <p class="hint">${ic('shield', 'ic-14')} Rien n’est écrasé, annulable juste après.</p>
      </div>`;
+  const bGo = btn(dry.addedC + dry.enriched + dry.addedCt === 0 ? 'Rien à ajouter' : 'Fusionner', 'btn-primary', () => {
+    const chosen = opts.select ? obj.companies.filter((_, i) => !unsel.has(i)) : obj.companies;
+    if (!chosen.length){ toast('Tout est décoché — rien à fusionner.'); return; }
+    const snapshot = JSON.stringify(S.companies);
+    const stats = mergeIncoming(chosen, S.companies);
+    saveData();
+    logJ('Reçu' + (opts.from ? ' de ' + opts.from : (opts.select ? ' (analyse IA triée)' : ' de la promo')) + ' : +' + stats.addedC + ' piste(s), ' + stats.enriched + ' complétée(s)');
+    sh.close();
+    bus.refresh();
+    offerUndo(snapshot, stats);
+    if (opts.onDone) opts.onDone(stats);
+  });
+  const relabel = () => {
+    if (!opts.select) return;
+    const kept = n - unsel.size;
+    bGo.textContent = kept ? `Fusionner (${kept})` : 'Rien de coché';
+  };
+  sh.body.querySelectorAll('[data-sel]').forEach(b =>
+    b.addEventListener('click', () => {
+      const i = +b.dataset.sel;
+      unsel.has(i) ? unsel.delete(i) : unsel.add(i);
+      b.classList.toggle('on', !unsel.has(i));
+      b.setAttribute('aria-pressed', String(!unsel.has(i)));
+      relabel();
+    }));
+  relabel();
   sh.setFoot([
     btn('Annuler', 'btn-ghost', () => opts.onCancel ? opts.onCancel() : sh.close()),
-    btn(dry.addedC + dry.enriched + dry.addedCt === 0 ? 'Rien à ajouter' : 'Fusionner', 'btn-primary', () => {
-      const snapshot = JSON.stringify(S.companies);
-      const stats = mergeIncoming(obj.companies, S.companies);
-      saveData();
-      logJ('Reçu' + (opts.from ? ' de ' + opts.from : ' de la promo') + ' : +' + stats.addedC + ' piste(s), ' + stats.enriched + ' complétée(s)');
-      sh.close();
-      bus.refresh();
-      offerUndo(snapshot, stats);
-      if (opts.onDone) opts.onDone(stats);
-    })
+    bGo
   ]);
 }
 

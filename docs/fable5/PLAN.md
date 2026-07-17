@@ -67,16 +67,16 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P7-1 | Contrat de missions idempotentes (moteur) + appairage code court côté PWA + présence dans « Mes appareils » | Canal local garanti ; P2P si prototype fiable (D4) | P2-2 | à faire | Missions idempotentes multi-canaux |
-| P7-2 | App Tauri (projet distinct) : trousseau OS, envois app fermée, rattrapage | Kill/redémarrage sans doublon | P7-1, P3-1 | à faire | Test d'intégration faux SMTP — **nécessite un environnement de build dédié** |
-| P7-3 | Lecture Gmail (mot de passe d'app, D8) + Outlook OAuth → détection de réponses | Relances annulées sur réponse | P7-2 | à faire | Faux IMAP ; états UX |
+| P7-1 | Contrat de missions idempotentes (`engine/mission.js` : bornées, révocables, rapport replié sur le journal de campagne sans doublon, `oc_missions_v1` au CONTRAT) | Le socle que le binaire Tauri consommera | P2-2 | **terminée (moteur)** | Test vert : rejeu de rapport multi-canaux sans doublon, expiration, révocation. Reste : appairage code court + présence « Mes appareils » quand le binaire existera |
+| P7-2 | App Tauri (projet distinct) : trousseau OS, envois app fermée, rattrapage | Kill/redémarrage sans doublon | P7-1, P3-1 | **bloquée (externe)** | Nécessite un environnement de build Tauri dédié — hors du conteneur de ce chantier |
+| P7-3 | Lecture Gmail (mot de passe d'app, D8) + Outlook OAuth → détection de réponses | Relances annulées sur réponse | P7-2 | bloquée (P7-2) | Faux IMAP ; états UX |
 
 ## Phase 8 — Analyser mes e-mails, MCP local
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| P8-1 | Source « Depuis mes e-mails » dans Recevoir : périmètre borné → travail visible → aperçu multi-sélection → fusion ; chip Aujourd'hui | Aucune création silencieuse | P7-1 | à faire | Corpus de test avec e-mails piégés (injection) |
-| P8-2 | Serveur MCP local (lecture limitée + propositions) | Écritures = propositions via aperçu | P7-2 | à faire | Client MCP de test ; aucune suppression exposée |
+| P8-1 | Source « Depuis mes e-mails » dans Recevoir : parcours guidé V1 (copier le prompt du profil → coller la réponse de l'IA) → **aperçu multi-sélection** (une proposition d'IA se trie) → fusion + Annuler ; le chemin automatique se branchera sur la même feuille avec le Compagnon | Aucune création silencieuse | P7-1 | terminée (V1 guidée) | E2E `e2e-analyse.mjs` vert : tri des propositions, lien `javascript:` neutralisé, confiance non transmise. Reste : chemin auto + chip Aujourd'hui (avec Compagnon) |
+| P8-2 | Serveur MCP local (lecture limitée + propositions) | Écritures = propositions via aperçu | P7-2 | bloquée (P7-2) | Client MCP de test ; aucune suppression exposée |
 
 Reportés (hors V1) : multi-profils UI, modèle Cadré visible, MCP distant/relais,
 Yahoo/iCloud/Zoho/Proton, suivi d'ouvertures, portage Capacitor.

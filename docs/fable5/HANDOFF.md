@@ -1,68 +1,52 @@
 # Fable 5 — point de reprise (checkpoint)
 
-- **Phase actuelle** : implémentation lancée (plan UX validé le 2026-07-16,
-  arbitrages D13–D16 consignés).
+- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1).
+  Restent les travaux qui exigent un environnement ou un compte externes
+  (voir blocages).
 - **Branche Git** : `claude/opencontact-repo-study-3bw0ju`
-- **Commit de base de l'app** : `9baa642` (inchangé tant que P0 n'a pas livré)
-- **Dernière tâche terminée** : P2 (appareil principal) — `engine/ring.js`
-  (anneau Ed25519 signé en bloc par le principal, clé de secours dérivée
-  de la phrase → récupération vérifiable hors ligne, générations
-  anti-rétrogradation, seq monotone signé), intégration `synclive.js`
-  (hello+pub, action `ring`, auto-ajout par le principal, application
-  des commandes une seule fois, wipe local honnête), feuille d'appareil
-  dans `direct.js` (verrouiller/retirer/bannir/effacer/transférer, code
-  re-demandé), récupération d'urgence D7 complète dans `verrou.js`
-  (rotation coffre + rescellement + anneau repris + sauvegarde
-  bloquante). `sw.js` → oc-v17.
-- **P3-1 terminée** : `engine/campaign.js` (modèle Fixe pur,
-  anti-double-envoi par ids stables + journal). `oc_campaigns_v1` scellée.
-- **P4 terminée** : envoi direct — `engine/mailer.js` (MIME, Gmail
-  implicite / Outlook PKCE, clients OAuth publics configurables,
-  « parti » seulement sur confirmation du fournisseur), `oauth.html`
-  (popup → postMessage même origine), `ui/connexions.js` (feuille
-  Connexions : verrou exigé, code re-demandé, états connecté/expiré/
-  déconnecté, option avancée client OAuth), feuille Écrire connectée
-  (« Depuis {adresse} », Envoyer primaire, Ctrl/Cmd+Entrée, expiration
-  → Reconnecter sans perte du brouillon, mailto intact sinon), ligne
-  Connexions dans Moi, CSP élargie, `oc_mail_v1` scellée. **Blocage
-  externe assumé : les apps OAuth Google/Microsoft restent à déclarer
-  par le mainteneur (IDs publics à renseigner dans MAIL_CLIENTS).**
-- **P5 terminée** : parcours campagne — `ui/campagnes.js` (assistant :
-  message + relances éditables aux dates figées, contrôle avec aperçus
-  remplis et pistes écartées, validation au code), bifurcation « Une par
-  une / En campagne » dans Prospecter, ligne groupée quotidienne dans
-  Aujourd'hui + feuille du jour (envoi par ligne / Tout envoyer, pause,
-  reprise, arrêt, bilan une fois), réconciliation des réponses depuis le
-  statut de la fiche (non débrayable), tags « en campagne » liste/board,
-  historique de fiche alimenté. `sw.js` → oc-v20.
-- **P6 terminée** : IA — `engine/assist.js` (priorisation locale des
-  retards branchée sur Aujourd'hui ; signature collée → contact dans
-  l'éditeur, champs vides seulement), `engine/ai.js` (3 familles D5 :
-  clé navigateur Anthropic/Gemini, le reste « via ton ordinateur » en
-  attendant le Compagnon ; erreurs cle/quota/indispo typées ; prompt
-  cadré sans données privées), groupe IA dans Connexions (`oc_ai_v1`
-  scellée), « Proposer un brouillon » dans le composeur (texte dans le
-  champ éditable — relecture par construction, gabarit repli). CSP +
-  api.anthropic.com / generativelanguage.googleapis.com. sw → oc-v21.
-- **Tâche en cours** : P7-1 côté PWA (contrat de missions idempotentes
-  du Compagnon) + P8-1 (« Depuis mes e-mails » dans Recevoir).
-- **Tests exécutés** : `?test` **64/64 verts** ; E2E `e2e-verrou.mjs`
-  (régression P1) + `e2e-recuperation.mjs` (D7 bout en bout : coffre
-  gen 2, anneau gen 2, ancien code refusé, nouveau accepté, donnée
-  re-scellée relue), zéro erreur console. Restes manuels : biométrie
-  PRF sur vrai matériel ; commandes d'anneau entre deux vrais appareils
-  (le moteur est couvert, le transport Trystero n'est pas simulable ici).
-- **Décisions/blocages ouverts** : aucun blocage. Hypothèses externes à
-  vérifier au moment concerné : scope Gmail `gmail.send` (P4), WebAuthn PRF
-  (P1-3), Local Network Access / Trystero-Node (P7), abonnement Claude
-  (P6-2), CORS Zoho/OpenRouter (P6-2).
-- **Risques / précautions** : le binaire Compagnon (P7-2) exige un
-  environnement de build Tauri dédié — hors du conteneur de cette session ;
-  tout le reste (contrats moteur, appairage, UI) se fait côté PWA.
-- **Prochaine action exacte** : implémenter `engine/vault.js` (P0-1) —
-  clé maîtresse AES-GCM, wraps PIN/phrase de secours/PRF, enveloppe `OCV1.`,
-  vecteurs de test dans `tests.js` ; puis P0-2 (couche stockage).
+- **Livré, dans l'ordre** :
+  1. **P0 — coffre** : `engine/vault.js` (clé maîtresse, wraps
+     code/phrase/PRF, `OCV1.`, 256 mots), couche scellante de
+     `engine/storage.js` (SEALABLE, verrou jamais silencieux).
+  2. **P1 — verrou** : `ui/verrou.js` (écran verrouillé, création guidée
+     avec sauvegarde bloquante D15, auto-lock 5/15 min, `requireCode`),
+     bloc sécurité dans Moi (D14, D16).
+  3. **P2 — appareil principal** : `engine/ring.js` (anneau Ed25519 signé,
+     générations, récupération par clé de secours dérivée de la phrase),
+     commandes dans `synclive.js`/`direct.js`, récupération D7 complète.
+  4. **P3-1 — moteur campagnes** : `engine/campaign.js` (Fixe, 15/j
+     glissant, J+7 réels, opposition imposée, ids stables anti-doublon).
+  5. **P4 — envoi direct** : `engine/mailer.js` + `oauth.html` +
+     `ui/connexions.js` + feuille Écrire connectée (brouillon jamais
+     perdu, mailto repli).
+  6. **P5 — campagnes UX** : bifurcation Prospecter, assistant, ligne
+     quotidienne d'Aujourd'hui, feuille du jour (D13), réconciliation
+     des réponses, tags.
+  7. **P6 — IA** : `engine/assist.js` (priorisation retards, signature→
+     contact), `engine/ai.js` (3 familles D5), groupe IA de Connexions,
+     brouillon relu dans le composeur.
+  8. **P7-1/P8-1** : `engine/mission.js` (missions bornées/révocables/
+     idempotentes) ; « Depuis mes e-mails » dans Recevoir (V1 guidée par
+     prompt, aperçu multi-sélection, injection neutralisée par le rail).
+- **Tests** : `?test` **74/74 verts** ; six E2E Playwright dans le
+  scratchpad de session (verrou, récupération, envoi, campagne, IA,
+  analyse) — tous verts, thèmes clair/sombre, 390/1280, zéro erreur
+  console. `sw.js` → **oc-v22**.
+- **Blocages externes (dans l'ordre d'importance)** :
+  1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
+     renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),
+     puis essai réel d'envoi (l'option avancée de Connexions permet de
+     tester avec son propre client avant).
+  2. **Compagnon (Tauri)** = projet distinct : consommer
+     `engine/mission.js`, appairage code court, IMAP/lecture (D8), MCP
+     local (P7-2, P7-3, P8-2). Nécessite un environnement de build dédié.
+  3. Tests manuels sur vrai matériel : biométrie PRF (P1-3), commandes
+     d'anneau entre deux vrais appareils (transport Trystero).
+- **Prochaine action exacte** : au choix du mainteneur — déclarer les
+  apps OAuth (débloque l'envoi réel), ou initier le dépôt Compagnon.
+  Côté PWA, tout nouveau travail = relire `UX-PLAN.md` et repartir des
+  états « bloquée » de `PLAN.md`.
 - **Première vérification à lancer en reprise** :
-  `git log --oneline -5 && git status` puis servir le dossier
+  `git log --oneline -8 && git status`, servir le dossier
   (`python3 -m http.server`) et ouvrir `http://localhost:8000/?test`
-  (tous les tests doivent être verts avant toute modification).
+  (74/74 attendus avant toute modification).

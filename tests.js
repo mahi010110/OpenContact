@@ -34,6 +34,7 @@ import { DAILY_CAP, buildCampaign, dueSends, markSent, markReplied, markError,
          addDays as cAddDays } from './engine/campaign.js';
 import { buildMime, encodeHeader, toB64Url, authUrl, parseCallback, pkcePair } from './engine/mailer.js';
 import { dueFollowups, contactFromSignature } from './engine/assist.js';
+import { makeMission, missionUsable, revokeMission, foldCampaignReport } from './engine/mission.js';
 import { AI_FAMILIES, browserProviders, aiComplete, draftPrompt } from './engine/ai.js';
 
 export async function runSelfTests(){
@@ -671,6 +672,24 @@ export async function runSelfTests(){
       const badRec = await recoveryKeys('mauvaise phrase', 15000);
       const bad = await ringRecover(ring, badRec.seed, { id: 'B', name: 'B' }, kB.pub, newRec.pub);
       ok(!(await mergeRing(ring, bad)).changed);
+    },
+    'missions Compagnon : bornées, révocables, rapport replié sans doublon': () => {
+      const m = makeMission('campaign-run', { campaignId: 'cp1' }, { at: 1000, mid: 'ms1' });
+      ok(missionUsable(m, 1000 + 86400000));                    /* dans la fenêtre */
+      ok(!missionUsable(m, 1000 + 31 * 86400000));              /* expirée */
+      ok(!missionUsable(revokeMission(m), 2000));               /* révoquée */
+      try { makeMission('exfiltrer', {}); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'mission'); }
+      /* le rapport se replie sur le journal : rejouer = rien de plus */
+      const steps = [{ subject: 's', body: 'b' }, { subject: 's', body: 'b' }, { subject: 's', body: 'b' }];
+      let c = buildCampaign({ steps, launchAt: '2026-07-16', targets: [{ cid: 'c1', email: 'a@x.fr' }] });
+      const sid = dueSends(c, '2026-07-16')[0].sid;
+      const report = { mid: 'ms1', sent: [{ sid, at: '2026-07-16' }, { sid, at: '2026-07-16' }] };
+      c = foldCampaignReport(c, report);
+      eq(c.log.length, 1);
+      c = foldCampaignReport(c, report);                        /* l'autre canal rejoue */
+      eq(c.log.length, 1);
+      eq(dueSends(c, '2026-07-16').length, 0);
     },
     'aides : relances dues — retard d’abord, pistes travaillées ensuite': () => {
       const comps = [
