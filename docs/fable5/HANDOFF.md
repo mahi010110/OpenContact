@@ -42,8 +42,14 @@
      local (P7-2, P7-3, P8-2). Nécessite un environnement de build dédié.
   3. Tests manuels sur vrai matériel : biométrie PRF (P1-3), commandes
      d'anneau entre deux vrais appareils (transport Trystero).
-- **Prochaine action exacte** : au choix du mainteneur — déclarer les
-  apps OAuth (débloque l'envoi réel), ou initier le dépôt Compagnon.
+- **Étude Compagnon (E4)** : `ETUDE-COMPAGNON.md` livrée — recommandation
+  **hybride Tauri** (Rust = trousseau, sockets IMAP/SMTP, vie du processus,
+  MCP `rmcp` ; cerveau = les mêmes modules `engine/` JS + Trystero dans une
+  webview cachée, secrets jamais côté JS), et dossier `compagnon/` dans ce
+  dépôt. **Arbitrage mainteneur attendu (D17, D18) — rien n'est validé,
+  aucun code Compagnon avant.**
+- **Prochaine action exacte** : au choix du mainteneur — arbitrer l'étude
+  Compagnon (D17/D18), déclarer les apps OAuth (débloque l'envoi réel).
   Côté PWA, tout nouveau travail = relire `UX-PLAN.md` et repartir des
   états « bloquée » de `PLAN.md`.
 - **Première vérification à lancer en reprise** :

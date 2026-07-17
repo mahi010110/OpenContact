@@ -12,6 +12,7 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | E1 | Étude de faisabilité v1 + v2 (8 arbitrages) | Études livrées, arbitrages D1–D12 consignés | — | terminée | Décisions dans `CONTEXT.md` |
 | E2 | Plan UX complet | Livré, validé le 2026-07-16 | E1 | terminée | `UX-PLAN.md` |
 | E3 | Consigner la direction UX choisie | D13–D16 dans `CONTEXT.md`, `UX-PLAN.md` créé | E2 | terminée | Relecture mainteneur |
+| E4 | Étude Rust vs Node.js pour le cœur permanent du Compagnon | `ETUDE-COMPAGNON.md` — recommandation : hybride Tauri (adaptateurs Rust + cerveau JS `engine/` partagé) | E1 | **terminée — arbitrage mainteneur attendu (D17, D18)** | Aucun code Compagnon avant l'arbitrage |
 
 ## Phase 0 — Socle coffre (moteur seul)
 
