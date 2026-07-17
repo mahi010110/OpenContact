@@ -99,7 +99,12 @@
     multi-sélection — E2E vrai binaire, corpus piégé, injection
     neutralisée par le rail.
   - **C7 livré** : états partout (éteint/rattrapage, refus/incertain/
-    transitoire, révocations en file), docs, oc-v27.
+    transitoire, révocations en file), docs, oc-v27. **Installable
+    prouvé** : `cargo tauri build --bundles deb` (CLI 2.11) produit
+    `OpenContact Compagnon_0.1.0_amd64.deb` (6,1 Mo, release) —
+    installé et vérifié dans le conteneur (`/usr/bin/oc-compagnon`).
+    AppImage/Windows/macOS : à produire sur les OS cibles (signature
+    comprise — spec §8.3, geste mainteneur).
   - **C8 reporté (après fusion)** : missions depuis le téléphone —
     sync des campagnes/missions entre appareils ou P2P du Compagnon ;
     sur téléphone l'option auto n'apparaît pas (aucune promesse

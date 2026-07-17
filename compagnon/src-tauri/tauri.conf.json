@@ -5,8 +5,8 @@
   "identifier": "app.opencontact.compagnon",
   "build": {
     "frontendDist": "../app",
-    "beforeDevCommand": "node ../preparer.mjs",
-    "beforeBuildCommand": "node ../preparer.mjs"
+    "beforeDevCommand": "node ../preparer.mjs || node preparer.mjs || node compagnon/preparer.mjs",
+    "beforeBuildCommand": "node ../preparer.mjs || node preparer.mjs || node compagnon/preparer.mjs"
   },
   "app": {
     "withGlobalTauri": true,
