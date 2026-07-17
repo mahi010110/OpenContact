@@ -28,9 +28,10 @@
 
   <section class="cg-card">
     <h2>Associer à OpenContact</h2>
-    <p class="hint">Dans OpenContact, ouvre « Moi → Mes appareils » et choisis
-       « Ajouter le Compagnon ». Le code court apparaîtra ici.</p>
-    <button class="btn" id="cgPair" disabled>Bientôt — l’association arrive</button>
+    <div class="cg-code" id="cgCode" hidden></div>
+    <p class="hint" id="cgPairHint">Un code court, à recopier dans OpenContact sur cet ordinateur.</p>
+    <button class="btn" id="cgPair">Afficher le code</button>
+    <button class="btn" id="cgUnpair" hidden>Rompre l’association…</button>
   </section>
 
   <section class="cg-card">

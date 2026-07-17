@@ -34,6 +34,14 @@ body{
 }
 .btn:disabled{ opacity:.55; cursor:default; }
 .cg-opt{ display:flex; gap:8px; align-items:center; }
+.cg-code{
+  font-family:'Silkscreen', monospace;
+  font-size:26px; letter-spacing:2px; text-align:center;
+  padding:12px; margin:4px 0 10px;
+  background:var(--paper, #F7F6F1);
+  border:2px solid var(--accent, #0B7268);
+  color:var(--accent, #0B7268);
+}
 .cg-tech summary{ font-family:'Silkscreen', monospace; font-size:12px; cursor:pointer; }
 @media (prefers-color-scheme: dark){
   body{ background:var(--paper, #1E232B); color:var(--ink, #E8E6DF); }

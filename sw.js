@@ -4,17 +4,17 @@
    arrière-plan — la version suivante s'applique à l'ouverture d'après.
    Jamais mis en cache : le géocodage (données fraîches) et les tuiles de
    carte (volume) — la carte demande donc du réseau, tout le reste non. */
-const CACHE = 'oc-v24';
+const CACHE = 'oc-v25';
 const PRECACHE = ['./', './index.html', './app.js', './tests.js',
   './engine/crypto.js', './engine/exchange.js', './engine/filter.js',
   './engine/geo.js', './engine/merge.js', './engine/model.js',
   './engine/score.js', './engine/storage.js', './engine/sync.js', './engine/utils.js',
-  './engine/vault.js', './engine/ring.js', './engine/campaign.js', './engine/mailer.js', './engine/assist.js', './engine/ai.js', './engine/mission.js',
+  './engine/vault.js', './engine/ring.js', './engine/campaign.js', './engine/mailer.js', './engine/assist.js', './engine/ai.js', './engine/mission.js', './engine/companion.js',
   './ui/dom.js', './ui/dates.js', './ui/state.js', './ui/actions.js', './ui/sort.js', './ui/verrou.js',
   './ui/mail.js', './ui/capture.js', './ui/fiche.js', './ui/today.js',
   './ui/pistes.js', './ui/moi.js', './ui/echanger.js', './ui/direct.js', './ui/synclive.js',
   './ui/contact.js', './ui/edit.js', './ui/prospect.js',
-  './ui/qr.js', './ui/donner.js', './ui/recevoir.js', './ui/profil.js', './ui/connexions.js', './ui/campagnes.js', './oauth.html',
+  './ui/qr.js', './ui/donner.js', './ui/recevoir.js', './ui/profil.js', './ui/connexions.js', './ui/campagnes.js', './ui/compagnon.js', './oauth.html',
   './assets/vendor/qrcode-generator.mjs', './assets/vendor/jsQR.js',
   './assets/vendor/trystero-nostr.min.js',
   './manifest.webmanifest', './icon.svg',
@@ -124,9 +124,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  if (url.hostname.includes('nominatim') ||
-      url.hostname.includes('cartocdn') ||
-      url.hostname.includes('tile.openstreetmap')) return;   /* réseau direct */
+  /* seulement NOTRE origine : les API (géocodage, messagerie, IA) et
+     le canal local du Compagnon ne passent JAMAIS par le cache — une
+     réponse d'API resservie est un mensonge (sel d'appairage périmé,
+     quota fantôme…) */
+  if (url.origin !== location.origin) return;
   /* toute navigation ressert l'app (page unique) — SAUF le retour
      OAuth : oauth.html doit se servir lui-même, sinon la fenêtre
      d'autorisation rouvre l'app et le jeton n'arrive jamais */

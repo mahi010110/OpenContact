@@ -22,3 +22,4 @@ binaire>`. Les captures vont dans `captures/` (non versionné).
 | `e2e-ia.mjs` | « Proposer un brouillon » intercepté, quota (429) proprement, rien de perdu |
 | `e2e-analyse.mjs` | « Depuis mes e-mails » : prompt copié, aperçu multi-sélection, lien piégé neutralisé, confiance non transmise |
 | `e2e-oauth-sw.mjs` | Le service worker ne détourne jamais `oauth.html` ; le jeton revient par postMessage |
+| `e2e-compagnon.mjs` | Appairage du Compagnon contre un faux au protocole exact : mauvais code refusé, clé de canal scellée, anneau (rôle companion), présence, rupture propre |

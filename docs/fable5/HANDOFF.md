@@ -60,8 +60,17 @@
     qui **compile et démarre** (xvfb : « compagnon : prêt ») ; cerveau
     webview qui charge le **moteur partagé copié par `preparer.mjs`**
     (vérifié : « moteur partagé chargé ✓ »).
-  - Suite : C2 appairage + « Mes appareils », C3 missions, C4 exécution
-    app fermée, C5 messageries, C6 analyse, C7 états (PLAN.md).
+  - **C2 livré** : canal local 127.0.0.1 (tout en enveloppes `OCV1.`,
+    jamais de clair), appairage par code court (PBKDF2 partagé JS/Rust,
+    5 essais, 2 min), secrets au trousseau OS (repli fichier 0600),
+    « Ajouter le Compagnon » dans Mes appareils (associer, présence
+    prêt/éteint, rompre — anneau nettoyé, Compagnon prévenu), clé
+    `oc_companion_v1` scellée. E2E contre un faux Compagnon au
+    protocole exact + canal du vrai binaire interrogé sous xvfb.
+    Au passage : **le SW ne touche plus aux requêtes hors origine**
+    (il mettait en cache les réponses d'API — sel d'appairage périmé).
+  - Suite : C3 missions confiées, C4 exécution app fermée, C5
+    messageries, C6 analyse, C7 états (PLAN.md).
 - **Prochaine action exacte** : au choix du mainteneur — arbitrer l'étude
   Compagnon (D17/D18), déclarer les apps OAuth (débloque l'envoi réel).
   Côté PWA, tout nouveau travail = relire `UX-PLAN.md` et repartir des

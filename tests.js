@@ -38,6 +38,7 @@ import { buildMime, encodeHeader, toB64Url, authUrl, parseCallback, pkcePair } f
 import { dueFollowups, contactFromSignature } from './engine/assist.js';
 import { makeMission, missionUsable, revokeMission, foldCampaignReport,
          signMission, openMissionWire } from './engine/mission.js';
+import { normCode, pairKey } from './engine/companion.js';
 import { AI_FAMILIES, browserProviders, aiComplete, draftPrompt } from './engine/ai.js';
 
 export async function runSelfTests(){
@@ -738,6 +739,20 @@ export async function runSelfTests(){
       eq(await openMissionWire(wire, 'B6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg', 1752624000001), null);
       /* signée mais expirée = rien (missionUsable est dans le fil) */
       eq(await openMissionWire(wire, pub, 1755216000001), null);
+    },
+    'compagnon : code toléré à la saisie, clé du code = vecteur du cœur Rust': async () => {
+      eq(normCode(' abcd 2345 '), 'ABCD-2345');
+      eq(normCode('abcd-2345'), 'ABCD-2345');
+      eq(normCode('AB'), 'AB');
+      /* la dérivation (PBKDF2 « code: », 120 000 itér.) DOIT donner la
+         même clé que compagnon/coeur (enveloppe.rs, vecteur figé) : on
+         scelle avec la clé dérivée, on ouvre avec la clé brute du vecteur */
+      const selB64 = btoa(String.fromCharCode(...Array.from({ length: 16 }, (_, i) => i)));
+      const k = await pairKey('abcd2345', selB64);
+      const env = await sealValue(k, 'canal', 'preuve');
+      const raw = Uint8Array.from(atob('0zhUpHdF75HUrzrxzTIA1kwhXaMNsx8wJzed3TBbiwk='), c => c.charCodeAt(0));
+      const kBrut = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
+      eq(await openValue(kBrut, 'canal', env), 'preuve');
     },
     'aides : relances dues — retard d’abord, pistes travaillées ensuite': () => {
       const comps = [

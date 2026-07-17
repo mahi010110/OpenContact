@@ -18,7 +18,7 @@ import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
          ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor, deviceIn } from '../engine/ring.js';
 import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
          DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, PROMO_KEY, VAULT_KEY,
-         CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY,
+         CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY,
          kvGet, kvSet, kvDel, docDel } from '../engine/storage.js';
 import { S, bus, applySynced, saveProfile, logJ } from './state.js';
 import { ic, toast, showUndo } from './dom.js';
@@ -107,7 +107,7 @@ export async function amMain(){
   return r.main === (await deviceSelf()).id;
 }
 /* les clés de CET appareil — créées au premier besoin */
-async function ensureKeys(){
+export async function ensureKeys(){
   await loadRingSt();
   if (ringSt && ringSt.keys) return ringSt.keys;
   if (!(await edAvailable())) return null;
@@ -170,6 +170,18 @@ export async function ringMakeMain(targetId){
   emit();
   return true;
 }
+/* le principal inscrit le Compagnon dans l'anneau (rôle companion) —
+   identité apprise sur le canal local authentifié par le code court */
+export async function ringAddCompanion(dev){
+  if (!(await amMain())) return false;
+  ringSt.ring = await ringAddDevice(ringSt.ring, ringSt.keys.seed,
+    { id: dev.id, name: dev.name, pub: dev.pub, role: 'companion' });
+  await saveRingSt();
+  logJ('Compagnon associé : ' + dev.name);
+  sendRing();
+  emit();
+  return true;
+}
 /* réception d'un anneau distant : fusion vérifiée, puis les
    commandes qui me visent — appliquées UNE fois, même hors ligne
    au moment de l'émission (elles voyagent dans l'anneau) */
@@ -199,7 +211,7 @@ async function onRingMsg(incoming){
          identité d'appareil, documents (CV, lettre) */
       for (const k of [DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY,
                        SYNC_KEY, RELAYS_KEY, PROMO_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY,
-                       CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY]) await kvDel(k);
+                       CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY]) await kvDel(k);
       for (const dk of ['cv', 'lettre']) await docDel(dk).catch(() => {});
       location.replace(location.pathname);
       return;

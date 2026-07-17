@@ -21,6 +21,23 @@ import { getSync, startSync, breakLink, keepMyProfile, makePhrase, openRoom,
          getRing, amMain, ringDo, ringMakeMain } from './synclive.js';
 import { deviceIn } from '../engine/ring.js';
 import { requireCode } from './verrou.js';
+import { loadCompanion, openAddCompanion, openCompanionSheet, companionPresence } from './compagnon.js';
+
+const isDesktop = () => matchMedia('(min-width:901px)').matches;
+/* la ligne Compagnon — présente avec ou sans phrase de liaison */
+const compRowHTML = comp => comp
+  ? `<button class="dev-row dev-open" id="devComp"><b>${esc(comp.nom || 'Compagnon')}</b> <span class="tag-beta">compagnon</span>
+       <span class="dev-sub" id="devCompSub">état… · gérer ›</span></button>`
+  : '';
+function wireComp(q, comp, render){
+  q('#devAddComp')?.addEventListener('click', () => openAddCompanion(render));
+  if (!comp) return;
+  q('#devComp')?.addEventListener('click', () => openCompanionSheet(comp, render));
+  companionPresence().then(p => {
+    const el = q('#devCompSub');
+    if (el) el.textContent = (p && p.state === 'on' ? 'prêt' : 'éteint') + ' · gérer ›';
+  });
+}
 
 const agoLabel = t => {
   const m = Math.round((Date.now() - t) / 60000);
@@ -115,6 +132,7 @@ export function openAppareils(){
     const devs = await loadDevices();
     const st = sy.lastStats;
     const iAmMain = await amMain();
+    const comp = await loadCompanion();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
@@ -138,6 +156,10 @@ export function openAppareils(){
            : `<div class="dev-row"><b>${esc(d.name)}</b>${roleTag(d.id)}<span class="dev-sub">${agoLabel(d.seen || 0)}</span>
                 <button class="abtn abtn-sm" data-rm="${esc(d.id)}" aria-label="Retirer ${esc(d.name)}" title="Retirer">${ic('trash', 'ic-14')}</button>
               </div>`).join('')}
+         ${comp ? compRowHTML(comp)
+           : (iAmMain && isDesktop()
+             ? `<button class="linklike" id="devAddComp" style="margin-top:6px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
+             : '')}
          ${getRing() && !iAmMain ? `<p class="hint" style="margin-top:6px">Seul ton appareil principal peut gérer les autres.</p>` : ''}
          ${1 + devs.length > DEVICES_MAX
            ? `<p class="hint warn" style="margin-top:6px">Plus de ${DEVICES_MAX} appareils — change la phrase de liaison pour écarter ceux que tu ne reconnais pas.</p>`
@@ -168,6 +190,7 @@ export function openAppareils(){
         const d = devs.find(x => x.id === b.dataset.dev);
         if (d) openDeviceSheet(d, render);
       }));
+    wireComp(q, comp, render);
     sh.setFoot([
       btn('Rompre le lien', 'btn-ghost', async () => {
         const ok = await confirmSheet({
@@ -183,7 +206,8 @@ export function openAppareils(){
     ]);
   }
 
-  function renderStart(changing){
+  async function renderStart(changing){
+    const comp = await loadCompanion();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 12px">${changing
@@ -192,8 +216,16 @@ export function openAppareils(){
        <div class="pick-list">
          <button class="pick" id="syNew"><b>${ic('sparkles', 'ic-14')} Créer une phrase</b><span>je commence ici</span></button>
          <button class="pick" id="syJoin"><b>${ic('switch', 'ic-14')} Entrer une phrase</b><span>j’en ai déjà une</span></button>
-       </div>`;
+       </div>
+       ${comp ? `<div class="sy-devs" style="margin-top:14px">
+           <div class="lbl-row" style="margin-bottom:6px"><label>Appareils reliés</label></div>
+           ${compRowHTML(comp)}
+         </div>` : ''}
+       ${!changing && !comp && isDesktop()
+         ? `<button class="linklike" id="devAddComp" style="margin-top:12px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
+         : ''}`;
     sh.setFoot(changing ? [btn('← Retour', 'btn-ghost', render)] : null);
+    wireComp(q, comp, render);
     q('#syNew').addEventListener('click', () => { startSync(makePhrase()); render(); });
     q('#syJoin').addEventListener('click', () => {
       sh.body.innerHTML =

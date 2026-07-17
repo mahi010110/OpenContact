@@ -1,25 +1,50 @@
 /* Compagnon — le cerveau (webview). Il exécute les MÊMES modules
    engine/ que la PWA (copiés par preparer.mjs — source unique) et
    demande tout le natif à la coquille Rust par `invoke` : jamais de
-   réseau ni de secret côté JS (D17). C1 : état + démarrage auto ;
-   l'association, les missions et les envois arrivent aux phases
-   suivantes. */
-const invoke = window.__TAURI__ && window.__TAURI__.core
-  ? window.__TAURI__.core.invoke
-  : async () => { throw new Error('hors Tauri'); };
+   réseau ni de secret côté JS (D17). C2 : état, appairage par code
+   court, démarrage auto. */
+const T = window.__TAURI__;
+const invoke = T && T.core ? T.core.invoke : async () => { throw new Error('hors Tauri'); };
 
 const q = s => document.querySelector(s);
 
-/* état de la coquille */
-try {
-  const e = await invoke('etat_compagnon');
-  q('#cgVer').textContent = 'v' + e.version;
-  q('#cgAssoc').textContent = e.associe
-    ? 'Associé à ton OpenContact ✓'
-    : 'Pas encore associé.';
-} catch (err) {
-  q('#cgAssoc').textContent = 'Coquille injoignable — lance le Compagnon, pas la page seule.';
+async function majEtat(){
+  try {
+    const e = await invoke('etat_compagnon');
+    q('#cgVer').textContent = 'v' + e.version;
+    q('#cgAssoc').textContent = e.associe
+      ? `Associé à « ${e.pair || 'ton OpenContact'} » ✓`
+      : 'Pas encore associé.';
+    q('#cgPair').hidden = e.associe;
+    q('#cgUnpair').hidden = !e.associe;
+    if (e.associe){ q('#cgCode').hidden = true; }
+  } catch (err) {
+    q('#cgAssoc').textContent = 'Coquille injoignable — lance le Compagnon, pas la page seule.';
+  }
 }
+await majEtat();
+
+/* appairage : un code court à recopier dans OpenContact */
+q('#cgPair').disabled = false;
+q('#cgPair').addEventListener('click', async () => {
+  try {
+    const code = await invoke('appairage_demarrer');
+    const el = q('#cgCode');
+    el.hidden = false;
+    el.textContent = code;
+    q('#cgPairHint').textContent =
+      'Recopie ce code dans OpenContact : Moi → Mes appareils → « Ajouter le Compagnon ». Il expire dans 2 minutes.';
+  } catch (e) {}
+});
+q('#cgUnpair').addEventListener('click', async () => {
+  try { await invoke('dissocier'); } catch (e) {}
+  q('#cgPairHint').textContent = '';
+  majEtat();
+});
+if (T && T.event) T.event.listen('oc://associe', () => {
+  q('#cgPairHint').textContent = '';
+  majEtat();
+});
 
 /* démarrage automatique (optionnel) */
 const auto = q('#cgAuto');

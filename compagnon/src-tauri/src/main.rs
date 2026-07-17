@@ -10,7 +10,10 @@ use tauri::{
     Manager,
 };
 
+mod canal;
 mod commandes;
+mod partage;
+mod secrets;
 
 fn montrer(app: &tauri::AppHandle) {
     if let Some(w) = app.get_webview_window("principal") {
@@ -33,9 +36,21 @@ fn main() {
             commandes::garde_autoriser,
             commandes::verifier_mission_signee,
             commandes::autostart_etat,
-            commandes::autostart_regler
+            commandes::autostart_regler,
+            commandes::appairage_demarrer,
+            commandes::appairage_annuler,
+            commandes::appairage_sel,
+            commandes::dissocier
         ])
         .setup(|app| {
+            /* l'état partagé (identité, association) + le canal local */
+            let dossier = app
+                .path()
+                .app_data_dir()
+                .expect("dossier de données");
+            let p = std::sync::Arc::new(partage::Partage::ouvrir(dossier));
+            app.manage(p.clone());
+            canal::demarrer(p, app.handle().clone());
             // un bureau sans zone de notification ne doit pas empêcher
             // le Compagnon de vivre : la fenêtre reste le poste de repli
             let tray = (|| -> tauri::Result<()> {
