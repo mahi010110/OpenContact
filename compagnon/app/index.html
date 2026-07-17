@@ -35,6 +35,26 @@
   </section>
 
   <section class="cg-card">
+    <h2>Messagerie</h2>
+    <p class="hint">Pour envoyer tes campagnes : Gmail avec un <b>mot de passe
+       d’application</b> (jamais ton mot de passe habituel). Il reste dans le
+       trousseau de cet ordinateur.</p>
+    <div class="cg-form">
+      <label>Adresse d’envoi <input id="cgDe" type="email" placeholder="toi@gmail.com"></label>
+      <label>Mot de passe d’application <input id="cgMdp" type="password" autocomplete="off"></label>
+      <details class="cg-tech"><summary>Autre fournisseur (avancé)</summary>
+        <label>Serveur SMTP <input id="cgHote" placeholder="smtp.gmail.com"></label>
+        <label>Port <input id="cgPort" type="number" placeholder="465"></label>
+        <label>Sécurité
+          <select id="cgSec"><option value="tls">TLS (465)</option><option value="starttls">STARTTLS (587)</option></select>
+        </label>
+      </details>
+      <button class="btn" id="cgMailOk">Enregistrer</button>
+      <span class="hint" id="cgMailEtat"></span>
+    </div>
+  </section>
+
+  <section class="cg-card">
     <h2>Démarrage</h2>
     <label class="cg-opt">
       <input type="checkbox" id="cgAuto">

@@ -17,6 +17,7 @@
 pub mod enveloppe;
 pub mod garde;
 pub mod mission;
+pub mod planifier;
 
 pub use enveloppe::{cle_du_code, ouvrir, sceller, ITER_APPAIRAGE};
 pub use garde::{dans_fenetre, Garde, Refus as RefusGarde, PLAFOND_JOUR};

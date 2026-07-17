@@ -43,6 +43,13 @@ body{
   color:var(--accent, #0B7268);
 }
 .cg-tech summary{ font-family:'Silkscreen', monospace; font-size:12px; cursor:pointer; }
+.cg-form{ display:grid; gap:8px; margin-top:8px; }
+.cg-form label{ display:grid; gap:3px; font-size:13px; }
+.cg-form input, .cg-form select{
+  font:inherit; padding:6px 8px;
+  border:2px solid var(--ink, #1E232B);
+  background:var(--paper, #F7F6F1);
+}
 @media (prefers-color-scheme: dark){
   body{ background:var(--paper, #1E232B); color:var(--ink, #E8E6DF); }
 }

@@ -61,6 +61,22 @@ pub fn autostart_regler(app: tauri::AppHandle, actif: bool) -> Result<(), String
     if actif { al.enable() } else { al.disable() }.map_err(|e| e.to_string())
 }
 
+/// Trace de vie du cerveau (webview) — visible au journal du processus.
+#[tauri::command]
+pub fn cerveau_pret() {
+    println!("compagnon : cerveau vivant (webview OK)");
+}
+
+/// Réglage messagerie : lu sans le mot de passe (il reste au trousseau).
+#[tauri::command]
+pub fn mail_reglage_lire(p: State<Arc<Partage>>) -> crate::envoi::ReglageMail {
+    p.reglage_mail().0
+}
+#[tauri::command]
+pub fn mail_reglage_ecrire(p: State<Arc<Partage>>, reglage: crate::envoi::ReglageMail, mdp: String) {
+    p.ecrire_reglage_mail(&reglage, &mdp);
+}
+
 #[tauri::command]
 pub fn etat_compagnon(p: State<Arc<Partage>>) -> Etat {
     Etat {

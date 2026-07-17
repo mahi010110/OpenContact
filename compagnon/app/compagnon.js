@@ -46,6 +46,33 @@ if (T && T.event) T.event.listen('oc://associe', () => {
   majEtat();
 });
 
+/* messagerie : Gmail (mot de passe d'application) en chemin principal */
+try {
+  const r = await invoke('mail_reglage_lire');
+  if (r){
+    q('#cgDe').value = r.de || '';
+    q('#cgHote').value = r.hote || '';
+    q('#cgPort').value = r.port || '';
+    q('#cgSec').value = r.securite || 'tls';
+    if (r.de) q('#cgMailEtat').textContent = 'réglée ✓';
+  }
+} catch (e) {}
+q('#cgMailOk').addEventListener('click', async () => {
+  const de = q('#cgDe').value.trim();
+  const reglage = {
+    de,
+    utilisateur: de,
+    hote: q('#cgHote').value.trim() || 'smtp.gmail.com',
+    port: +q('#cgPort').value || 465,
+    securite: q('#cgSec').value || 'tls'
+  };
+  try {
+    await invoke('mail_reglage_ecrire', { reglage, mdp: q('#cgMdp').value });
+    q('#cgMdp').value = '';
+    q('#cgMailEtat').textContent = 'réglée ✓ — le mot de passe est au trousseau';
+  } catch (e) { q('#cgMailEtat').textContent = 'pas enregistré — réessaie'; }
+});
+
 /* démarrage automatique (optionnel) */
 const auto = q('#cgAuto');
 try { auto.checked = await invoke('autostart_etat'); } catch (e) {}

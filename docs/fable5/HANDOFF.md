@@ -69,8 +69,24 @@
     protocole exact + canal du vrai binaire interrogé sous xvfb.
     Au passage : **le SW ne touche plus aux requêtes hors origine**
     (il mettait en cache les réponses d'API — sel d'appairage périmé).
-  - Suite : C3 missions confiées, C4 exécution app fermée, C5
-    messageries, C6 analyse, C7 états (PLAN.md).
+  - **C3+C4 livrés — le Compagnon envoie, app fermée, pour de vrai** :
+    bon de mission signé confié sur le canal (re-vérifié à chaque
+    lecture), **planificateur Rust** (`coeur/planifier.rs`, miroir du
+    moteur JS sous fixtures croisées — décision prise après preuve que
+    la webview ne tourne pas en headless), journal scellé écrit AVANT
+    l'envoi (incertain→fait, refus=erreur, transitoire re-tentable),
+    SMTP lettre/rustls (réglage scellé, mot de passe d'application au
+    trousseau — fenêtre Messagerie du Compagnon), plafond global et
+    fenêtre re-vérifiés par la garde à chaque envoi. PWA : « Qui
+    appuie sur Envoyer ? » au contrôle (D13 : toi par défaut), ligne
+    « ton ordinateur s'en occupe », feuille confiée avec état honnête
+    et « Reprendre la main » (révocation, mise en file si éteint),
+    rapport replié idempotent. E2E contre le VRAI binaire : envois
+    SMTP réels, kill −9 + relance = zéro doublon.
+    Crochets de développement (jamais en prod) : OC_APPAIRAGE_AUTO,
+    OC_SMTP_TEST, OC_TICK_MS, OC_FENETRE_TEST.
+  - Suite : C5 lecture des réponses (IMAP), C6 analyse d'e-mails,
+    C7 états & finitions (PLAN.md).
 - **Prochaine action exacte** : au choix du mainteneur — arbitrer l'étude
   Compagnon (D17/D18), déclarer les apps OAuth (débloque l'envoi réel).
   Côté PWA, tout nouveau travail = relire `UX-PLAN.md` et repartir des

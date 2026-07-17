@@ -76,6 +76,12 @@ impl Garde {
         Ok(())
     }
 
+    /// Bloquer un identifiant SANS le compter dans le plafond du jour
+    /// (envoi refusé : rien n'est parti, mais jamais re-tenté en silence).
+    pub fn bloquer(&mut self, sid: &str) {
+        self.faits.insert(sid.to_string());
+    }
+
     /// À consigner après un envoi CONFIRMÉ par le fournisseur
     /// seulement — jamais sur un résultat incertain. Idempotent.
     pub fn consigner(&mut self, sid: &str, date: &str) {

@@ -3,6 +3,8 @@
 //! cours. Les secrets vivent dans `Secrets` ; le non-secret
 //! (association, identité publique) dans `etat.json`.
 
+use crate::coffrelocal::CoffreLocal;
+use crate::envoi::ReglageMail;
 use crate::secrets::Secrets;
 use base64::engine::general_purpose::{STANDARD as B64, URL_SAFE_NO_PAD};
 use base64::Engine;
@@ -40,6 +42,7 @@ pub struct Appairage {
 
 pub struct Partage {
     pub secrets: Secrets,
+    pub coffre: CoffreLocal,
     dossier: PathBuf,
     pub id: String,
     pub pub_b64url: String,
@@ -95,8 +98,10 @@ impl Partage {
             .and_then(|h| h.into_string().ok())
             .unwrap_or_else(|| "Ordinateur".into());
 
+        let coffre = CoffreLocal::ouvrir(&secrets, dossier.clone());
         let p = Partage {
             secrets,
+            coffre,
             dossier,
             id: disque.id.clone(),
             pub_b64url,
@@ -131,6 +136,29 @@ impl Partage {
         *self.canal_k.lock().unwrap() = None;
         self.secrets.effacer("canal.k");
         self.persister();
+    }
+
+    /// Le réglage messagerie (scellé) + le mot de passe (trousseau).
+    pub fn reglage_mail(&self) -> (ReglageMail, String) {
+        let r = self
+            .coffre
+            .lire("mail")
+            .and_then(|s| serde_json::from_str(&s).ok())
+            .unwrap_or_default();
+        let mdp = self
+            .secrets
+            .lire("mail.mdp")
+            .and_then(|v| String::from_utf8(v).ok())
+            .unwrap_or_default();
+        (r, mdp)
+    }
+    pub fn ecrire_reglage_mail(&self, r: &ReglageMail, mdp: &str) {
+        if let Ok(s) = serde_json::to_string(r) {
+            self.coffre.ecrire("mail", &s);
+        }
+        if !mdp.is_empty() {
+            self.secrets.ecrire("mail.mdp", mdp.as_bytes());
+        }
     }
 
     pub fn sceller_canal(&self, k: [u8; 32], assoc: Association) {

@@ -14,17 +14,23 @@ import { buildCampaign, dueSends, dueSendsAll, markSent, markReplied, markError,
          pauseCampaign, resumeCampaign, stopCampaign, campaignStats,
          DAILY_CAP, OPPOSITION, inSendWindow, SEND_WINDOW_TXT } from '../engine/campaign.js';
 import { sendMail } from '../engine/mailer.js';
-import { CAMPAIGNS_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { CAMPAIGNS_KEY, MISSIONS_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { makeMission, signMission } from '../engine/mission.js';
+import { probeCompanion, companionCall } from '../engine/companion.js';
 import { S, bus, saveData, logJ, isClosed } from './state.js';
 import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mailAccount, freshToken, openConnexions } from './connexions.js';
 import { requireCode } from './verrou.js';
+import { loadCompanion } from './compagnon.js';
+import { deviceSelf, ensureKeys } from './synclive.js';
 
 let campaigns = null;
 
 export async function loadCampaigns(){
   try { campaigns = JSON.parse(await kvGet(CAMPAIGNS_KEY) || '[]') || []; }
   catch (e) { campaigns = []; }
+  /* en arrière-plan : confier ce qui attend, replier le journal */
+  reconcileCompanion().catch(() => {});
   return campaigns;
 }
 const save = () => kvSet(CAMPAIGNS_KEY, JSON.stringify(campaigns || []));
@@ -34,6 +40,102 @@ const live = () => all().filter(c => c.state === 'ready' || c.state === 'paused'
    toutes campagnes) — la seule liste que l'écran a le droit d'offrir */
 const dueFor = (c, today) => dueSendsAll(all().map(x => x.id === c.id ? c : x), today)
   .filter(d => d.cpId === c.id);
+
+/* ---------- les bons de mission (campagnes confiées au Compagnon) ---------- */
+let missions = null;
+async function loadMissions(){
+  try { missions = JSON.parse(await kvGet(MISSIONS_KEY) || '[]') || []; }
+  catch (e) { missions = []; }
+  return missions;
+}
+const saveMissions = () => kvSet(MISSIONS_KEY, JSON.stringify(missions || []));
+const missionOf = cpId => (missions || []).find(m => m.cpId === cpId && m.state !== 'revoquee');
+
+/* bâtir + signer le bon : la campagne part FIGÉE, la garde Rust du
+   Compagnon re-vérifie la signature à chaque lecture */
+async function buildCampaignMission(c){
+  const self = await deviceSelf();
+  const keys = await ensureKeys();
+  if (!keys) throw new Error('anneau');
+  const m = makeMission('campaign-run', { campaign: {
+    id: c.id, state: 'ready',
+    targets: c.targets.map(t => ({ tid: t.tid, cid: t.cid, email: t.email, who: t.who,
+      startAt: t.startAt, state: t.state, msgs: t.msgs }))
+  } });
+  return { mid: m.mid, cpId: c.id, wire: await signMission(m, self.id, keys.seed),
+    state: 'a_confier', stops: [] };
+}
+async function remettreMission(rec){
+  const assoc = await loadCompanion();
+  if (!assoc) return false;
+  const found = await probeCompanion();
+  if (!found) return false;
+  try {
+    const rep = await companionCall(found.base, assoc.k, { t: 'mission', wire: rec.wire });
+    if (rep && rep.t === 'mission-ok'){ rec.state = 'confiee'; await saveMissions(); return true; }
+  } catch (e) {}
+  return false;
+}
+
+/* la réconciliation : confier ce qui attend, signaler les réponses,
+   replier le journal du Compagnon (idempotent — jamais un doublon) */
+export async function reconcileCompanion(){
+  const assoc = await loadCompanion().catch(() => null);
+  if (!assoc || !campaigns) return;
+  await loadMissions();
+  const autos = all().filter(c => c.auto);
+  if (!autos.length &&
+      !missions.some(m => m.state === 'a_confier' || (m.state === 'revoquee' && !m.revOk))) return;
+  const found = await probeCompanion();
+  if (!found) return;
+  for (const rec of missions.filter(m => m.state === 'a_confier')) await remettreMission(rec);
+  /* révocations en attente (l'ordinateur était éteint au moment du geste) */
+  for (const rec of missions.filter(m => m.state === 'revoquee' && !m.revOk)){
+    try {
+      const r = await companionCall(found.base, assoc.k, { t: 'revoquer', mid: rec.mid });
+      if (r && r.t === 'ok'){ rec.revOk = true; await saveMissions(); }
+    } catch (e) {}
+  }
+  for (const c of autos){
+    const rec = missionOf(c.id);
+    if (!rec) continue;
+    for (const t of c.targets){
+      if (t.state === 'replied' && !rec.stops.includes(t.cid)){
+        try {
+          await companionCall(found.base, assoc.k, { t: 'arreter-cible', cid: t.cid });
+          rec.stops.push(t.cid);
+          await saveMissions();
+        } catch (e) {}
+      }
+    }
+  }
+  try {
+    const rap = await companionCall(found.base, assoc.k, { t: 'rapport' });
+    if (rap && rap.t === 'rapport' && Array.isArray(rap.journal)) foldJournal(rap.journal);
+  } catch (e) {}
+}
+async function foldJournal(journal){
+  let changed = false;
+  campaigns = all().map(c => {
+    if (!c.auto) return c;
+    let cc = c;
+    for (const e of journal){
+      if (!e || !String(e.sid || '').startsWith(c.id + '.')) continue;
+      if (e.etat === 'fait'){
+        const n = (cc.log || []).length;
+        cc = markSent(cc, e.sid, e.date || todayISO());
+        if (cc.log.length !== n) changed = true;
+      } else {
+        /* incertain / erreur : cible marquée, jamais re-tentée en silence */
+        const tid = String(e.sid).split('.').slice(-2, -1)[0];
+        const t = cc.targets.find(x => x.tid === tid);
+        if (t && t.state === 'active'){ cc = markError(cc, tid); changed = true; }
+      }
+    }
+    return cc;
+  });
+  if (changed){ await save(); bus.refresh(); }
+}
 
 /* la piste est-elle dans une campagne vivante ? (tag fiche/board) */
 export function campaignOfPiste(cid){
@@ -70,7 +172,10 @@ export function campaignLines(){
   const out = [];
   for (const c of all()){
     const st = campaignStats(c);
-    if (c.state === 'ready'){
+    if (c.state === 'ready' && c.auto){
+      /* confiée au Compagnon : l'ordinateur appuie, la ligne raconte */
+      out.push({ id: c.id, txt: `${c.name} — ton ordinateur s’en occupe · ${st.sent} envoyé${st.sent > 1 ? 's' : ''}${st.replied ? ' · ' + st.replied + ' réponse' + (st.replied > 1 ? 's' : '') : ''}` });
+    } else if (c.state === 'ready'){
       const due = dueFor(c, today);
       if (due.length)
         out.push({ id: c.id, txt: `${c.name} — ${due.length} envoi${due.length > 1 ? 's' : ''} prêt${due.length > 1 ? 's' : ''}${st.replied ? ' · ' + st.replied + ' réponse' + (st.replied > 1 ? 's' : '') : ''}` });
@@ -105,8 +210,11 @@ export function openCampaignWizard(list){
     if (ct) targets.push({ cid: c.id, name: ct.name || '', role: ct.role || '', email: ct.email, company: c.name, companyObj: c });
     else skipped.push(c);
   }
+  let compAssoc = null;   /* le Compagnon, s'il est associé */
+  loadCompanion().then(a => { compAssoc = a; }).catch(() => {});
   const draft = {
     name: 'Prospection — ' + monthName(),
+    auto: false,           /* D13 : par défaut, c'est TOI qui appuies */
     subject: '', body: '',
     r1: 'Bonjour {{contact}},\n\nJe me permets de revenir vers vous au sujet de mon message envoyé la semaine dernière — je reste très motivé·e à l’idée d’échanger avec {{entreprise}}.\n\nBonne journée,\n{{moi}}',
     r2: 'Bonjour {{contact}},\n\nDernier message de ma part : si le moment est mal choisi, aucun souci — je reste à votre disposition si une opportunité se présente chez {{entreprise}}.\n\nMerci de votre attention,\n{{moi}}'
@@ -156,21 +264,48 @@ export function openCampaignWizard(list){
            <span>${ic('contact', 'ic-14')} ${targets.length} piste${targets.length > 1 ? 's' : ''} · 1 message + 2 relances</span>
            <span>${ic('clock', 'ic-14')} ${DAILY_CAP} envois max par jour, ${SEND_WINDOW_TXT}</span>
            <span>${ic('check', 'ic-14')} S’arrête seule si on te répond</span>
-           <span>${ic('mail', 'ic-14')} ${acct ? 'Depuis <b>' + esc(acct.email || 'ta messagerie') + '</b>' : '<em>Aucune messagerie connectée</em>'}</span>
+           <span>${ic('mail', 'ic-14')} ${draft.auto
+             ? 'Depuis <b>ton ordinateur</b> (Compagnon)'
+             : (acct ? 'Depuis <b>' + esc(acct.email || 'ta messagerie') + '</b>' : '<em>Aucune messagerie connectée</em>')}</span>
          </div>
        </div>
+       ${compAssoc ? `
+       <div class="lbl-row" style="margin:10px 0 6px"><label>Qui appuie sur Envoyer ?</label></div>
+       <div class="pick-list">
+         <button class="pick${draft.auto ? '' : ' on'}" id="czManu" aria-pressed="${!draft.auto}">
+           <b>Je valide chaque jour</b><span>tes envois t’attendent dans « Aujourd’hui »</span></button>
+         <button class="pick${draft.auto ? ' on' : ''}" id="czAutoOpt" aria-pressed="${draft.auto}">
+           <b>Mon ordinateur envoie tout seul</b><span>même app fermée — ${esc(compAssoc.nom || 'Compagnon')}</span></button>
+       </div>
+       <p class="hint" id="czCompEtat"></p>` : ''}
        <details class="pcard pcard-details"><summary><h3>${ic('eye', 'ic-14')} Voir les ${targets.length} emails remplis</h3></summary>
          ${targets.slice(0, 30).map(t =>
            `<div class="cz-preview"><b>${esc(t.who || t.name || t.email)}</b> · ${esc(t.company)}<br>
               <span class="cz-subj">${esc(fillTpl(draft.subject, t.companyObj, t, S.profile))}</span></div>`).join('')}
        </details>
        ${skipped.length ? `<p class="hint warn">${skipped.length} piste${skipped.length > 1 ? 's' : ''} sans email — écartée${skipped.length > 1 ? 's' : ''} : ${esc(skipped.map(c => c.name).join(', ').slice(0, 120))}</p>` : ''}
-       ${acct ? '' : `<p class="hint warn">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
-       <p class="hint">Rien ne part tout seul : chaque jour, tes envois prêts t’attendent dans « Aujourd’hui ».</p>
-       <p class="hint">${ic('lightbulb', 'ic-14')} Ton ordinateur pourra bientôt envoyer même app fermée — le Compagnon arrive.</p>`;
+       ${acct || compAssoc ? '' : `<p class="hint warn">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
+       ${draft.auto ? '' : `<p class="hint">Rien ne part tout seul : chaque jour, tes envois prêts t’attendent dans « Aujourd’hui ».</p>`}`;
     q('#czCx')?.addEventListener('click', () => openConnexions());
+    q('#czManu')?.addEventListener('click', () => { draft.auto = false; stepControl(); });
+    q('#czAutoOpt')?.addEventListener('click', () => { draft.auto = true; stepControl(); });
+    /* honnêteté : l'ordinateur est-il là, sa messagerie est-elle réglée ? */
+    if (compAssoc && draft.auto){
+      (async () => {
+        const el = q('#czCompEtat');
+        if (!el) return;
+        const found = await probeCompanion();
+        if (!found){ el.textContent = 'Ton ordinateur est éteint — la campagne partira à son réveil.'; return; }
+        try {
+          const pong = await companionCall(found.base, compAssoc.k, { t: 'ping' });
+          el.textContent = pong && pong.messagerie === false
+            ? 'Règle d’abord la messagerie dans la fenêtre du Compagnon.'
+            : '';
+        } catch (e) {}
+      })();
+    }
     const bOk = btn('Valider la campagne', 'btn-primary', async () => {
-      if (!mailAccount()){ toast('Connecte d’abord ta messagerie.'); return; }
+      if (!draft.auto && !mailAccount()){ toast('Connecte d’abord ta messagerie.'); return; }
       if (!await requireCode('Ton code, pour valider')) return;
       const c = buildCampaign({
         name: draft.name,
@@ -185,14 +320,35 @@ export function openCampaignWizard(list){
         targets: targets.map(t => ({ cid: t.cid, name: t.name, role: t.role, email: t.email,
           company: t.company, companyObj: t.companyObj }))
       });
+      c.auto = draft.auto;
       campaigns = all().concat([c]);
       await save();
       for (const t of targets){
         const p = S.companies.find(x => x.id === t.cid);
-        if (p) pushHist(p, 'Campagne « ' + c.name + ' » — en file d’envoi');
+        if (p) pushHist(p, 'Campagne « ' + c.name + ' » — ' + (c.auto ? 'confiée à ton ordinateur' : 'en file d’envoi'));
       }
       saveData();
-      logJ('Campagne validée : ' + c.name + ' (' + targets.length + ' pistes)');
+      logJ('Campagne validée : ' + c.name + ' (' + targets.length + ' pistes' + (c.auto ? ', confiée' : '') + ')');
+      if (c.auto){
+        /* le bon signé part tout de suite si l'ordinateur répond,
+           sinon il attend — la réconciliation le remettra */
+        await loadMissions();
+        try {
+          const rec = await buildCampaignMission(c);
+          missions.push(rec);
+          await saveMissions();
+          const ok = await remettreMission(rec);
+          sh.close(null, true);
+          bus.refresh();
+          toast(ok ? 'Confiée à ton ordinateur ✓ — elle partira toute seule.'
+                   : 'Prête — ton ordinateur la prendra à son réveil.');
+        } catch (e) {
+          sh.close(null, true);
+          bus.refresh();
+          toast('Prête — ton ordinateur la prendra à son réveil.');
+        }
+        return;
+      }
       sh.close(null, true);
       bus.refresh();
       toast('Campagne prête ✓ — tes premiers envois t’attendent dans « Aujourd’hui ».');
@@ -251,7 +407,61 @@ export function openCampaignDay(c0){
     }
   };
 
+  /* campagne confiée : l'ordinateur appuie — ici on regarde et on
+     peut reprendre la main, jamais envoyer en double */
+  const renderAuto = () => {
+    const st = campaignStats(c);
+    const closed = c.state === 'done' || c.state === 'stopped';
+    sh.body.innerHTML =
+      `<p class="hint" style="margin:0 0 10px">${st.sent} envoyé${st.sent > 1 ? 's' : ''} · ${st.replied} réponse${st.replied > 1 ? 's' : ''} · ${st.targets} piste${st.targets > 1 ? 's' : ''}</p>
+       ${closed
+         ? `<p class="hint">${c.state === 'done' ? 'Terminée ✓' : 'Arrêtée.'}</p>`
+         : `<p class="hint">${ic('zap', 'ic-14')} Confiée à ton ordinateur — les envois partent tout seuls (${DAILY_CAP}/jour, ${SEND_WINDOW_TXT}).</p>
+            <p class="hint" id="czCompLive">${ic('clock', 'ic-14')} État de ton ordinateur…</p>
+            <button class="linklike" id="czReprendre" style="margin-top:12px">Reprendre la main…</button>`}`;
+    (async () => {
+      const el = q('#czCompLive');
+      if (!el) return;
+      const assoc = await loadCompanion();
+      const found = assoc && await probeCompanion();
+      if (!found){ el.innerHTML = `${ic('clock', 'ic-14')} Ton ordinateur est éteint — il rattrapera à son réveil.`; return; }
+      try {
+        const pong = await companionCall(found.base, assoc.k, { t: 'ping' });
+        el.innerHTML = pong && pong.messagerie === false
+          ? `${ic('square-alert', 'ic-14')} Règle la messagerie dans la fenêtre du Compagnon — rien ne part sans elle.`
+          : `${ic('radio', 'ic-14')} Ton ordinateur est prêt.`;
+      } catch (e) { el.innerHTML = `${ic('clock', 'ic-14')} Ton ordinateur ne répond pas — il rattrapera.`; }
+    })();
+    q('#czReprendre')?.addEventListener('click', async () => {
+      const okv = await confirmSheet({ title: 'Reprendre la main ?', okLabel: 'Reprendre', icon: 'switch',
+        msg: 'Ton ordinateur arrête d’envoyer — s’il est éteint, il l’apprendra à son réveil. Ce qui est parti est au journal ; la suite t’attendra dans « Aujourd’hui ».' });
+      if (!okv) return;
+      if (!await requireCode('Ton code, pour reprendre')) return;
+      await loadMissions();
+      const rec = missionOf(c.id);
+      try {
+        const assoc = await loadCompanion();
+        const found = assoc && await probeCompanion();
+        if (found && rec){
+          const r = await companionCall(found.base, assoc.k, { t: 'revoquer', mid: rec.mid });
+          if (r && r.t === 'ok') rec.revOk = true;
+          const rap = await companionCall(found.base, assoc.k, { t: 'rapport' });
+          if (rap && Array.isArray(rap.journal)) await foldJournal(rap.journal);
+        }
+      } catch (e) {}
+      if (rec){ rec.state = 'revoquee'; await saveMissions(); }
+      c = all().find(x => x.id === c.id) || c;
+      c = Object.assign({}, c, { auto: false });
+      await persist();
+      logJ('Campagne reprise en main : ' + c.name);
+      render();
+      bus.refresh();
+    });
+    sh.setFoot(null);
+  };
+
   const render = () => {
+    if (c.auto){ renderAuto(); return; }
     const st = campaignStats(c);
     const due = c.state === 'ready' ? dueFor(c, today) : [];
     const held = c.state === 'ready' ? dueSends(c, today).length - due.length : 0;
@@ -339,4 +549,9 @@ export function openCampaignDay(c0){
       : null);
   };
   render();
+  /* fraîcheur : replier le journal du Compagnon puis re-peindre */
+  if (c.auto) reconcileCompanion().then(() => {
+    c = all().find(x => x.id === c.id) || c;
+    if (sh.body.isConnected) render();
+  }).catch(() => {});
 }

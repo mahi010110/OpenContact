@@ -156,20 +156,101 @@ fn repondre(
                 Err(_) => return json(403, serde_json::json!({ "e": "canal" })),
             };
             let msg: serde_json::Value = serde_json::from_str(&clair).unwrap_or_default();
-            let rep = match msg["t"].as_str() {
-                Some("ping") => serde_json::json!({ "t": "pong", "nom": p.nom, "associe": true }),
-                Some("dissocier") => {
-                    /* la PWA rompt : le Compagnon oublie tout du pair */
-                    p.dissocier();
-                    use tauri::Emitter;
-                    let _ = app.emit("oc://associe", ());
-                    serde_json::json!({ "t": "ok" })
-                }
-                _ => serde_json::json!({ "t": "?" }),
-            };
+            let rep = repondre_boite(p, app, &msg);
             json(200, serde_json::json!({ "d": sceller(&k, "canal", &rep.to_string(), &iv12()) }))
         }
 
         _ => json(404, serde_json::json!({ "e": "chemin" })),
+    }
+}
+
+/* ---------- la conversation associée : missions, rapport, arrêts ---------- */
+fn repondre_boite(
+    p: &Arc<Partage>,
+    app: &tauri::AppHandle,
+    msg: &serde_json::Value,
+) -> serde_json::Value {
+    use crate::missions::{EtatMissions, MissionRecue};
+    match msg["t"].as_str() {
+        Some("ping") => {
+            let (r, _) = p.reglage_mail();
+            serde_json::json!({ "t": "pong", "nom": p.nom, "associe": true,
+                "messagerie": !r.hote.is_empty() || std::env::var("OC_SMTP_TEST").is_ok() })
+        }
+        Some("dissocier") => {
+            p.dissocier();
+            use tauri::Emitter;
+            let _ = app.emit("oc://associe", ());
+            serde_json::json!({ "t": "ok" })
+        }
+        /* une mission signée est confiée — vérifiée AVANT d'être rangée,
+           et re-vérifiée à chaque lecture par le planificateur */
+        Some("mission") => {
+            let w = &msg["wire"];
+            let (m, sig, dev) = (
+                w["m"].as_str().unwrap_or(""),
+                w["sig"].as_str().unwrap_or(""),
+                w["dev"].as_str().unwrap_or(""),
+            );
+            let assoc = p.assoc.lock().unwrap();
+            let Some(a) = assoc.as_ref() else {
+                return serde_json::json!({ "e": "associe" });
+            };
+            if dev != a.appareil["id"].as_str().unwrap_or("!") {
+                return serde_json::json!({ "e": "appareil" });
+            }
+            let pub_pair = a.appareil["pub"].as_str().unwrap_or("").to_string();
+            drop(assoc);
+            let present = chrono::Local::now().timestamp_millis();
+            let ms = match oc_coeur::verifier_mission(m, sig, &pub_pair, present) {
+                Ok(ms) => ms,
+                Err(e) => return serde_json::json!({ "e": format!("mission:{e:?}") }),
+            };
+            let mut em = EtatMissions::charger(&p.coffre);
+            em.ranger(MissionRecue {
+                mid: ms.mid.clone(),
+                m: m.into(),
+                sig: sig.into(),
+                dev: dev.into(),
+                recu: present,
+                revoquee: false,
+            });
+            em.sauver(&p.coffre);
+            println!("compagnon : mission reçue {}", ms.mid);
+            /* premier passage sans attendre le tick */
+            let p2 = p.clone();
+            std::thread::spawn(move || crate::planif::cycle(&p2));
+            serde_json::json!({ "t": "mission-ok", "mid": ms.mid })
+        }
+        Some("revoquer") => {
+            let mid = msg["mid"].as_str().unwrap_or("");
+            let mut em = EtatMissions::charger(&p.coffre);
+            for mr in em.missions.iter_mut() {
+                if mr.mid == mid {
+                    mr.revoquee = true;
+                }
+            }
+            em.sauver(&p.coffre);
+            println!("compagnon : mission révoquée {mid}");
+            serde_json::json!({ "t": "ok" })
+        }
+        /* réponse reçue côté PWA : la cible s'arrête, non débrayable */
+        Some("arreter-cible") => {
+            let cid = msg["cid"].as_str().unwrap_or("").to_string();
+            if !cid.is_empty() {
+                let mut em = EtatMissions::charger(&p.coffre);
+                if !em.arrets.contains(&cid) {
+                    em.arrets.push(cid);
+                    em.sauver(&p.coffre);
+                }
+            }
+            serde_json::json!({ "t": "ok" })
+        }
+        /* le journal complet — la PWA replie (markSent idempotent) */
+        Some("rapport") => {
+            let em = EtatMissions::charger(&p.coffre);
+            serde_json::json!({ "t": "rapport", "journal": em.journal, "arrets": em.arrets })
+        }
+        _ => serde_json::json!({ "t": "?" }),
     }
 }
