@@ -14,7 +14,8 @@ import { bytesToB64, b64ToBytes, encryptOC2 } from '../engine/crypto.js';
 import { fullPayload } from '../engine/exchange.js';
 import { PIN_LEN, makeVaultPhrase, phraseUnknownWords,
          createVault, unlockWithPin, unlockWithPhrase, unlockWithPrf,
-         setPin, addPrfWrap, removePrfWrap, rotateVault } from '../engine/vault.js';
+         setPin, addPrfWrap, removePrfWrap,
+         rotateVaultResumable, prevKeyOf, clearPrev } from '../engine/vault.js';
 import { VAULT_KEY, kvGet, kvSet, kvDel,
          vaultAttach, vaultDetach, vaultSealAll, vaultOpenAll, vaultReseal } from '../engine/storage.js';
 import { ensureRing, recoverRing } from './synclive.js';
@@ -235,9 +236,15 @@ function openRecovery(onUnlocked){
     sh.setTitle('Renouvellement…');
     sh.body.innerHTML = '<p class="hint" style="margin:12px 0">Nouvelles clés, données re-scellées — quelques secondes.</p>';
     sh.setFoot(null);
-    const rot = await rotateVault(meta, newPin, newPhrase);
-    await vaultReseal(un.key, rot.key);        /* re-scelle tout sous la nouvelle clé */
+    /* ordre vital : la nouvelle métadonnée D'ABORD (elle embarque
+       l'ancienne clé scellée sous la nouvelle — `prev`), le
+       re-scellement ensuite. Interrompu ici = repris au prochain
+       déverrouillage, sans rien perdre (voir initVerrou). */
+    const rot = await rotateVaultResumable(meta, { phrase: oldPhrase }, newPin, newPhrase);
     meta = rot.meta;
+    await saveMeta();
+    await vaultReseal(rot.oldKey, rot.key);
+    meta = clearPrev(meta);
     await saveMeta();
     un = { key: rot.key, gen: meta.gen };
     await recoverRing(oldPhrase, newPhrase).catch(() => {});
@@ -400,6 +407,18 @@ export async function initVerrou(){
   try { meta = JSON.parse(raw); } catch (e) { meta = null; return false; }
   const un = await showLock();
   vaultAttach(un.key);
+  if (meta.prev){
+    /* rotation interrompue : finir le re-scellement, puis solder */
+    try {
+      const pk = await prevKeyOf(meta, un.key);
+      if (pk){
+        await vaultReseal(pk, un.key);
+        meta = clearPrev(meta);
+        await saveMeta();
+        logJ('Rotation du coffre reprise et terminée après interruption');
+      }
+    } catch (e) {}
+  }
   vaultSealAll().catch(() => {});     /* migration : sceller l'existant (idempotent) */
   startIdleWatch();
   return true;

@@ -55,6 +55,8 @@ Celles de `CLAUDE.md` et `CONTRAT.md`, plus, pour ce chantier :
 | D14 | « Verrouillage » et « Connexions » **visibles dans « Moi » pour tous dès la V1** (deux lignes sobres — c'est la découverte du produit) |
 | D15 | Sauvegarde chiffrée **bloquante** à la création du verrou (cohérente avec D7) |
 | D16 | Nom visible du verrou : **« Verrouillage »** (le geste : « Protéger » ; l'état : « protégé / non protégé ») — « profil protégé » reste le terme des docs |
+| D17 | Cœur du Compagnon : **hybride Tauri** (`ETUDE-COMPAGNON.md`) — Rust porte les capacités natives (trousseau OS, IMAP/SMTP, réseau, vie du processus) ; le cerveau JS réutilise les moteurs `engine/` existants ; **Rust re-vérifie les règles critiques avant chaque action** : autorisation, anti-double-envoi, limites, fenêtre horaire, validité de la mission |
+| D18 | Le Compagnon vit dans **`compagnon/` de ce dépôt** — application et build distincts, séparation modulaire nette pour rester déplaçable sans réécriture. Modèle économique, abonnements et paiements : **reportés, rien à développer** |
 
 ## Références dans le dépôt
 

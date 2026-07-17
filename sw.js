@@ -4,7 +4,7 @@
    arrière-plan — la version suivante s'applique à l'ouverture d'après.
    Jamais mis en cache : le géocodage (données fraîches) et les tuiles de
    carte (volume) — la carte demande donc du réseau, tout le reste non. */
-const CACHE = 'oc-v22';
+const CACHE = 'oc-v23';
 const PRECACHE = ['./', './index.html', './app.js', './tests.js',
   './engine/crypto.js', './engine/exchange.js', './engine/filter.js',
   './engine/geo.js', './engine/merge.js', './engine/model.js',
@@ -127,8 +127,12 @@ self.addEventListener('fetch', e => {
   if (url.hostname.includes('nominatim') ||
       url.hostname.includes('cartocdn') ||
       url.hostname.includes('tile.openstreetmap')) return;   /* réseau direct */
-  /* toute navigation ressert l'app (page unique) */
-  const req = (e.request.mode === 'navigate') ? new Request('./index.html') : e.request;
+  /* toute navigation ressert l'app (page unique) — SAUF le retour
+     OAuth : oauth.html doit se servir lui-même, sinon la fenêtre
+     d'autorisation rouvre l'app et le jeton n'arrive jamais */
+  const req = (e.request.mode === 'navigate')
+    ? new Request(url.pathname.endsWith('/oauth.html') ? './oauth.html' : './index.html')
+    : e.request;
   e.respondWith(
     caches.open(CACHE).then(async c => {
       const cached = await c.match(req);

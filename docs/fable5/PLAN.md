@@ -64,6 +64,17 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | P6-1 | Aides sans IA : `engine/assist.js` — priorisation locale des retards (retard puis pistes travaillées, branchée sur « En retard »), signature collée → contact (champs vides seulement, éditeur de contact) | Actions directes dans les parcours existants | P3-1 | terminée | 2 tests moteur verts |
 | P6-2 | Connexions IA (`engine/ai.js` : Anthropic/Gemini par clé navigateur ; OpenAI/OpenRouter/Ollama/ChatGPT marqués « via ton ordinateur ») + « Proposer un brouillon » dans le composeur (texte dans le champ éditable) + groupe IA dans Connexions (`oc_ai_v1` scellée) | Relecture obligatoire ; repli gabarit ; le prompt ne porte que la piste, jamais le suivi privé | P4-2 | terminée | 1 test moteur + E2E `e2e-ia.mjs` vert (proposition interceptée, quota, rien de perdu) |
 
+## Phase V — vérification & durcissement avant fusion
+
+| ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
+|---|---|---|---|---|---|
+| V1 | Coffre : rotation interruptible sans perte | `prev` dans `oc_vault_v1` (ancienne clé scellée sous la nouvelle), méta écrite AVANT le re-scellement, reprise automatique au déverrouillage, `vaultReseal` reprenable | P2-3 | terminée | 2 tests unitaires (rotation interrompue + re-scellement reprenable) ; CONTRAT §1 |
+| V2 | Service worker : le retour OAuth n'est plus détourné | Navigation vers `oauth.html` servie telle quelle (l'app une-page garde le reste) ; favicon de la popup | P4-1 | terminée | E2E `e2e-oauth-sw.mjs` (SW au contrôle, popup + postMessage réels) ; `sw.js` → oc-v23 |
+| V3 | Effacement distant complet | `wipe` emporte AUSSI campagnes, jetons messagerie, clés IA, missions, relais, identité d'appareil et documents (`cv`, `lettre`) | P2-2 | terminée | Liste au CONTRAT §5.7 |
+| V4 | Plafond 15/j GLOBAL + fenêtre d'envoi | `dueSendsAll`/`sentTodayAll` (toutes campagnes), `inSendWindow` (lun–ven 8-19 h locales) ; feuille du jour : boutons retenus hors fenêtre, reste « glisse à demain » | P5-1 | terminée | 1 test unitaire (plafond global + fenêtre) + E2E campagne (samedi = retenu) |
+| V5 | Tests Playwright versionnés | `tests/e2e/` : outillage sans chemin en dur, 7 scénarios + `unitaires.mjs` + `tous.mjs` + README | — | terminée | `node tests/e2e/tous.mjs` : 8/8 verts |
+| V6 | Stockage : connexion IndexedDB fermée de force (navigateurs mobiles sous pression mémoire) | Réouverture à la demande + une re-tentative par requête — plus jamais un `null` silencieux sur connexion morte | — | terminée | Découvert par les E2E (Chromium évince les contextes éphémères) ; suite 8/8 stable |
+
 ## Phase 7 — Compagnon v1
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |

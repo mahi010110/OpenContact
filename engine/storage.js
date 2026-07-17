@@ -51,14 +51,32 @@ function kvOpenIdb(){
     open.onsuccess = () => res(open.result);
   });
 }
-function kvIdbReq(mode, fn){
-  return new Promise((res, rej) => {
-    let rq;
-    try { rq = fn(kvDb.transaction('kv', mode).objectStore('kv')); }
-    catch (e) { return rej(e); }
-    rq.onsuccess = () => res(rq.result);
-    rq.onerror = () => rej(rq.error || new Error('idb'));
-  });
+/* les navigateurs mobiles FERMENT de force une connexion IndexedDB
+   sous pression mémoire (l'onglet reste ouvert !) — la connexion se
+   rouvre donc à la demande, et chaque requête retente UNE fois sur
+   une connexion morte plutôt que d'échouer en silence */
+async function ensureDb(){
+  if (kvDb) return kvDb;
+  kvDb = await kvOpenIdb();
+  kvDb.onclose = () => { kvDb = null; };
+  return kvDb;
+}
+async function kvIdbReq(mode, fn){
+  for (let essai = 0; ; essai++){
+    try {
+      const db = await ensureDb();
+      return await new Promise((res, rej) => {
+        let rq;
+        try { rq = fn(db.transaction('kv', mode).objectStore('kv')); }
+        catch (e) { return rej(e); }
+        rq.onsuccess = () => res(rq.result);
+        rq.onerror = () => rej(rq.error || new Error('idb'));
+      });
+    } catch (e) {
+      kvDb = null;
+      if (essai) throw e;
+    }
+  }
 }
 
 export async function kvInit(){
@@ -66,7 +84,6 @@ export async function kvInit(){
     try { await window.storage.set('oc_probe', '1'); backend = 'claude'; return; } catch (e) {}
   }
   try {
-    kvDb = await kvOpenIdb();
     await kvIdbReq('readwrite', s => s.put('1', 'oc_probe'));
     backend = 'idb';
     return;
@@ -156,15 +173,23 @@ export async function vaultOpenAll(){
   return n;
 }
 /* rotation (récupération, bannissement) : rechiffrer chaque valeur
-   de l'ancienne clé vers la nouvelle, une par une */
+   de l'ancienne clé vers la nouvelle, une par une. REPRENABLE : une
+   valeur déjà sous la nouvelle clé (rotation interrompue puis
+   reprise) est reconnue et laissée telle quelle — seule une valeur
+   qu'aucune des deux clés n'ouvre est une vraie corruption. */
 export async function vaultReseal(oldKey, newKey){
   let n = 0;
   for (const k of SEALABLE){
     const raw = await rawGet(k);
-    if (raw != null && isSealed(raw)){
-      await rawSet(k, await sealValue(newKey, k, await openValue(oldKey, k, raw)));
-      n++;
+    if (raw == null || !isSealed(raw)) continue;
+    let clear;
+    try { clear = await openValue(oldKey, k, raw); }
+    catch (e) {
+      try { await openValue(newKey, k, raw); continue; }
+      catch (e2) { throw new Error('coffre'); }
     }
+    await rawSet(k, await sealValue(newKey, k, clear));
+    n++;
   }
   vKey = newKey;
   return n;

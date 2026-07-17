@@ -10,9 +10,9 @@
    ============================================================ */
 import { esc, todayISO } from '../engine/utils.js';
 import { fillTpl, pushHist } from '../engine/model.js';
-import { buildCampaign, dueSends, markSent, markReplied, markError,
+import { buildCampaign, dueSends, dueSendsAll, markSent, markReplied, markError,
          pauseCampaign, resumeCampaign, stopCampaign, campaignStats,
-         DAILY_CAP, OPPOSITION } from '../engine/campaign.js';
+         DAILY_CAP, OPPOSITION, inSendWindow, SEND_WINDOW_TXT } from '../engine/campaign.js';
 import { sendMail } from '../engine/mailer.js';
 import { CAMPAIGNS_KEY, kvGet, kvSet } from '../engine/storage.js';
 import { S, bus, saveData, logJ, isClosed } from './state.js';
@@ -30,6 +30,10 @@ export async function loadCampaigns(){
 const save = () => kvSet(CAMPAIGNS_KEY, JSON.stringify(campaigns || []));
 const all = () => campaigns || [];
 const live = () => all().filter(c => c.state === 'ready' || c.state === 'paused');
+/* les envois dus de CETTE campagne, sous le plafond GLOBAL (15/j
+   toutes campagnes) — la seule liste que l'écran a le droit d'offrir */
+const dueFor = (c, today) => dueSendsAll(all().map(x => x.id === c.id ? c : x), today)
+  .filter(d => d.cpId === c.id);
 
 /* la piste est-elle dans une campagne vivante ? (tag fiche/board) */
 export function campaignOfPiste(cid){
@@ -67,7 +71,7 @@ export function campaignLines(){
   for (const c of all()){
     const st = campaignStats(c);
     if (c.state === 'ready'){
-      const due = dueSends(c, today);
+      const due = dueFor(c, today);
       if (due.length)
         out.push({ id: c.id, txt: `${c.name} — ${due.length} envoi${due.length > 1 ? 's' : ''} prêt${due.length > 1 ? 's' : ''}${st.replied ? ' · ' + st.replied + ' réponse' + (st.replied > 1 ? 's' : '') : ''}` });
       else if (st.replied && !c.ackR){
@@ -150,7 +154,7 @@ export function openCampaignWizard(list){
          <b>${esc(draft.name)}</b>
          <div class="cz-lines">
            <span>${ic('contact', 'ic-14')} ${targets.length} piste${targets.length > 1 ? 's' : ''} · 1 message + 2 relances</span>
-           <span>${ic('clock', 'ic-14')} ${DAILY_CAP} envois max par jour</span>
+           <span>${ic('clock', 'ic-14')} ${DAILY_CAP} envois max par jour, ${SEND_WINDOW_TXT}</span>
            <span>${ic('check', 'ic-14')} S’arrête seule si on te répond</span>
            <span>${ic('mail', 'ic-14')} ${acct ? 'Depuis <b>' + esc(acct.email || 'ta messagerie') + '</b>' : '<em>Aucune messagerie connectée</em>'}</span>
          </div>
@@ -217,6 +221,7 @@ export function openCampaignDay(c0){
     await save();
   };
   const sendOne = async d => {
+    if (!inSendWindow(new Date())){ toast('Les envois partent ' + SEND_WINDOW_TXT + '.'); return false; }
     const acct = mailAccount();
     if (!acct){ toast('Connecte ta messagerie pour envoyer.'); openConnexions(); return false; }
     try {
@@ -248,20 +253,24 @@ export function openCampaignDay(c0){
 
   const render = () => {
     const st = campaignStats(c);
-    const due = c.state === 'ready' ? dueSends(c, today) : [];
+    const due = c.state === 'ready' ? dueFor(c, today) : [];
+    const held = c.state === 'ready' ? dueSends(c, today).length - due.length : 0;
+    const inWin = inSendWindow(new Date());
     const closed = c.state === 'done' || c.state === 'stopped';
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 10px">${st.sent} envoyé${st.sent > 1 ? 's' : ''} · ${st.replied} réponse${st.replied > 1 ? 's' : ''} · ${st.targets} piste${st.targets > 1 ? 's' : ''}${c.from ? ' · depuis ' + esc(c.from) : ''}</p>
        ${c.state === 'paused' ? `<p class="hint warn">En pause — rien ne part.</p>` : ''}
        ${closed ? `<p class="hint">${c.state === 'done' ? 'Terminée ✓' : 'Arrêtée.'} ${st.replied ? '' : 'Marque les réponses sur les fiches quand elles arrivent.'}</p>` : ''}
+       ${due.length && !inWin ? `<p class="hint warn">Les envois partent ${SEND_WINDOW_TXT} — ils t’attendent ici.</p>` : ''}
        ${due.length ? `<div class="lbl-row"><label>Prêts aujourd’hui (${due.length})</label></div>` : ''}
        ${due.map(d =>
          `<details class="camp-send" data-sid="${esc(d.sid)}">
             <summary><span class="cs-m"><b>${esc(d.who || d.email)}</b>
               <span class="cs-sub">${esc(d.company)} · ${STEP_LABELS[d.step]}</span></span>
-              <button class="btn btn-sm" data-send="${esc(d.sid)}">Envoyer</button></summary>
+              <button class="btn btn-sm" data-send="${esc(d.sid)}"${inWin ? '' : ' disabled'}>Envoyer</button></summary>
             <div class="cs-body"><b>${esc(d.subject)}</b>\n\n${esc(d.body)}</div>
           </details>`).join('')}
+       ${held > 0 ? `<p class="hint">${held} de plus demain — 15/jour, toutes campagnes confondues.</p>` : ''}
        ${!due.length && c.state === 'ready' ? `<p class="hint">${ic('check', 'ic-14')} C’est tout pour aujourd’hui — la suite viendra d’elle-même.</p>` : ''}
        ${!closed ? `<div style="margin-top:14px;display:flex;gap:10px">
           ${c.state === 'paused'
@@ -278,7 +287,7 @@ export function openCampaignDay(c0){
         sending = true;
         b.disabled = true;
         b.textContent = 'Envoi…';
-        const d = dueSends(c, today).find(x => x.sid === b.dataset.send);
+        const d = dueFor(c, today).find(x => x.sid === b.dataset.send);
         if (d) await sendOne(d);
         sending = false;
         render();
@@ -312,19 +321,19 @@ export function openCampaignDay(c0){
     /* le bilan d'une campagne finie ne se rappelle qu'une fois */
     if (closed && !c.ack){ c.ack = true; persist(); }
     if (c.state === 'ready' && campaignStats(c).replied && !c.ackR){ c.ackR = true; persist(); }
-    const due2 = c.state === 'ready' ? dueSends(c, today) : [];
+    const due2 = (c.state === 'ready' && inWin) ? dueFor(c, today) : [];
     sh.setFoot(due2.length > 1
       ? [btn(`Tout envoyer (${due2.length})`, 'btn-primary', async () => {
           if (sending) return;
           sending = true;
-          for (const d of dueSends(c, today)){
+          for (const d of dueFor(c, today)){
             const cont = await sendOne(d);
             if (!cont) break;
           }
           sending = false;
           render();
           bus.refresh();
-          const left = dueSends(c, today).length;
+          const left = dueFor(c, today).length;
           toast(left ? 'Fait ce qui pouvait l’être — ' + left + ' restant.' : 'Envois du jour faits ✓');
         }, 'mail')]
       : null);

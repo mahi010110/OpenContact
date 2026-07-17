@@ -21,17 +21,19 @@ import { scoreOf } from './engine/score.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, SYNC_KEY,
          RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, VAULT_KEY,
          THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1,
-         kvGet, kvSet, kvDel, vaultActive } from './engine/storage.js';
+         kvGet, kvSet, kvDel, vaultActive, vaultDetach, vaultReseal } from './engine/storage.js';
 import { VAULT_WORDS, PHRASE_LEN, makeVaultPhrase, normVaultPhrase, phraseUnknownWords,
          createVault, unlockWithPin, unlockWithPhrase, unlockWithPrf,
          setPin, addPrfWrap, rotateVault,
+         rotateVaultResumable, prevKeyOf, clearPrev,
          sealValue, openValue, isSealed } from './engine/vault.js';
 import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
          ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor,
          verifyRing, deviceIn } from './engine/ring.js';
-import { DAILY_CAP, buildCampaign, dueSends, markSent, markReplied, markError,
+import { DAILY_CAP, buildCampaign, dueSends, dueSendsAll, sentTodayAll,
+         markSent, markReplied, markError,
          pauseCampaign, resumeCampaign, stopCampaign, campaignStats,
-         addDays as cAddDays } from './engine/campaign.js';
+         inSendWindow, addDays as cAddDays } from './engine/campaign.js';
 import { buildMime, encodeHeader, toB64Url, authUrl, parseCallback, pkcePair } from './engine/mailer.js';
 import { dueFollowups, contactFromSignature } from './engine/assist.js';
 import { makeMission, missionUsable, revokeMission, foldCampaignReport } from './engine/mission.js';
@@ -608,6 +610,31 @@ export async function runSelfTests(){
       catch (e) { eq(e.message, 'code'); }
       ok(!!(await unlockWithPin(rot.meta, '444444')).key);
     },
+    'coffre : rotation interrompue — reprise par `prev`, rien de perdu': async () => {
+      const phrase = makeVaultPhrase();
+      const { meta, key } = await createVault('111111', phrase, { iter: 15000 });
+      const e1 = await sealValue(key, 'k1', 'valeur-1');
+      const e2 = await sealValue(key, 'k2', 'valeur-2');
+      /* la rotation exige de re-prouver un secret, jamais la clé seule */
+      try { await rotateVaultResumable(meta, { pin: '999999' }, '222222', makeVaultPhrase(), { iter: 15000 }); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'code'); }
+      const rot = await rotateVaultResumable(meta, { phrase }, '222222', makeVaultPhrase(), { iter: 15000 });
+      eq(rot.meta.gen, 2);
+      ok(isSealed(rot.meta.prev));
+      /* « crash » simulé : la méta est écrite, seule k1 est re-scellée */
+      const n1 = await sealValue(rot.key, 'k1', await openValue(rot.oldKey, 'k1', e1));
+      /* reprise au déverrouillage suivant : la nouvelle clé rouvre l'ancienne */
+      const pk = await prevKeyOf(rot.meta, rot.key);
+      ok(!!pk);
+      eq(await openValue(pk, 'k2', e2), 'valeur-2');       /* l'ancienne enveloppe se relit */
+      eq(await openValue(rot.key, 'k1', n1), 'valeur-1');  /* la re-scellée aussi */
+      /* soldée : prev retiré, l'ancien code ne rentre plus */
+      const done = clearPrev(rot.meta);
+      ok(!done.prev);
+      eq(await prevKeyOf(done, rot.key), null);
+      try { await unlockWithPin(rot.meta, '111111'); throw new Error('accepté !'); }
+      catch (e) { eq(e.message, 'code'); }
+    },
     'anneau : signé, vérifié, TOFU, falsification refusée': async () => {
       if (!(await edAvailable())) return;   /* vieux navigateur : dégradé assumé */
       const kA = await makeDeviceKeys(), kB = await makeDeviceKeys();
@@ -777,6 +804,29 @@ export async function runSelfTests(){
       eq(c.log.length, n);
       eq(dueSends(c, '2026-07-17').length, 5);          /* le reste a glissé */
     },
+    'campagne : plafond GLOBAL 15/j toutes campagnes ; fenêtre d’envoi': () => {
+      const steps = [{ subject: 's', body: 'b' }, { subject: 's', body: 'b' }, { subject: 's', body: 'b' }];
+      const mk = id => buildCampaign({ id, steps, launchAt: '2026-07-16',
+        targets: Array.from({ length: 10 }, (_, i) => ({ cid: id + i, email: id + i + '@x.fr' })) });
+      let a = mk('ca');
+      const b = mk('cb');
+      /* 10 envois déjà partis dans A aujourd'hui : il n'en reste que 5
+         pour TOUTES les campagnes — jamais 15 par campagne */
+      for (const d of dueSends(a, '2026-07-16')) a = markSent(a, d.sid, '2026-07-16');
+      eq(sentTodayAll([a, b], '2026-07-16'), 10);
+      const due = dueSendsAll([a, b], '2026-07-16');
+      eq(due.length, 5);
+      ok(due.every(d => d.cpId === 'cb'));
+      /* le lendemain, le plafond global repart — B a ses 10 premiers messages */
+      eq(dueSendsAll([a, b], '2026-07-17').length, 10);
+      /* fenêtre d'envoi imposée : jours ouvrés, 8 h → 18 h 59, heure locale */
+      ok(inSendWindow(new Date(2026, 6, 16, 10, 0)));    /* jeudi 10 h */
+      ok(inSendWindow(new Date(2026, 6, 16, 8, 0)));
+      ok(!inSendWindow(new Date(2026, 6, 16, 7, 59)));
+      ok(!inSendWindow(new Date(2026, 6, 16, 19, 0)));
+      ok(!inSendWindow(new Date(2026, 6, 18, 10, 0)));   /* samedi */
+      ok(!inSendWindow(new Date(2026, 6, 19, 10, 0)));   /* dimanche */
+    },
     'campagne : relances J+7 sur la date d’envoi RÉELLE ; réponse = stop': () => {
       const steps = [{ subject: 's', body: 'b' }, { subject: 's', body: 'b' }, { subject: 's', body: 'b' }];
       let c = buildCampaign({ steps, launchAt: '2026-07-16',
@@ -839,6 +889,24 @@ export async function runSelfTests(){
       eq(await openValue(key, probe, env), '{"x":1}');
       await kvDel(probe);
       eq(await kvGet(probe), null);
+    },
+    'stockage : re-scellement reprenable — l’enveloppe déjà migrée est reconnue': async () => {
+      if (vaultActive()) return;   /* un vrai coffre est ouvert : ne pas interférer */
+      let p0 = null, r0 = null;
+      try { p0 = await kvGet(PROMO_KEY); r0 = await kvGet(RELAYS_KEY); }
+      catch (e) { return; }        /* valeurs scellées d'un vrai coffre : ne pas toucher */
+      const vOld = await createVault('111111', makeVaultPhrase(), { iter: 15000 });
+      const vNew = await createVault('222222', makeVaultPhrase(), { iter: 15000 });
+      await kvSet(PROMO_KEY, await sealValue(vOld.key, PROMO_KEY, 'ancienne'));
+      /* rotation interrompue simulée : celle-ci est DÉJÀ sous la nouvelle clé */
+      await kvSet(RELAYS_KEY, await sealValue(vNew.key, RELAYS_KEY, 'deja-migree'));
+      const n = await vaultReseal(vOld.key, vNew.key);
+      eq(n, 1);                    /* une seule re-scellée, l'autre reconnue et gardée */
+      eq(await kvGet(PROMO_KEY), 'ancienne');
+      eq(await kvGet(RELAYS_KEY), 'deja-migree');
+      vaultDetach();
+      await (p0 == null ? kvDel(PROMO_KEY) : kvSet(PROMO_KEY, p0));
+      await (r0 == null ? kvDel(RELAYS_KEY) : kvSet(RELAYS_KEY, r0));
     }
   };
   for (const name of Object.keys(tests)){

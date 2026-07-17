@@ -247,6 +247,33 @@ export async function rotateVault(meta, newPin, newPhrase, opts){
   return made;
 }
 
+/* rotation REPRENABLE : la nouvelle métadonnée embarque l'ancienne
+   clé maîtresse scellée SOUS LA NOUVELLE (`prev`). Ordre imposé à
+   l'appelant : écrire la métadonnée d'abord (point de non-retour :
+   les anciens secrets ne déverrouillent plus), re-sceller ensuite,
+   retirer `prev` à la fin (clearPrev). Interrompue n'importe où :
+   au prochain déverrouillage, prevKeyOf rouvre l'ancienne clé avec
+   la nouvelle et le re-scellement reprend — aucune valeur perdue. */
+export const PREV_NAME = '__vault_prev__';
+export async function rotateVaultResumable(meta, access, newPin, newPhrase, opts){
+  const oldMk = await proveAccess(meta, access);
+  const made = await rotateVault(meta, newPin, newPhrase, opts);
+  made.meta.prev = await sealValue(made.key, PREV_NAME, bytesToB64(oldMk), opts && opts.rnd);
+  const oldKey = await importMaster(oldMk);
+  oldMk.fill(0);
+  return { meta: made.meta, key: made.key, oldKey };
+}
+export async function prevKeyOf(meta, key){
+  if (!meta || !meta.prev) return null;
+  const b64 = await openValue(key, PREV_NAME, meta.prev);
+  return importMaster(b64ToBytes(b64));
+}
+export function clearPrev(meta){
+  const out = JSON.parse(JSON.stringify(meta));
+  delete out.prev;
+  return out;
+}
+
 /* ---------- valeurs scellées : OCV1.<iv>.<chiffré> ---------- */
 export const isSealed = s => typeof s === 'string' && s.startsWith('OCV1.');
 export async function sealValue(key, name, str, rnd){

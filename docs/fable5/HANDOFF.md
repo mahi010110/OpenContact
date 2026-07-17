@@ -1,8 +1,16 @@
 # Fable 5 — point de reprise (checkpoint)
 
-- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1).
-  Restent les travaux qui exigent un environnement ou un compte externes
-  (voir blocages).
+- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1),
+  **durci par la phase V** (pré-fusion) ; le Compagnon (D17/D18 validés)
+  démarre dans `compagnon/`.
+- **Phase V (durcissement) livrée** : rotation du coffre interruptible et
+  reprenable (`prev` dans `oc_vault_v1`), le SW ne détourne plus
+  `oauth.html` (oc-v23), `wipe` complet (jetons, clés IA, campagnes,
+  missions, documents), plafond 15/j **global** + fenêtre d'envoi
+  lun–ven 8-19 h (`dueSendsAll`, `inSendWindow`), tests Playwright
+  versionnés dans `tests/e2e/` (8 scénarios, `node tests/e2e/tous.mjs`),
+  et reconnexion IndexedDB automatique (les navigateurs mobiles ferment
+  la connexion sous pression mémoire — l'app rouvre et re-tente).
 - **Branche Git** : `claude/opencontact-repo-study-3bw0ju`
 - **Livré, dans l'ordre** :
   1. **P0 — coffre** : `engine/vault.js` (clé maîtresse, wraps
@@ -28,10 +36,10 @@
   8. **P7-1/P8-1** : `engine/mission.js` (missions bornées/révocables/
      idempotentes) ; « Depuis mes e-mails » dans Recevoir (V1 guidée par
      prompt, aperçu multi-sélection, injection neutralisée par le rail).
-- **Tests** : `?test` **74/74 verts** ; six E2E Playwright dans le
-  scratchpad de session (verrou, récupération, envoi, campagne, IA,
-  analyse) — tous verts, thèmes clair/sombre, 390/1280, zéro erreur
-  console. `sw.js` → **oc-v22**.
+- **Tests** : `?test` **77/77 verts** ; **8 scénarios Playwright dans
+  `tests/e2e/`** (verrou, récupération, envoi, campagne + fenêtre, IA,
+  analyse, oauth-sw, unitaires) — tous verts, thèmes clair/sombre,
+  390/1280, zéro erreur console. `sw.js` → **oc-v23**.
 - **Blocages externes (dans l'ordre d'importance)** :
   1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
      renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),

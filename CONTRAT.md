@@ -26,9 +26,9 @@ doit être repensée, pas forcée.
 | `oc_device_v1` | Cet appareil — identité annoncée à la sync | JSON : `{id, name}` |
 | `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
 | `oc_promo_v1` | Dernier mot de passe de partage en groupe (confort de saisie) | chaîne |
-| `oc_vault_v1` | Métadonnée du coffre (profil protégé) : enveloppes de la clé maîtresse par code / phrase de secours / PRF — **jamais la clé en clair** | JSON : `{v, gen, at, wraps}` |
+| `oc_vault_v1` | Métadonnée du coffre (profil protégé) : enveloppes de la clé maîtresse par code / phrase de secours / PRF — **jamais la clé en clair**. Pendant une rotation, `prev` porte l'ANCIENNE clé maîtresse scellée sous la nouvelle (`OCV1.`) : la métadonnée s'écrit avant le re-scellement, une interruption se reprend au déverrouillage suivant sans perte, puis `prev` est retiré | JSON : `{v, gen, at, wraps, prev?}` |
 | `oc_devring_v1` | Anneau d'appareils : registre signé (appareil principal, membres, commandes) + clés Ed25519 de CET appareil + commandes déjà appliquées | JSON : `{ring, keys, applied}` |
-| `oc_campaigns_v1` | Campagnes de prospection (privé — messages figés au montage, journal des envois faits ; chaque envoi porte un identifiant stable `id.cible.étape` : rejouer ne double jamais) | JSON : tableau de campagnes |
+| `oc_campaigns_v1` | Campagnes de prospection (privé — messages figés au montage, journal des envois faits ; chaque envoi porte un identifiant stable `id.cible.étape` : rejouer ne double jamais). Plafond de 15 envois/jour **global, toutes campagnes confondues** (`dueSendsAll` fait foi dès qu'il en existe plusieurs) et fenêtre d'envoi imposée : jours ouvrés, 8 h – 19 h locales | JSON : tableau de campagnes |
 | `oc_mail_v1` | Connexions messagerie : jetons OAuth et adresse d'envoi — **exige le profil protégé** (valeur toujours scellée) | JSON : `{gmail, outlook, clients}` |
 | `oc_ai_v1` | Connexions IA : fournisseur actif + clé API — **exige le profil protégé** (valeur toujours scellée) ; la clé ne sort jamais dans un log ni un export | JSON : `{provider, key, model}` |
 | `oc_missions_v1` | Bons de mission du Compagnon : idempotents (repliés sur le journal de campagne), bornés (expiration), révocables ; un résultat d'analyse = enveloppe `share` qui repasse par l'aperçu | JSON : tableau de missions |
@@ -236,6 +236,11 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    **récupération d'urgence** est signée par la clé de secours, dérivée
    de la phrase de secours (déterministe) : elle prouve la phrase,
    exige une génération strictement supérieure, et se vérifie hors ligne.
+   La commande **effacer** (`wipe`) emporte TOUT ce qui est à
+   l'utilisateur sur l'appareil visé : données, profil, journal, bac,
+   tombstones, phrase de liaison, relais, identité d'appareil, appareils
+   vus, anneau, coffre, campagnes, jetons de messagerie, clés d'IA,
+   missions, et les documents (`cv`, `lettre`) de `oc_docs_v1`.
 
 ---
 

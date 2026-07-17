@@ -18,7 +18,8 @@ import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
          ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor, deviceIn } from '../engine/ring.js';
 import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
          DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, PROMO_KEY, VAULT_KEY,
-         kvGet, kvSet, kvDel } from '../engine/storage.js';
+         CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY,
+         kvGet, kvSet, kvDel, docDel } from '../engine/storage.js';
 import { S, bus, applySynced, saveProfile, logJ } from './state.js';
 import { ic, toast, showUndo } from './dom.js';
 
@@ -193,8 +194,13 @@ async function onRingMsg(incoming){
       toast('Cet appareil a été retiré de tes appareils.');
     } else if (a.cmd === 'wipe'){
       logJ('Effacement demandé par l’appareil principal');
+      /* TOUT ce qui est à l'utilisateur part : données, suivi,
+         campagnes, jetons de messagerie, clés d'IA, missions,
+         identité d'appareil, documents (CV, lettre) */
       for (const k of [DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY,
-                       SYNC_KEY, PROMO_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY]) await kvDel(k);
+                       SYNC_KEY, RELAYS_KEY, PROMO_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY,
+                       CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY]) await kvDel(k);
+      for (const dk of ['cv', 'lettre']) await docDel(dk).catch(() => {});
       location.replace(location.pathname);
       return;
     }

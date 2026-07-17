@@ -22,8 +22,19 @@
    ============================================================ */
 import { fillTpl } from './model.js';
 
-export const DAILY_CAP = 15;
+export const DAILY_CAP = 15;           /* GLOBAL : toutes campagnes confondues */
 export const STEP_DAYS = 7;            /* J+7 puis J+14 (7 après la relance 1) */
+
+/* fenêtre d'envoi raisonnable, imposée (SPECIFICATIONS §7.1) :
+   jours ouvrés, 8 h → 18 h 59 — heure LOCALE de l'utilisateur */
+export const SEND_FROM = 8;
+export const SEND_TO = 19;
+export const SEND_WINDOW_TXT = 'du lundi au vendredi, 8 h – 19 h';
+export function inSendWindow(now){
+  const d = now instanceof Date ? now : new Date(now || Date.now());
+  const day = d.getDay();
+  return day >= 1 && day <= 5 && d.getHours() >= SEND_FROM && d.getHours() < SEND_TO;
+}
 export const OPPOSITION =
   'PS : si tu ne souhaites plus recevoir mes messages, dis-le-moi simplement et je m’arrête là.';
 
@@ -133,6 +144,22 @@ export function dueSends(c, today){
     email: d.t.email, who: d.t.who, company: d.t.company,
     subject: d.t.msgs[d.step].subject, body: d.t.msgs[d.step].body
   }));
+}
+
+/* ---------- le plafond GLOBAL (15/j toutes campagnes) ----------
+   dueSends plafonne DANS une campagne ; ces deux fonctions font foi
+   dès qu'il en existe plusieurs — la feuille du jour et le Compagnon
+   passent par elles, jamais par dueSends seul. */
+export function sentTodayAll(cs, today){
+  return (cs || []).reduce((n, c) => n + sentToday(c, today), 0);
+}
+export function dueSendsAll(cs, today){
+  const room = Math.max(0, DAILY_CAP - sentTodayAll(cs, today));
+  const out = [];
+  for (const c of (cs || []))
+    for (const d of dueSends(c, today)) out.push(Object.assign({ cpId: c.id }, d));
+  out.sort((a, b) => b.step - a.step);   /* relances d'abord, toutes campagnes */
+  return out.slice(0, room);
 }
 
 /* enregistrer un envoi fait — idempotent (même sid = rien de plus).
