@@ -50,12 +50,18 @@
      local (P7-2, P7-3, P8-2). Nécessite un environnement de build dédié.
   3. Tests manuels sur vrai matériel : biométrie PRF (P1-3), commandes
      d'anneau entre deux vrais appareils (transport Trystero).
-- **Étude Compagnon (E4)** : `ETUDE-COMPAGNON.md` livrée — recommandation
-  **hybride Tauri** (Rust = trousseau, sockets IMAP/SMTP, vie du processus,
-  MCP `rmcp` ; cerveau = les mêmes modules `engine/` JS + Trystero dans une
-  webview cachée, secrets jamais côté JS), et dossier `compagnon/` dans ce
-  dépôt. **Arbitrage mainteneur attendu (D17, D18) — rien n'est validé,
-  aucun code Compagnon avant.**
+- **Compagnon (D17/D18 validés — chantier C en cours, `compagnon/`)** :
+  - **C1 livré** : crate `oc-coeur` (la garde D17 — mission signée
+    Ed25519, anti-double-envoi, plafond global, fenêtre, hors-mission)
+    `cargo test` 9/9 dont **vecteur croisé** avec le test JS « fil
+    signé » (`signMission`/`openMissionWire` dans `engine/mission.js`) ;
+    coquille Tauri v2 (tray non fatal, arrière-plan sur fermeture,
+    instance unique, démarrage auto par commandes, fenêtre de réglages)
+    qui **compile et démarre** (xvfb : « compagnon : prêt ») ; cerveau
+    webview qui charge le **moteur partagé copié par `preparer.mjs`**
+    (vérifié : « moteur partagé chargé ✓ »).
+  - Suite : C2 appairage + « Mes appareils », C3 missions, C4 exécution
+    app fermée, C5 messageries, C6 analyse, C7 états (PLAN.md).
 - **Prochaine action exacte** : au choix du mainteneur — arbitrer l'étude
   Compagnon (D17/D18), déclarer les apps OAuth (débloque l'envoi réel).
   Côté PWA, tout nouveau travail = relire `UX-PLAN.md` et repartir des

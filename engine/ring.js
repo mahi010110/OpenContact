@@ -86,6 +86,21 @@ export async function verifyRing(ring, pubB64url){
   } catch (e) { return false; }
 }
 
+/* signature générique d'un texte par une graine d'appareil — les
+   missions du Compagnon voyagent signées ainsi (engine/mission.js),
+   et le cœur Rust vérifie les mêmes octets */
+export async function edSign(seedB64, text){
+  const priv = await privFromStored(seedB64);
+  const sig = await crypto.subtle.sign('Ed25519', priv, new TextEncoder().encode(String(text)));
+  return bytesToB64(new Uint8Array(sig));
+}
+export async function edVerify(pubB64url, sigB64, text){
+  try {
+    return await crypto.subtle.verify('Ed25519', await pubKey(pubB64url),
+      b64ToBytes(sigB64), new TextEncoder().encode(String(text)));
+  } catch (e) { return false; }
+}
+
 /* ---------- cycle de vie ---------- */
 export const mainOf = ring => (ring.devices || []).find(d => d.id === ring.main) || null;
 export const deviceIn = (ring, id) => (ring.devices || []).find(d => d.id === id) || null;

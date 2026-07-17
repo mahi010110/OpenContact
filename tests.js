@@ -36,7 +36,8 @@ import { DAILY_CAP, buildCampaign, dueSends, dueSendsAll, sentTodayAll,
          inSendWindow, addDays as cAddDays } from './engine/campaign.js';
 import { buildMime, encodeHeader, toB64Url, authUrl, parseCallback, pkcePair } from './engine/mailer.js';
 import { dueFollowups, contactFromSignature } from './engine/assist.js';
-import { makeMission, missionUsable, revokeMission, foldCampaignReport } from './engine/mission.js';
+import { makeMission, missionUsable, revokeMission, foldCampaignReport,
+         signMission, openMissionWire } from './engine/mission.js';
 import { AI_FAMILIES, browserProviders, aiComplete, draftPrompt } from './engine/ai.js';
 
 export async function runSelfTests(){
@@ -717,6 +718,26 @@ export async function runSelfTests(){
       c = foldCampaignReport(c, report);                        /* l'autre canal rejoue */
       eq(c.log.length, 1);
       eq(dueSends(c, '2026-07-16').length, 0);
+    },
+    'missions Compagnon : fil signé — vecteur figé, altération et expiration refusées': async () => {
+      if (!(await edAvailable())) return;
+      /* graine fixe 0..31 : la signature Ed25519 est DÉTERMINISTE — ce
+         vecteur est vérifié à l'identique par le cœur Rust du Compagnon
+         (compagnon/coeur). S'il casse, le format du fil a changé. */
+      const seedB64 = btoa(String.fromCharCode(...Array.from({ length: 32 }, (_, i) => i)));
+      const pub = 'A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg';
+      const m = { v: 1, mid: 'ms-test-1', kind: 'campaign-run', params: { cpId: 'cp1' },
+        createdAt: 1752624000000, expiresAt: 1755216000000, revoked: false };
+      const wire = await signMission(m, 'A', seedB64);
+      eq(wire.sig, 'oUjaqwFsq0uAA8vtYzgIgQ1itQtkz7vP6+zNJs2WVn6+FDj/Tl9dBRRsSdPi1TJW+kAFST0Qbd5CdZ+WkHsBBw==');
+      eq((await openMissionWire(wire, pub, 1752624000001)).mid, 'ms-test-1');
+      /* un octet changé = rien ne s'ouvre */
+      eq(await openMissionWire({ m: wire.m.replace('cp1', 'cp2'), sig: wire.sig, dev: 'A' }, pub, 1752624000001), null);
+      /* mauvaise clé publique = rien (le dernier caractère base64url ne
+         porte que des bits ignorés — on altère un caractère UTILE) */
+      eq(await openMissionWire(wire, 'B6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg', 1752624000001), null);
+      /* signée mais expirée = rien (missionUsable est dans le fil) */
+      eq(await openMissionWire(wire, pub, 1755216000001), null);
     },
     'aides : relances dues — retard d’abord, pistes travaillées ensuite': () => {
       const comps = [

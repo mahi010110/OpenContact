@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "OpenContact Compagnon",
+  "version": "0.1.0",
+  "identifier": "app.opencontact.compagnon",
+  "build": {
+    "frontendDist": "../app",
+    "beforeDevCommand": "node ../preparer.mjs",
+    "beforeBuildCommand": "node ../preparer.mjs"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "principal",
+        "title": "OpenContact Compagnon",
+        "width": 460,
+        "height": 640,
+        "minWidth": 380,
+        "minHeight": 480,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.png"]
+  }
+}

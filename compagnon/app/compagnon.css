@@ -1,0 +1,40 @@
+/* Compagnon — la fenêtre de réglages, Utilitaire 98 (tokens du dépôt) */
+body{
+  margin:0;
+  background:var(--paper, #F7F6F1);
+  color:var(--ink, #1E232B);
+  font-family:'Public Sans', system-ui, sans-serif;
+  font-size:15px;
+}
+.cg{ max-width:520px; margin:0 auto; padding:16px; display:grid; gap:12px; }
+.cg-head{ display:flex; align-items:baseline; gap:10px; }
+.cg-head h1{
+  font-family:'Silkscreen', monospace;
+  font-size:20px; margin:6px 0;
+  color:var(--accent, #0B7268);
+}
+.cg-ver{ font-family:'IBM Plex Mono', monospace; font-size:12px; opacity:.7; }
+.cg-card{
+  background:var(--paper-2, #FFFFFF);
+  border:2px solid var(--ink, #1E232B);
+  box-shadow:var(--shadow-2, 3px 3px 0 rgba(30,35,43,.9));
+  padding:12px 14px;
+}
+.cg-card h2{
+  font-family:'Silkscreen', monospace;
+  font-size:13px; margin:0 0 8px;
+}
+.cg-line{ font-family:'IBM Plex Mono', monospace; font-size:13px; margin:4px 0; }
+.hint{ font-size:13px; opacity:.75; margin:6px 0 0; }
+.btn{
+  font:inherit; cursor:pointer; padding:8px 14px;
+  background:var(--paper, #F7F6F1);
+  border:2px solid var(--ink, #1E232B);
+  box-shadow:var(--shadow-1, 2px 2px 0 rgba(30,35,43,.9));
+}
+.btn:disabled{ opacity:.55; cursor:default; }
+.cg-opt{ display:flex; gap:8px; align-items:center; }
+.cg-tech summary{ font-family:'Silkscreen', monospace; font-size:12px; cursor:pointer; }
+@media (prefers-color-scheme: dark){
+  body{ background:var(--paper, #1E232B); color:var(--ink, #E8E6DF); }
+}

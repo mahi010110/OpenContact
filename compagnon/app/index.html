@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenContact Compagnon</title>
+<link rel="stylesheet" href="moteur/styles/tokens/fonts.css">
+<link rel="stylesheet" href="moteur/styles/tokens/colors.css">
+<link rel="stylesheet" href="moteur/styles/tokens/typography.css">
+<link rel="stylesheet" href="moteur/styles/tokens/spacing.css">
+<link rel="stylesheet" href="moteur/styles/tokens/effects.css">
+<link rel="stylesheet" href="moteur/styles/tokens/base.css">
+<link rel="stylesheet" href="compagnon.css">
+</head>
+<body>
+<main class="cg">
+  <header class="cg-head">
+    <h1>Compagnon</h1>
+    <span class="cg-ver" id="cgVer"></span>
+  </header>
+
+  <section class="cg-card" id="cgEtat">
+    <h2>État</h2>
+    <p class="cg-line" id="cgAssoc">…</p>
+    <p class="hint">Le Compagnon travaille en arrière-plan : fermer la fenêtre ne l’arrête pas
+       — l’icône reste dans la barre système.</p>
+  </section>
+
+  <section class="cg-card">
+    <h2>Associer à OpenContact</h2>
+    <p class="hint">Dans OpenContact, ouvre « Moi → Mes appareils » et choisis
+       « Ajouter le Compagnon ». Le code court apparaîtra ici.</p>
+    <button class="btn" id="cgPair" disabled>Bientôt — l’association arrive</button>
+  </section>
+
+  <section class="cg-card">
+    <h2>Démarrage</h2>
+    <label class="cg-opt">
+      <input type="checkbox" id="cgAuto">
+      <span>Démarrer avec l’ordinateur</span>
+    </label>
+    <p class="hint">Optionnel. Sans lui, lance le Compagnon à la main quand une campagne doit partir.</p>
+  </section>
+
+  <details class="cg-card cg-tech">
+    <summary>Détails techniques</summary>
+    <p class="cg-line" id="cgMoteur">moteur partagé : …</p>
+  </details>
+</main>
+<script src="compagnon.js" type="module"></script>
+</body>
+</html>

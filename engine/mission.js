@@ -15,6 +15,7 @@
    jamais une écriture directe. Fonctions pures, aucun DOM.
    ============================================================ */
 import { markSent } from './campaign.js';
+import { edSign, edVerify } from './ring.js';
 
 export const MISSION_KINDS = ['campaign-run', 'mail-scan'];
 export const MISSION_TTL = { 'campaign-run': 30, 'mail-scan': 2 };   /* jours */
@@ -40,6 +41,24 @@ export function missionUsable(m, now){
 }
 export function revokeMission(m){
   return Object.assign({}, m, { revoked: true });
+}
+
+/* ---------- le fil : une mission voyage SIGNÉE ----------
+   { m, sig, dev } — `m` est la chaîne JSON EXACTE qui a été signée
+   (Ed25519 de l'appareil émetteur) : on vérifie les octets, PUIS on
+   parse — aucune canonicalisation à maintenir des deux côtés. Le
+   Compagnon retrouve la clé publique de `dev` dans l'anneau appris à
+   l'association, et son cœur Rust re-vérifie tout (D17). */
+export async function signMission(m, devId, seedB64){
+  const s = JSON.stringify(m);
+  return { m: s, sig: await edSign(seedB64, s), dev: String(devId || '') };
+}
+export async function openMissionWire(wire, pubB64url, now){
+  if (!wire || typeof wire.m !== 'string' || !wire.sig) return null;
+  if (!(await edVerify(pubB64url, wire.sig, wire.m))) return null;
+  let m = null;
+  try { m = JSON.parse(wire.m); } catch (e) { return null; }
+  return missionUsable(m, now) ? m : null;
 }
 
 /* le rapport d'une mission campagne : { mid, sent: [{sid, at}] }.

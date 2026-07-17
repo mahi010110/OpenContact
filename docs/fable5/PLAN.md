@@ -80,8 +80,20 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
 | P7-1 | Contrat de missions idempotentes (`engine/mission.js` : bornées, révocables, rapport replié sur le journal de campagne sans doublon, `oc_missions_v1` au CONTRAT) | Le socle que le binaire Tauri consommera | P2-2 | **terminée (moteur)** | Test vert : rejeu de rapport multi-canaux sans doublon, expiration, révocation. Reste : appairage code court + présence « Mes appareils » quand le binaire existera |
-| P7-2 | App Tauri (projet distinct) : trousseau OS, envois app fermée, rattrapage | Kill/redémarrage sans doublon | P7-1, P3-1 | **bloquée (externe)** | Nécessite un environnement de build Tauri dédié — hors du conteneur de ce chantier |
-| P7-3 | Lecture Gmail (mot de passe d'app, D8) + Outlook OAuth → détection de réponses | Relances annulées sur réponse | P7-2 | bloquée (P7-2) | Faux IMAP ; états UX |
+| P7-2 | App Tauri : trousseau OS, envois app fermée, rattrapage | Kill/redémarrage sans doublon | P7-1, P3-1 | **reprise — voir chantier C ci-dessous** (D17/D18 validés, environnement de build disponible) | — |
+| P7-3 | Lecture Gmail (mot de passe d'app, D8) + Outlook OAuth → détection de réponses | Relances annulées sur réponse | P7-2 | reprise — C5 | Faux IMAP ; états UX |
+
+## Chantier Compagnon (D17/D18 — `compagnon/`, hybride Tauri)
+
+| ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
+|---|---|---|---|---|---|
+| C1 | Socle : crate `coeur` (garde D17 : mission signée, anti-double-envoi, plafond global, fenêtre) + coquille Tauri (tray, arrière-plan, démarrage auto, fenêtre de réglages) + cerveau qui charge le moteur partagé (`preparer.mjs`) + fil signé côté moteur JS (`signMission`/`openMissionWire`) | Tout compile, la garde est testée, le vecteur signé JS se vérifie en Rust | E4 | en cours | `cargo test -p oc-coeur` 9/9 ; test JS « fil signé » (78/78) ; build + lancement xvfb |
+| C2 | Canal local + appairage code court + le Compagnon dans « Mes appareils » (PWA : télécharger, installer, associer, gérer) | Anneau appris (TOFU canal authentifié), rôle `companion` | C1 | à faire | E2E appairage simulé |
+| C3 | Missions : la PWA confie une campagne signée, le Compagnon la reçoit, la garde re-vérifie | Révocation immédiate ; états hors ligne | C2 | à faire | Vecteurs + E2E |
+| C4 | Exécution app fermée : planificateur (fenêtre, plafond global), envois par la coquille, journal persisté, rapport replié sans doublon | Kill/redémarrage sans doublon | C3 | à faire | Test kill/restart |
+| C5 | Messageries : Gmail mot de passe d'application (trousseau), Outlook OAuth ; détection de réponses (IMAP en-têtes) | Relances annulées sur réponse | C4 | à faire | Faux IMAP local |
+| C6 | Analyse d'e-mails : périmètre choisi → runtime IA (Ollama d'abord) → enveloppe `share` → aperçu contrôlé de la PWA | Aucune création silencieuse | C5 | à faire | Corpus piégé |
+| C7 | États & finitions : hors ligne, erreurs, autorisations, révocations partout ; docs | UX complète, rien de moteur sans parcours | C3–C6 | à faire | Relecture UX-PLAN |
 
 ## Phase 8 — Analyser mes e-mails, MCP local
 
