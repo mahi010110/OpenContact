@@ -11,9 +11,29 @@ const scripts = ['unitaires.mjs',
   ...readdirSync(DIR).filter(f => f.startsWith('e2e-') && f.endsWith('.mjs')).sort()];
 const natifs = new Set(['e2e-c8-telephone.mjs', 'e2e-compagnon-envoi.mjs',
   'e2e-compagnon-reponses.mjs', 'e2e-compagnon-scan.mjs']);
-const bin = path.resolve(DIR, '..', '..', 'compagnon', 'target', 'debug', 'oc-compagnon');
-const nativeReason = !existsSync(bin) ? 'binaire Compagnon absent'
-  : (spawnSync('xvfb-run', ['--help'], { stdio: 'ignore' }).error ? 'xvfb-run absent' : '');
+const compDir = path.resolve(DIR, '..', '..', 'compagnon');
+const bin = path.join(compDir, 'target', 'debug', 'oc-compagnon');
+
+/* Les scénarios natifs lancent target/debug/oc-compagnon. `cargo test` ne
+   régénère PAS cet exécutable — on testerait sinon un binaire périmé (piège
+   avéré : un correctif ou un nouveau handler absent du binaire fait échouer
+   ou passer à tort). On le reconstruit donc ICI, avant les scénarios, dès que
+   Cargo est là. Sans Cargo mais avec un binaire déjà présent, on l'utilise
+   tel quel ; sans xvfb, on saute proprement. */
+const hasXvfb = !spawnSync('xvfb-run', ['--help'], { stdio: 'ignore' }).error;
+const hasCargo = !spawnSync('cargo', ['--version'], { stdio: 'ignore' }).error;
+let nativeReason = '';
+if (!hasXvfb){
+  nativeReason = 'xvfb-run absent';
+} else if (hasCargo){
+  console.log('⚙  cargo build -p oc-compagnon (binaire natif à jour avant les scénarios)…');
+  const b = spawnSync('cargo', ['build', '-p', 'oc-compagnon'], { cwd: compDir, stdio: 'inherit' });
+  if (b.status !== 0) nativeReason = 'échec de la construction du binaire Compagnon';
+} else if (!existsSync(bin)){
+  nativeReason = 'binaire Compagnon absent (ni Cargo pour le construire)';
+} else {
+  console.log('⚠  Cargo absent : scénarios natifs joués contre le binaire EXISTANT (peut être ancien).');
+}
 
 let ko = 0, joues = 0, sautes = 0;
 for (const s of scripts){
