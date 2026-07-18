@@ -77,7 +77,8 @@ const compagnon = spawn('xvfb-run', ['-a', 'dbus-run-session', '--', BIN], {
     OC_SMTP_TEST: '127.0.0.1:2525',
     OC_IMAP_TEST: '127.0.0.1:1143',
     OC_TICK_MS: '1200',
-    OC_FENETRE_TEST: '1'
+    OC_FENETRE_TEST: '1',
+    OC_INTEGRATION_TEST: '1'
   }),
   stdio: ['ignore', 'pipe', 'pipe'], detached: true
 });
