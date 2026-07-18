@@ -9,7 +9,8 @@ import { fileURLToPath } from 'url';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const scripts = ['unitaires.mjs',
   ...readdirSync(DIR).filter(f => f.startsWith('e2e-') && f.endsWith('.mjs')).sort()];
-const natifs = new Set(['e2e-compagnon-envoi.mjs', 'e2e-compagnon-reponses.mjs', 'e2e-compagnon-scan.mjs']);
+const natifs = new Set(['e2e-c8-telephone.mjs', 'e2e-compagnon-envoi.mjs',
+  'e2e-compagnon-reponses.mjs', 'e2e-compagnon-scan.mjs']);
 const bin = path.resolve(DIR, '..', '..', 'compagnon', 'target', 'debug', 'oc-compagnon');
 const nativeReason = !existsSync(bin) ? 'binaire Compagnon absent'
   : (spawnSync('xvfb-run', ['--help'], { stdio: 'ignore' }).error ? 'xvfb-run absent' : '');

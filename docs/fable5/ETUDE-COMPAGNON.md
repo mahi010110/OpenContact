@@ -1,7 +1,7 @@
 # Étude — le cœur permanent du Compagnon : Rust ou Node.js ?
 
 > **Statut : arbitrage rendu et mis en œuvre.** Le mainteneur a validé
-> l'option D et le dossier `compagnon/` (D17/D18) ; C1 à C7 sont livrés.
+> l'option D et le dossier `compagnon/` (D17/D18) ; C1 à C8 sont livrés.
 > Le raisonnement ci-dessous reste la trace de la décision, complétée par le
 > retour réel d'implémentation. Références : `SPECIFICATIONS.md` §8
 > (rôle, association, points à vérifier), §9 (IA), §11 (MCP local),
@@ -22,7 +22,8 @@ charge ce qu'un navigateur ne peut pas garantir :
    en-têtes récents.
 4. **Parler à la PWA** : canal local + repli P2P **Trystero** (la lib JS déjà
    vendorisée), appairage par code court, missions idempotentes. Le canal
-   local est livré ; le trajet depuis un téléphone reste le chantier C8.
+   local est livré ; depuis C8, le bon du téléphone voyage par la sync privée
+   jusqu'à l'ordinateur qui possède ce canal.
 5. **Servir les runtimes IA** : Ollama (HTTP local), Codex App Server.
 6. **Exposer un serveur MCP local** : lecture limitée, propositions seulement.
 7. Une petite fenêtre de réglages (Tauri, déjà acté en spec).
@@ -157,18 +158,21 @@ Tauri reste indépendant et le dossier demeure déplaçable.
 2. **C1–C4 sont livrées** : Tauri v2, appairage et canal local chiffré,
    trousseau/repli 0600, missions signées, planificateur Rust, SMTP et preuve
    kill/redémarrage sans doublon.
-3. **C5–C7 sont livrées** : réponses IMAP, analyse bornée via Ollama,
-   révocation/états, documentation et paquet Linux `.deb` prouvé.
+3. **C5–C8 sont livrées** : réponses IMAP, analyse bornée via Ollama,
+   révocation/états, trajet téléphone → ordinateur → Compagnon,
+   documentation et paquet Linux `.deb` prouvé.
 4. **Preuve actuelle (rejouée le 2026-07-18)** : la préparation du moteur
-   partagé passe, ainsi que **81/81 tests unitaires et 13/13 scénarios sans
-   saut**. Rust/Cargo 1.97.1 a permis de refaire les 18 tests du crate
-   `oc-coeur` + 1 test de la coquille (**19/19**), de construire le vrai
-   binaire et de réussir les trois E2E natifs (envoi sans doublon après
+   partagé passe, ainsi que **83/83 tests unitaires et 14/14 scénarios sans
+   saut**. Rust/Cargo 1.97.1 a permis de refaire les 20 tests du crate
+   `oc-coeur` + 1 test de la coquille (**21/21**), de construire le vrai
+   binaire et de réussir les quatre E2E natifs (envoi sans doublon après
    kill/reprise, réponse IMAP, analyse Ollama bornée fermée/reprise et fusion
-   sûre). Le `journal_lock` ferme aussi la course entre premier passage et
-   boucle périodique ; le mode intégration ne suppose plus l'autostart présent.
+   sûre, téléphone C8). Le `journal_lock` ferme aussi la course entre premier
+   passage et boucle périodique ; le mode intégration ne suppose plus
+   l'autostart présent.
 5. **P8-1 est maintenant complète** : le `mid` et le résultat d'analyse sont
    scellés dans la PWA, le sondage reprend après fermeture/déverrouillage et
    Aujourd'hui expose le résultat sans le consommer avant fusion.
-6. **Restent hors de cette reprise UX** : C8 (missions depuis le téléphone),
-   MCP local, Outlook OAuth, essais matériels et distribution multi-OS.
+6. **Reste comme dernière brique de code** : MCP local. Outlook OAuth,
+   essais matériels et distribution multi-OS demandent encore leur travail
+   extérieur ou sur les OS cibles.

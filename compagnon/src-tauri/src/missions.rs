@@ -4,6 +4,7 @@
 //! lecture — pas seulement à la réception.
 
 use crate::coffrelocal::CoffreLocal;
+use crate::partage::Association;
 use oc_coeur::planifier::{Campagne, Entree};
 use serde::{Deserialize, Serialize};
 
@@ -47,13 +48,14 @@ impl EtatMissions {
         self.missions.push(mr);
     }
     /// Les campagnes des missions VIVANTES — signature re-vérifiée
-    /// contre la clé publique de l'appareil associé, à chaque appel.
-    pub fn campagnes(&self, pub_pair: &str, present_ms: i64) -> Vec<Campagne> {
+    /// contre la clé publique de SON appareil dans l'anneau, à chaque appel.
+    pub fn campagnes(&self, assoc: &Association, present_ms: i64) -> Vec<Campagne> {
         self.missions
             .iter()
             .filter(|mr| !mr.revoquee)
             .filter_map(|mr| {
-                let ms = oc_coeur::verifier_mission(&mr.m, &mr.sig, pub_pair, present_ms).ok()?;
+                let pub_dev = assoc.cle_mission(&mr.dev)?;
+                let ms = oc_coeur::verifier_mission(&mr.m, &mr.sig, &pub_dev, present_ms).ok()?;
                 if ms.kind != "campaign-run" {
                     return None;
                 }

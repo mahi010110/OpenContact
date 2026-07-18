@@ -22,18 +22,21 @@ import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mailAccount, freshToken, openConnexions } from './connexions.js';
 import { requireCode } from './verrou.js';
 import { loadCompanion } from './compagnon.js';
-import { deviceSelf, ensureKeys } from './synclive.js';
+import { deviceSelf, ensureKeys, getRing, ringCompanion } from './synclive.js';
 
 let campaigns = null;
 
 export async function loadCampaigns(){
   try { campaigns = JSON.parse(await kvGet(CAMPAIGNS_KEY) || '[]') || []; }
   catch (e) { campaigns = []; }
+  if (!Array.isArray(campaigns)) campaigns = [];
   /* en arrière-plan : confier ce qui attend, replier le journal */
   reconcileCompanion().catch(() => {});
   return campaigns;
 }
-const save = () => kvSet(CAMPAIGNS_KEY, JSON.stringify(campaigns || []));
+const syncNotice = () => document.dispatchEvent(new CustomEvent('oc:change'));
+const save = async () => { await kvSet(CAMPAIGNS_KEY, JSON.stringify(campaigns || [])); syncNotice(); };
+const touch = c => Object.assign({}, c, { updatedAt: Date.now() });
 const all = () => campaigns || [];
 const live = () => all().filter(c => c.state === 'ready' || c.state === 'paused');
 /* les envois dus de CETTE campagne, sous le plafond GLOBAL (15/j
@@ -46,10 +49,34 @@ let missions = null;
 async function loadMissions(){
   try { missions = JSON.parse(await kvGet(MISSIONS_KEY) || '[]') || []; }
   catch (e) { missions = []; }
+  if (!Array.isArray(missions)) missions = [];
   return missions;
 }
-const saveMissions = () => kvSet(MISSIONS_KEY, JSON.stringify(missions || []));
+const saveMissions = async () => { await kvSet(MISSIONS_KEY, JSON.stringify(missions || [])); syncNotice(); };
 const missionOf = cpId => (missions || []).find(m => m.cpId === cpId && m.state !== 'revoquee');
+
+/* La sync privée écrit le stockage sans importer ce module (pas de cycle
+   d'imports) : cet événement recharge les caches puis remet la mission au
+   Compagnon local. Plusieurs notifications rapprochées convergent. */
+let privateReload = null;
+let privateReloadAgain = false;
+document.addEventListener('oc:campaigns-sync', () => {
+  if (privateReload){ privateReloadAgain = true; return; }
+  privateReload = Promise.all([kvGet(CAMPAIGNS_KEY), kvGet(MISSIONS_KEY)]).then(([cs, ms]) => {
+    try { campaigns = JSON.parse(cs || '[]') || []; } catch (e) { campaigns = []; }
+    try { missions = JSON.parse(ms || '[]') || []; } catch (e) { missions = []; }
+    if (!Array.isArray(campaigns)) campaigns = [];
+    if (!Array.isArray(missions)) missions = [];
+    bus.refresh();
+    return reconcileCompanion();
+  }).catch(() => {}).finally(() => {
+    privateReload = null;
+    if (privateReloadAgain){
+      privateReloadAgain = false;
+      document.dispatchEvent(new CustomEvent('oc:campaigns-sync'));
+    }
+  });
+});
 
 /* bâtir + signer le bon : la campagne part FIGÉE, la garde Rust du
    Compagnon re-vérifie la signature à chaque lecture */
@@ -65,10 +92,10 @@ async function buildCampaignMission(c){
   return { mid: m.mid, cpId: c.id, wire: await signMission(m, self.id, keys.seed),
     state: 'a_confier', stops: [] };
 }
-async function remettreMission(rec){
-  const assoc = await loadCompanion();
+async function remettreMission(rec, assoc0, found0){
+  const assoc = assoc0 || await loadCompanion();
   if (!assoc) return false;
-  const found = await probeCompanion();
+  const found = found0 || await probeCompanion();
   if (!found) return false;
   try {
     const rep = await companionCall(found.base, assoc.k, { t: 'mission', wire: rec.wire });
@@ -79,7 +106,8 @@ async function remettreMission(rec){
 
 /* la réconciliation : confier ce qui attend, signaler les réponses,
    replier le journal du Compagnon (idempotent — jamais un doublon) */
-export async function reconcileCompanion(){
+let reconcileJob = null;
+async function doReconcileCompanion(){
   const assoc = await loadCompanion().catch(() => null);
   if (!assoc || !campaigns) return;
   await loadMissions();
@@ -88,7 +116,15 @@ export async function reconcileCompanion(){
       !missions.some(m => m.state === 'a_confier' || (m.state === 'revoquee' && !m.revOk))) return;
   const found = await probeCompanion();
   if (!found) return;
-  for (const rec of missions.filter(m => m.state === 'a_confier')) await remettreMission(rec);
+  /* L'anneau peut avoir accueilli le téléphone après l'association du
+     Compagnon. Le fil signé reste intact ; seule la liste publique des
+     appareils est rafraîchie avant sa vérification. */
+  const ring = getRing();
+  if (ring){
+    try { await companionCall(found.base, assoc.k, { t: 'anneau', ring }); }
+    catch (e) {}
+  }
+  for (const rec of missions.filter(m => m.state === 'a_confier')) await remettreMission(rec, assoc, found);
   /* révocations en attente (l'ordinateur était éteint au moment du geste) */
   for (const rec of missions.filter(m => m.state === 'revoquee' && !m.revOk)){
     try {
@@ -117,6 +153,11 @@ export async function reconcileCompanion(){
     }
   } catch (e) {}
 }
+export async function reconcileCompanion(){
+  if (reconcileJob) return reconcileJob;
+  reconcileJob = doReconcileCompanion().finally(() => { reconcileJob = null; });
+  return reconcileJob;
+}
 /* les réponses DÉTECTÉES par l'ordinateur : relances arrêtées (déjà
    fait là-bas), fiche marquée ici — la boucle produit ↔ suivi se ferme */
 async function foldReponses(cids){
@@ -142,7 +183,7 @@ async function foldReponses(cids){
         changed = true;
       }
     }
-    return cc;
+    return changed && cc !== c ? touch(cc) : cc;
   });
   /* les fiches d'abord : quand la campagne repliée devient visible,
      le statut « réponse » l'est déjà aussi */
@@ -166,7 +207,7 @@ async function foldJournal(journal){
         if (t && t.state === 'active'){ cc = markError(cc, tid); changed = true; }
       }
     }
-    return cc;
+    return cc !== c ? touch(cc) : cc;
   });
   if (changed){ await save(); bus.refresh(); }
 }
@@ -192,7 +233,7 @@ export function reconcileReplies(){
         changed = true;
       }
     }
-    return cc;
+    return cc !== c ? touch(cc) : cc;
   });
   if (changed){ save(); saveData(); }
   return changed;
@@ -244,8 +285,11 @@ export function openCampaignWizard(list){
     if (ct) targets.push({ cid: c.id, name: ct.name || '', role: ct.role || '', email: ct.email, company: c.name, companyObj: c });
     else skipped.push(c);
   }
-  let compAssoc = null;   /* le Compagnon, s'il est associé */
-  loadCompanion().then(a => { compAssoc = a; }).catch(() => {});
+  let compAssoc = null;   /* association locale, seulement sur l'ordinateur */
+  let compRing = null;    /* Compagnon connu de l'anneau, visible aussi du téléphone */
+  const companionReady = Promise.all([
+    loadCompanion().catch(() => null), ringCompanion().catch(() => null)
+  ]).then(([a, r]) => { compAssoc = a; compRing = r; });
   const draft = {
     name: 'Prospection — ' + monthName(),
     auto: false,           /* D13 : par défaut, c'est TOI qui appuies */
@@ -277,19 +321,21 @@ export function openCampaignWizard(list){
       const t = tpls[+q('#czTpl').value];
       if (t){ q('#czSubj').value = t.subject; q('#czBody').value = t.body; }
     });
-    sh.setFoot([btn('Vérifier la campagne', 'btn-primary', () => {
+    sh.setFoot([btn('Vérifier la campagne', 'btn-primary', async () => {
       draft.name = q('#czName').value.trim() || draft.name;
       draft.subject = q('#czSubj').value;
       draft.body = q('#czBody').value;
       draft.r1 = q('#czR1').value;
       draft.r2 = q('#czR2').value;
       if (!draft.subject.trim() || !draft.body.trim()){ toast('Un objet et un message — il manque l’un des deux.'); return; }
+      await companionReady;
       stepControl();
     })]);
   };
 
   const stepControl = () => {
     const acct = mailAccount();
+    const compAvailable = compAssoc || compRing;
     sh.setTitle('Vérifier la campagne');
     sh.body.innerHTML =
       `<div class="cz-recap">
@@ -303,13 +349,15 @@ export function openCampaignWizard(list){
              : (acct ? 'Depuis <b>' + esc(acct.email || 'ta messagerie') + '</b>' : '<em>Aucune messagerie connectée</em>')}</span>
          </div>
        </div>
-       ${compAssoc ? `
+       ${compAvailable ? `
        <div class="lbl-row" style="margin:10px 0 6px"><label>Qui appuie sur Envoyer ?</label></div>
        <div class="pick-list">
          <button class="pick${draft.auto ? '' : ' on'}" id="czManu" aria-pressed="${!draft.auto}">
            <b>Je valide chaque jour</b><span>tes envois t’attendent dans « Aujourd’hui »</span></button>
          <button class="pick${draft.auto ? ' on' : ''}" id="czAutoOpt" aria-pressed="${draft.auto}">
-           <b>Mon ordinateur envoie tout seul</b><span>même app fermée — ${esc(compAssoc.nom || 'Compagnon')}</span></button>
+           <b>Mon ordinateur envoie tout seul</b><span>${compAssoc
+             ? 'même app fermée — ' + esc(compAssoc.nom || 'Compagnon')
+             : 'il prendra la campagne dès qu’il te rejoint'}</span></button>
        </div>
        <p class="hint" id="czCompEtat"></p>` : ''}
        <details class="pcard pcard-details"><summary><h3>${ic('eye', 'ic-14')} Voir les ${targets.length} emails remplis</h3></summary>
@@ -318,18 +366,22 @@ export function openCampaignWizard(list){
               <span class="cz-subj">${esc(fillTpl(draft.subject, t.companyObj, t, S.profile))}</span></div>`).join('')}
        </details>
        ${skipped.length ? `<p class="hint warn">${skipped.length} piste${skipped.length > 1 ? 's' : ''} sans email — écartée${skipped.length > 1 ? 's' : ''} : ${esc(skipped.map(c => c.name).join(', ').slice(0, 120))}</p>` : ''}
-       ${acct || compAssoc ? '' : `<p class="hint warn" id="czCxHint">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
+       ${acct || compAvailable ? '' : `<p class="hint warn" id="czCxHint">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
        ${draft.auto ? '' : `<p class="hint">Rien ne part tout seul : chaque jour, tes envois prêts t’attendent dans « Aujourd’hui ».</p>`}
-       ${compAssoc ? '' : `<p class="hint">${ic('lightbulb', 'ic-14')} Ton ordinateur peut envoyer même app fermée — <button class="linklike" id="czVoirComp" style="min-height:0;padding:0 4px">voir comment</button></p>`}`;
+       ${compAvailable ? '' : `<p class="hint">${ic('lightbulb', 'ic-14')} Ton ordinateur peut envoyer même app fermée — <button class="linklike" id="czVoirComp" style="min-height:0;padding:0 4px">voir comment</button></p>`}`;
     q('#czCx')?.addEventListener('click', () => openConnexions());
     q('#czVoirComp')?.addEventListener('click', async () => {
       const { openAddCompanion } = await import('./compagnon.js');
-      openAddCompanion(() => { loadCompanion().then(a => { compAssoc = a; stepControl(); }); });
+      openAddCompanion(() => { Promise.all([loadCompanion(), ringCompanion()])
+        .then(([a, r]) => { compAssoc = a; compRing = r; stepControl(); }); });
     });
     q('#czManu')?.addEventListener('click', () => { draft.auto = false; stepControl(); });
     q('#czAutoOpt')?.addEventListener('click', () => { draft.auto = true; stepControl(); });
     /* honnêteté : l'ordinateur est-il là, sa messagerie est-elle réglée ? */
-    if (compAssoc && draft.auto){
+    if (draft.auto && !compAssoc){
+      const el = q('#czCompEtat');
+      if (el) el.textContent = 'Ton ordinateur prendra la campagne dès qu’il te rejoint.';
+    } else if (compAssoc && draft.auto){
       (async () => {
         const el = q('#czCompEtat');
         if (!el) return;
@@ -345,6 +397,12 @@ export function openCampaignWizard(list){
     }
     const bOk = btn('Valider la campagne', 'btn-primary', async () => {
       if (!draft.auto && !mailAccount()){ toast('Connecte d’abord ta messagerie.'); return; }
+      if (draft.auto && !(compAssoc || await ringCompanion())){
+        draft.auto = false;
+        toast('Aucun Compagnon n’est relié pour l’instant.');
+        stepControl();
+        return;
+      }
       if (!await requireCode('Ton code, pour valider')) return;
       const c = buildCampaign({
         name: draft.name,
@@ -360,6 +418,7 @@ export function openCampaignWizard(list){
           company: t.company, companyObj: t.companyObj }))
       });
       c.auto = draft.auto;
+      c.updatedAt = Date.now();
       campaigns = all().concat([c]);
       await save();
       for (const t of targets){
@@ -380,11 +439,13 @@ export function openCampaignWizard(list){
           sh.close(null, true);
           bus.refresh();
           toast(ok ? 'Confiée à ton ordinateur ✓ — elle partira toute seule.'
-                   : 'Prête — ton ordinateur la prendra à son réveil.');
+                   : (compAssoc ? 'Prête — ton ordinateur la prendra à son réveil.'
+                                : 'Prête — ton ordinateur la prendra dès qu’il te rejoint.'));
         } catch (e) {
           sh.close(null, true);
           bus.refresh();
-          toast('Prête — ton ordinateur la prendra à son réveil.');
+          toast(compAssoc ? 'Prête — ton ordinateur la prendra à son réveil.'
+                          : 'Prête — ton ordinateur la prendra dès qu’il te rejoint.');
         }
         return;
       }
@@ -422,6 +483,7 @@ export function openCampaignDay(c0){
   let sending = false;
 
   const persist = async () => {
+    c = touch(c);
     campaigns = all().map(x => x.id === c.id ? c : x);
     await save();
   };

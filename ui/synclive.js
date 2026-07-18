@@ -13,7 +13,7 @@
 import { uid } from '../engine/utils.js';
 import { normalizeProfile } from '../engine/model.js';
 import { fullPayload } from '../engine/exchange.js';
-import { syncMerge } from '../engine/sync.js';
+import { syncMerge, syncPrivateMerge } from '../engine/sync.js';
 import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
          ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor, deviceIn } from '../engine/ring.js';
 import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
@@ -101,6 +101,10 @@ async function loadRingSt(){
 }
 const saveRingSt = () => kvSet(RING_KEY, JSON.stringify(ringSt));
 export const getRing = () => (ringSt && ringSt.ring) || null;
+export async function ringCompanion(){
+  await loadRingSt();
+  return ((getRing() && getRing().devices) || []).find(d => d && d.role === 'companion') || null;
+}
 export async function amMain(){
   const r = getRing();
   if (!r) return false;
@@ -240,15 +244,54 @@ let room = null;
 let sendFull = null;
 let sendHello = null;
 let lastSent = '';
+let sendJob = null;
+let sendAgain = false;
 let gen = 0;             /* jeton : une (re)connexion invalide les précédentes */
+
+const parseList = raw => {
+  try { const v = JSON.parse(raw || '[]'); return Array.isArray(v) ? v : []; }
+  catch (e) { return []; }
+};
+async function privateState(){
+  const [campaigns, missions] = await Promise.all([kvGet(CAMPAIGNS_KEY), kvGet(MISSIONS_KEY)]);
+  return { campaigns: parseList(campaigns), missions: parseList(missions) };
+}
+async function writePrivateState(next){
+  await Promise.all([
+    kvSet(CAMPAIGNS_KEY, JSON.stringify(next.campaigns || [])),
+    kvSet(MISSIONS_KEY, JSON.stringify(next.missions || []))
+  ]);
+  document.dispatchEvent(new CustomEvent('oc:campaigns-sync'));
+  document.dispatchEvent(new CustomEvent('oc:change'));
+}
+/* API volontairement petite, aussi utilisée par le scénario C8 : elle
+   applique exactement le même rail privé que la réception réseau. */
+export async function applyPrivatePayload(payload){
+  const mine = await privateState();
+  const merged = syncPrivateMerge(payload || {}, mine);
+  if (merged.stats.campaigns || merged.stats.missions) await writePrivateState(merged);
+  return merged;
+}
 
 const sendState = () => {
   if (!sendFull || !live.peers) return;
-  const payload = fullPayload(S.companies, S.profile, S.orphans, S.tombs);
-  const j = JSON.stringify(payload);
-  if (j === lastSent) return;   /* rien de neuf = on ne renvoie pas (stop au ping-pong) */
-  lastSent = j;
-  sendFull(payload);
+  if (sendJob){ sendAgain = true; return; }
+  sendJob = (async () => {
+    do {
+      sendAgain = false;
+      const priv = await privateState();
+      if (!sendFull || !live.peers) return;
+      const payload = Object.assign(fullPayload(S.companies, S.profile, S.orphans, S.tombs), priv);
+      const j = JSON.stringify(payload);
+      if (j !== lastSent){
+        lastSent = j;           /* rien de neuf = stop au ping-pong */
+        sendFull(payload);
+      }
+    } while (sendAgain);
+  })().catch(() => {}).finally(() => {
+    sendJob = null;
+    if (sendAgain) sendState();
+  });
 };
 /* chaque enregistrement, où qu'il vienne, se propage — en continu */
 document.addEventListener('oc:change', () => sendState());
@@ -306,26 +349,34 @@ async function join(phrase){
 
   const full = room.makeAction('full');
   sendFull = d => full.send(d);
-  full.onMessage = obj => {
+  let receiveQueue = Promise.resolve();
+  full.onMessage = obj => { receiveQueue = receiveQueue.then(async () => {
     if (!obj || obj.kind !== 'full' || !Array.isArray(obj.companies)) return;
     const r2 = syncMerge(obj, { companies: S.companies, orphans: S.orphans, profile: S.profile, tombs: S.tombs });
+    const minePrivate = await privateState();
+    const rPriv = syncPrivateMerge(obj, minePrivate);
     const st = r2.stats;
-    const changed = st.addedC + st.updatedC + st.removedC + st.addedO + (st.profile === 'remote' ? 1 : 0);
+    const changed = st.addedC + st.updatedC + st.removedC + st.addedO +
+      (st.profile === 'remote' ? 1 : 0) + rPriv.stats.campaigns + rPriv.stats.missions;
     if (changed){
       const snap = {
         companies: JSON.stringify(S.companies), orphans: JSON.stringify(S.orphans),
-        profile: JSON.stringify(S.profile), tombs: JSON.stringify(S.tombs)
+        profile: JSON.stringify(S.profile), tombs: JSON.stringify(S.tombs),
+        campaigns: JSON.stringify(minePrivate.campaigns), missions: JSON.stringify(minePrivate.missions)
       };
       if (st.profile === 'remote' && !live.prevProfile) live.prevProfile = snap.profile;
       applySynced(r2);
+      if (rPriv.stats.campaigns || rPriv.stats.missions) await writePrivateState(rPriv);
       bus.refresh();
-      live.lastStats = Object.assign({ t: Date.now() }, st);
+      live.lastStats = Object.assign({ t: Date.now(), campaigns: rPriv.stats.campaigns,
+        missions: rPriv.stats.missions }, st);
       logJ('Sync appareils : +' + st.addedC + ', ' + st.updatedC + ' maj, ' + st.removedC + ' suppr.');
       showUndo(`${ic('check', 'ic-14')} Appareils synchronisés.`, () => {
         applySynced({
           companies: JSON.parse(snap.companies), orphans: JSON.parse(snap.orphans),
           profile: JSON.parse(snap.profile), tombs: JSON.parse(snap.tombs)
         });
+        writePrivateState({ campaigns: JSON.parse(snap.campaigns), missions: JSON.parse(snap.missions) });
         live.lastStats = null;
         live.prevProfile = null;
         bus.refresh();
@@ -336,7 +387,7 @@ async function join(phrase){
     live.state = 'on';
     emit();
     sendState();   /* converge : ne repart que si quelque chose a changé */
-  };
+  }).catch(() => {}); };
 
   room.onPeerJoin = () => {
     live.peers++;

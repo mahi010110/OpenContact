@@ -58,17 +58,11 @@ pub fn cycle(p: &Arc<Partage>) {
     if !oc_coeur::dans_fenetre(js, h) {
         return;
     }
-    let Some(pub_pair) = p
-        .assoc
-        .lock()
-        .unwrap()
-        .as_ref()
-        .and_then(|a| a.appareil["pub"].as_str().map(String::from))
-    else {
+    let Some(assoc) = p.assoc.lock().unwrap().clone() else {
         return;
     };
     let mut em = EtatMissions::charger(&p.coffre);
-    let camps = em.campagnes(&pub_pair, present);
+    let camps = em.campagnes(&assoc, present);
     if camps.is_empty() {
         return;
     }

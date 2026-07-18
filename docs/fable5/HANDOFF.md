@@ -2,8 +2,8 @@
 
 - **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1, y
   compris la reprise d'analyse après fermeture) et
-  **Compagnon C1–C7 livré** dans `compagnon/`. Les corrections UX prioritaires
-  de `AUDIT-UX.md` sont maintenant livrées et testées. C8, MCP, nouvelles IA
+  **Compagnon C1–C8 livré** dans `compagnon/`. Les corrections UX prioritaires
+  de `AUDIT-UX.md` sont maintenant livrées et testées. MCP, nouvelles IA
   et installateurs Windows/macOS restent volontairement hors périmètre.
 - **Phase V (durcissement) livrée** : rotation du coffre interruptible et
   reprenable (`prev` dans `oc_vault_v1`), le SW ne détourne plus
@@ -40,14 +40,14 @@
      prompt + chemin Compagnon), suivi/résultat scellé dans
      `oc_analysis_v1`, reprise après fermeture dans Aujourd'hui, aperçu
      multi-sélection et injection neutralisée par le rail.
-- **Tests de référence après reprise persistante des analyses** : `?test` est
-  vert à **81/81**. La suite complète passe à **13/13, zéro saut**.
+- **Tests de référence après C8** : `?test` est vert à **83/83**. La suite
+  complète passe à **14/14, zéro saut**.
   Rust/Cargo 1.97.1 a
-  été installé localement : `cargo test --locked` passe à **19/19** (18 cœur
-  + 1 coquille), le Compagnon se construit, puis les **3/3 scénarios natifs
+  été installé localement : `cargo test --locked` passe à **21/21** (20 cœur
+  + 1 coquille), le Compagnon se construit, puis les **4/4 scénarios natifs
   passent contre le vrai binaire** : envoi + kill/reprise sans doublon,
-  réponse IMAP, analyse locale fermée/reprise + fusion sûre. Le cache PWA est
-  **oc-v29**.
+  réponse IMAP, analyse locale fermée/reprise + fusion sûre, et téléphone C8.
+  Le cache PWA est **oc-v30**.
 - **Blocages externes (dans l'ordre d'importance)** :
   1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
      renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),
@@ -58,7 +58,7 @@
      notification, le verrou PRF et l'anneau sur de vrais appareils.
   3. **Distribution** : Outlook OAuth, signatures, AppImage réel,
      installateurs Windows/macOS et publication restent externes ou à faire.
-- **Compagnon (D17/D18 validés — C1 à C7 terminés, `compagnon/`)** :
+- **Compagnon (D17/D18 validés — C1 à C8 terminés, `compagnon/`)** :
   - **C1 livré** : crate `oc-coeur` (la garde D17 — mission signée
     Ed25519, anti-double-envoi, plafond global, fenêtre, hors-mission)
     `cargo test` 9/9 dont **vecteur croisé** avec le test JS « fil
@@ -122,20 +122,27 @@
     installé et vérifié dans le conteneur (`/usr/bin/oc-compagnon`).
     AppImage/Windows/macOS : à produire sur les OS cibles (signature
     comprise — spec §8.3, geste mainteneur).
-  - **C8 à faire (hors reprise UX)** : missions depuis le téléphone —
-    sync des campagnes/missions entre appareils ou P2P du Compagnon ;
-    sur téléphone l'option auto n'apparaît pas (aucune promesse
-    cassée), la vérification côté Compagnon est déjà prête.
-- **Ordre de suite recommandé** : tester le `.deb`, le verrou PRF, l'anneau
-  et les parcours Compagnon sur matériel réel ; déclarer et essayer les apps
-  OAuth Google/Microsoft ; puis seulement C8, le MCP local et la distribution
+  - **C8 livré — confier depuis le téléphone** : l'option auto apparaît sans
+    association locale dès que l'anneau connaît un appareil `companion`, avec
+    l'état honnête « ton ordinateur la prendra dès qu'il te rejoint ».
+    Campagnes et `oc_missions_v1` voyagent dans la sync privée ; le fil
+    `{m,sig,dev}` reste intact, `mid` et états convergent sans régression.
+    L'ordinateur associé actualise l'anneau signé du Compagnon, puis remet la
+    mission une seule fois. Le cœur Rust résout et re-vérifie la clé de
+    l'appareil émetteur dans cet anneau. `oc_companion_v1` ne quitte jamais
+    l'ordinateur. E2E vrai binaire : téléphone 390×844, ordinateur 1280×800,
+    clair/sombre, trois rejeux de sync puis plusieurs cycles = un seul SMTP ;
+    scénario rejoué trois fois sans flakiness.
+- **Ordre de suite recommandé** : réaliser P8-2 (MCP local), puis tester le
+  `.deb`, le verrou PRF, l'anneau et les parcours Compagnon sur matériel réel ;
+  déclarer et essayer les apps OAuth Google/Microsoft ; enfin la distribution
   multi-OS. La récupération des analyses après fermeture est maintenant faite.
   Les ajustements visuels écran par écran restent un chantier séparé avec le
   mainteneur.
 - **Première vérification à la prochaine reprise** :
   `git log --oneline -8 && git status`, puis
-  `node tests/e2e/unitaires.mjs` (**81/81 attendus**) et
+  `node tests/e2e/unitaires.mjs` (**83/83 attendus**) et
   `node tests/e2e/tous.mjs`. Pour le natif :
   `cargo test --locked --manifest-path compagnon/Cargo.toml`,
   `cargo build --locked --manifest-path compagnon/Cargo.toml -p oc-compagnon`,
-  puis les trois `e2e-compagnon-*.mjs`.
+  puis les quatre scénarios natifs, dont `e2e-c8-telephone.mjs`.

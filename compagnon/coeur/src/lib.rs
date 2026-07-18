@@ -14,11 +14,13 @@
 //! `engine/campaign.js` et `engine/mission.js` ; le vecteur signé de
 //! `tests.js` est vérifié à l'identique ici (test croisé JS → Rust).
 
+pub mod anneau;
 pub mod enveloppe;
 pub mod garde;
 pub mod mission;
 pub mod planifier;
 
+pub use anneau::{cle_appareil, fusionner_anneau, RefusAnneau};
 pub use enveloppe::{cle_du_code, ouvrir, sceller, ITER_APPAIRAGE};
 pub use garde::{dans_fenetre, Garde, Refus as RefusGarde, PLAFOND_JOUR};
 pub use mission::{verifier_mission, Mission, Refus as RefusMission};

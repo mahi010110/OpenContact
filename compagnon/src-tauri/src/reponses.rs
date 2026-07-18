@@ -46,17 +46,11 @@ pub fn detecter(p: &Arc<Partage>) {
        (arrêts, réponses) et ne doit pas se croiser avec un envoi qui écrit
        « fait » — sinon l'un écrase l'autre et un envoi confirmé peut repartir. */
     let _serialise = p.journal_lock.lock().unwrap();
-    let Some(pub_pair) = p
-        .assoc
-        .lock()
-        .unwrap()
-        .as_ref()
-        .and_then(|a| a.appareil["pub"].as_str().map(String::from))
-    else {
+    let Some(assoc) = p.assoc.lock().unwrap().clone() else {
         return;
     };
     let mut em = EtatMissions::charger(&p.coffre);
-    let camps = em.campagnes(&pub_pair, Local::now().timestamp_millis());
+    let camps = em.campagnes(&assoc, Local::now().timestamp_millis());
     /* les cibles vivantes dont le premier message est PARTI */
     let mut candidats: Vec<(String, String, String)> = Vec::new();
     for c in &camps {

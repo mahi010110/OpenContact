@@ -12,7 +12,7 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | E1 | Étude de faisabilité v1 + v2 (8 arbitrages) | Études livrées, arbitrages D1–D12 consignés | — | terminée | Décisions dans `CONTEXT.md` |
 | E2 | Plan UX complet | Livré, validé le 2026-07-16 | E1 | terminée | `UX-PLAN.md` |
 | E3 | Consigner la direction UX choisie | D13–D16 dans `CONTEXT.md`, `UX-PLAN.md` créé | E2 | terminée | Relecture mainteneur |
-| E4 | Étude Rust vs Node.js pour le cœur permanent du Compagnon | `ETUDE-COMPAGNON.md` — recommandation : hybride Tauri (adaptateurs Rust + moteur partagé, garde native) | E1 | **terminée — D17/D18 validés** | Arbitrage consigné dans `CONTEXT.md` ; retour d'implémentation C1–C7 ajouté à l'étude |
+| E4 | Étude Rust vs Node.js pour le cœur permanent du Compagnon | `ETUDE-COMPAGNON.md` — recommandation : hybride Tauri (adaptateurs Rust + moteur partagé, garde native) | E1 | **terminée — D17/D18 validés** | Arbitrage consigné dans `CONTEXT.md` ; retour d'implémentation C1–C8 ajouté à l'étude |
 | E5 | Corriger les priorités de `AUDIT-UX.md` sans redesign | Actions mortes, pont mobile, relais, cibles tactiles et finitions rendus honnêtes | E2 | **terminée — priorités** | 79/79 unitaires ; 10/10 scénarios joués verts, 3 natifs sautés explicitement ; revue écran par écran reportée |
 
 ## Phase 0 — Socle coffre (moteur seul)
@@ -73,7 +73,7 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | V2 | Service worker : le retour OAuth n'est plus détourné | Navigation vers `oauth.html` servie telle quelle (l'app une-page garde le reste) ; favicon de la popup | P4-1 | terminée | E2E `e2e-oauth-sw.mjs` (SW au contrôle, popup + postMessage réels) ; `sw.js` → oc-v23 |
 | V3 | Effacement distant complet | `wipe` emporte AUSSI campagnes, jetons messagerie, clés IA, missions, relais, identité d'appareil et documents (`cv`, `lettre`) | P2-2 | terminée | Liste au CONTRAT §5.7 |
 | V4 | Plafond 15/j GLOBAL + fenêtre d'envoi | `dueSendsAll`/`sentTodayAll` (toutes campagnes), `inSendWindow` (lun–ven 8-19 h locales) ; feuille du jour : boutons retenus hors fenêtre, reste « glisse à demain » | P5-1 | terminée | 1 test unitaire (plafond global + fenêtre) + E2E campagne (samedi = retenu) |
-| V5 | Tests Playwright versionnés | `tests/e2e/` : outillage sans chemin en dur, 13 scénarios recensés par `tous.mjs`, dont l'audit UX et 3 scénarios vrai-binaire | — | terminée | Reprise 2026-07-18 : **81/81 unitaires et 13/13 scénarios verts, 0 sauté**, dont 3/3 natifs contre le binaire construit ici |
+| V5 | Tests Playwright versionnés | `tests/e2e/` : outillage sans chemin en dur, 14 scénarios recensés par `tous.mjs`, dont l'audit UX et 4 scénarios vrai-binaire | — | terminée | C8 : **83/83 unitaires et 14/14 scénarios verts, 0 sauté**, dont 4/4 natifs contre le binaire construit ici |
 | V6 | Stockage : connexion IndexedDB fermée de force (navigateurs mobiles sous pression mémoire) | Réouverture à la demande + une re-tentative par requête — plus jamais un `null` silencieux sur connexion morte | — | terminée | Découvert par les E2E (Chromium évince les contextes éphémères) ; suite 8/8 stable |
 
 ## Phase 7 — Compagnon v1
@@ -86,11 +86,10 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 
 ## Chantier Compagnon (D17/D18 — `compagnon/`, hybride Tauri)
 
-**État de reprise vérifié le 18 juillet 2026 :** le code de C1 à C7 est présent
-sur la branche et les commits de livraison sont poussés. Rust/Cargo 1.97.1 a
-été installé dans l'environnement de reprise : les **18 tests du cœur + 1 test
-de la coquille passent**, le binaire de développement se construit et les
-**3 scénarios natifs passent contre ce vrai binaire**. Le mode explicite
+**État vérifié le 18 juillet 2026 :** le code de C1 à C8 est présent sur la
+branche. Rust/Cargo 1.97.1 est installé dans l'environnement : les **20 tests
+du cœur + 1 test de la coquille passent**, le binaire de développement se
+construit et les **4 scénarios natifs passent contre ce vrai binaire**. Le mode explicite
 `OC_INTEGRATION_TEST` neutralise uniquement les services de bureau absents du
 conteneur (instance unique, démarrage automatique et zone de notification) ;
 le canal, la garde, SMTP/IMAP, Ollama, la persistance et la webview restent réels.
@@ -108,7 +107,7 @@ est enregistré en mode intégration (plus de panique au build propre).
 | C5 | Détection des réponses (D8) : IMAP en-têtes seulement (`FROM … SINCE …`, jamais le contenu), même mot de passe d'application, toutes les 10 min ; cible arrêtée non débrayable + `reponses[]` au rapport ; PWA replie (fiche « réponse », trace, relances annulées). Outlook OAuth : reporté avec l'app OAuth mainteneur | Relances annulées seules | C4 | terminée | E2E `e2e-compagnon-reponses.mjs` (vrai binaire + faux IMAP local via OC_IMAP_TEST) |
 | C6 | Analyse d'e-mails : mission `mail-scan` bornée (jours, 40 messages, 100 Ko) → Ollama local → le résultat repasse par l'aperçu multi-sélection de la PWA (jamais d'écriture directe) ; annulable (révocation = rien n'est produit) ; chemin auto dans « Depuis mes e-mails » quand le Compagnon est associé ; suivi/résultat scellé dans `oc_analysis_v1` | Aucune création silencieuse ; corpus = données, jamais des instructions ; fermeture sans perte | C5 | terminée | E2E `e2e-compagnon-scan.mjs` contre le vrai binaire : fermeture/rechargement pendant Ollama, reprise par `mid`, chip Aujourd'hui, aperçu conservé après Annuler, tri/fusion sûre, injection et confiance neutralisées |
 | C7 | États & finitions : éteint/rattrapage, refus/incertain/transitoire, révocations en file, docs (README compagnon, CONTRAT, HANDOFF) | UX complète, rien de moteur sans parcours | C3–C6 | terminée | Relecture UX-PLAN ; 19/19 tests Rust et 3/3 E2E vrai-binaire verts dans l'environnement de reprise |
-| C8 | Missions depuis le téléphone : la campagne auto validée sur téléphone doit atteindre le Compagnon (sync des campagnes/missions entre appareils, ou P2P du Compagnon — §8.3 à dérisquer) | Le bon signé voyage, la vérification d'anneau est déjà prête côté Compagnon | C4 | **à faire — hors périmètre de l'étape UX actuelle** | Sur téléphone, l'option « Mon ordinateur envoie » n'apparaît pas (pas d'association locale) — aucune promesse cassée |
+| C8 | Missions depuis le téléphone : campagnes et bons signés empruntent la sync privée « Mes appareils » ; l'ordinateur associé remet le bon au canal local | Le téléphone propose auto si l'anneau connaît un Compagnon ; le fil signé voyage intact et un seul `mid` est confié | C4 | **terminée** | `syncPrivateMerge` testé (LWW + faits monotones) ; anneau actualisé et vérifié en Rust ; E2E `e2e-c8-telephone.mjs` contre le vrai binaire, 390×844 + 1280×800 clair/sombre, 3 exécutions : téléphone sans `oc_companion_v1` → 1 SMTP après trois rejeux, zéro erreur console |
 
 ## Phase 8 — Analyser mes e-mails, MCP local
 

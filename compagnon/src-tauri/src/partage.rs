@@ -26,6 +26,14 @@ pub struct Association {
     pub nom: String,
 }
 
+impl Association {
+    /// La clé d'un émetteur de mission vient exclusivement de l'anneau
+    /// signé : retirer un appareil lui retire aussi ce pouvoir.
+    pub fn cle_mission(&self, dev: &str) -> Option<String> {
+        oc_coeur::cle_appareil(&self.ring, dev)
+    }
+}
+
 #[derive(Serialize, Deserialize, Default)]
 struct EtatDisque {
     id: String,
@@ -173,6 +181,27 @@ impl Partage {
         *self.assoc.lock().unwrap() = Some(assoc);
         *self.appairage.lock().unwrap() = None;
         self.persister();
+    }
+
+    /// Avance l'anneau appris à l'appairage, uniquement après la
+    /// vérification cryptographique et monotone du cœur.
+    pub fn actualiser_anneau(&self, entrant: &serde_json::Value) -> Result<bool, String> {
+        let change = {
+            let mut assoc = self.assoc.lock().unwrap();
+            let a = assoc.as_mut().ok_or_else(|| "associe".to_string())?;
+            match oc_coeur::fusionner_anneau(&a.ring, entrant) {
+                Ok(Some(r)) => {
+                    a.ring = r;
+                    true
+                }
+                Ok(None) => false,
+                Err(e) => return Err(format!("anneau:{e:?}")),
+            }
+        };
+        if change {
+            self.persister();
+        }
+        Ok(change)
     }
 }
 

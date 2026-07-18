@@ -183,6 +183,13 @@ fn repondre_boite(
             let _ = app.emit("oc://associe", ());
             serde_json::json!({ "t": "ok" })
         }
+        /* L'anneau évolue après l'appairage (le Compagnon lui-même,
+           puis de nouveaux téléphones). Le cœur n'accepte qu'une
+           version signée et strictement plus récente. */
+        Some("anneau") => match p.actualiser_anneau(&msg["ring"]) {
+            Ok(change) => serde_json::json!({ "t": "ok", "change": change }),
+            Err(e) => serde_json::json!({ "e": e }),
+        },
         /* une mission signée est confiée — vérifiée AVANT d'être rangée,
            et re-vérifiée à chaque lecture par le planificateur */
         Some("mission") => {
@@ -196,13 +203,12 @@ fn repondre_boite(
             let Some(a) = assoc.as_ref() else {
                 return serde_json::json!({ "e": "associe" });
             };
-            if dev != a.appareil["id"].as_str().unwrap_or("!") {
+            let Some(pub_dev) = a.cle_mission(dev) else {
                 return serde_json::json!({ "e": "appareil" });
-            }
-            let pub_pair = a.appareil["pub"].as_str().unwrap_or("").to_string();
+            };
             drop(assoc);
             let present = chrono::Local::now().timestamp_millis();
-            let ms = match oc_coeur::verifier_mission(m, sig, &pub_pair, present) {
+            let ms = match oc_coeur::verifier_mission(m, sig, &pub_dev, present) {
                 Ok(ms) => ms,
                 Err(e) => return serde_json::json!({ "e": format!("mission:{e:?}") }),
             };

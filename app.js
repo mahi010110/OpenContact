@@ -131,10 +131,13 @@ function applyTheme(t, persist){
   }
 
   if (new URLSearchParams(location.search).has('test')){
-    import('./tests.js').then(m => m.runSelfTests()).then(R => {
+    Promise.all([import('./tests.js'), import('./tests-c8.js')])
+      .then(async ([base, c8]) => [...await base.runSelfTests(), ...await c8.runC8Tests()])
+      .then(R => {
+      window.__ocTests = R;
       const ko = R.filter(r => r.résultat !== '✓').length;
       toast(ko ? `Auto-tests : ${ko} échec(s) sur ${R.length} — détails en console`
                : `Auto-tests : ${R.length}/${R.length} OK ✓`);
-    });
+      });
   }
 })();
