@@ -160,7 +160,9 @@ export function openRecevoir(){
          <div class="lk-why">${ic('clipboard', 'ic-14')} <span>Rapporte ici sa réponse : chaque piste proposée se coche ou s’écarte.</span></div>
          ${assoc ? '' : `<div class="lk-why">${ic('shield', 'ic-14')} <span>Rien ne s’enregistre sans ton accord.</span></div>`}
        </div>
-       ${assoc ? '' : `<p class="hint">${ic('lightbulb', 'ic-14')} Avec le Compagnon, ton ordinateur fait la lecture tout seul — Moi → Mes appareils.</p>`}
+       ${assoc ? '' : `<p class="hint">${ic('lightbulb', 'ic-14')} ${matchMedia('(min-width:901px)').matches
+         ? 'Avec le Compagnon, ton ordinateur fait la lecture tout seul — Moi → Mes appareils.'
+         : 'Le Compagnon s’installe et s’associe depuis ton ordinateur — ouvre OpenContact là-bas.'}</p>`}
        <div class="field" style="margin-top:10px"><label for="rcMailTxt">La réponse de l’IA</label>
          <textarea id="rcMailTxt" style="min-height:120px" placeholder="Colle ici le texte produit par l’assistant"></textarea></div>`;
     q('#rcScan7')?.addEventListener('click', () => scan(7));
