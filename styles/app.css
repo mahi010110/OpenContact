@@ -143,6 +143,10 @@ input,select,textarea{font-family:inherit;color:var(--text-body)}
 .btn-ghost:hover{background:var(--surface-chrome);color:var(--text-body)}
 .btn-ghost:active{transform:none;box-shadow:var(--bevel-down)}
 .btn-sm{min-height:36px;padding:2px 11px;font-size:var(--text-12)}
+/* Mobile et écran tactile : même les actions compactes restent au pouce. */
+@media (max-width:900px), (pointer:coarse){
+  .btn-sm{min-height:44px}
+}
 .icon-btn{width:var(--ctl);height:var(--ctl);padding:0}
 .linklike{
   background:none;border:0;color:var(--text-link);font-weight:var(--weight-semibold);font-size:var(--text-12);
@@ -565,6 +569,7 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 }
 .pick b{font-weight:var(--weight-semibold)}
 .pick span{font-family:var(--font-mono);font-size:var(--text-12);color:var(--text-muted)}
+.pick:disabled{opacity:.62;cursor:not-allowed;box-shadow:none}
 .pick:active{box-shadow:var(--bevel-down);transform:translate(1px,1px)}
 .pick-close{border-left:3px solid var(--c)}
 .dup-note{
@@ -651,6 +656,9 @@ a.fk-v{display:inline-flex;align-items:center;gap:5px}
   padding:1px 7px;border-radius:var(--radius-1);font-size:var(--text-11);font-weight:var(--weight-semibold);
 }
 .abtn-sm{width:32px;height:32px;margin-left:auto}
+@media (max-width:900px), (pointer:coarse){
+  .abtn-sm{width:44px;height:44px}
+}
 .ta-s{min-height:48px}
 .ckline{display:flex;align-items:center;gap:9px;font-size:var(--text-13);min-height:var(--ctl);cursor:pointer;user-select:none}
 .ckline input{width:18px;height:18px;accent-color:var(--accent)}
