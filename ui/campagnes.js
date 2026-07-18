@@ -318,7 +318,7 @@ export function openCampaignWizard(list){
               <span class="cz-subj">${esc(fillTpl(draft.subject, t.companyObj, t, S.profile))}</span></div>`).join('')}
        </details>
        ${skipped.length ? `<p class="hint warn">${skipped.length} piste${skipped.length > 1 ? 's' : ''} sans email — écartée${skipped.length > 1 ? 's' : ''} : ${esc(skipped.map(c => c.name).join(', ').slice(0, 120))}</p>` : ''}
-       ${acct || compAssoc ? '' : `<p class="hint warn">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
+       ${acct || compAssoc ? '' : `<p class="hint warn" id="czCxHint">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
        ${draft.auto ? '' : `<p class="hint">Rien ne part tout seul : chaque jour, tes envois prêts t’attendent dans « Aujourd’hui ».</p>`}
        ${compAssoc ? '' : `<p class="hint">${ic('lightbulb', 'ic-14')} Ton ordinateur peut envoyer même app fermée — <button class="linklike" id="czVoirComp" style="min-height:0;padding:0 4px">voir comment</button></p>`}`;
     q('#czCx')?.addEventListener('click', () => openConnexions());
@@ -392,6 +392,16 @@ export function openCampaignWizard(list){
       bus.refresh();
       toast('Campagne prête ✓ — tes premiers envois t’attendent dans « Aujourd’hui ».');
     });
+    /* Le bouton n'invite plus à une action impossible. Le lien « Connecter »
+       juste au-dessus reste le geste disponible et explique le prérequis. */
+    const canValidate = draft.auto || !!mailAccount();
+    bOk.disabled = !canValidate;
+    bOk.classList.toggle('btn-off', !canValidate);
+    bOk.setAttribute('aria-disabled', String(!canValidate));
+    if (!canValidate){
+      bOk.setAttribute('aria-describedby', 'czCxHint');
+      bOk.title = 'Connecte d’abord ta messagerie';
+    }
     sh.setFoot([btn('← Le message', 'btn-ghost', stepMessage), bOk]);
   };
 
@@ -406,7 +416,7 @@ export function openCampaignWizard(list){
 /* ---------- la feuille du jour ---------- */
 export function openCampaignDay(c0){
   let c = all().find(x => x.id === c0.id) || c0;
-  const sh = openSheet({ title: c.name, icon: 'flag' });
+  const sh = openSheet({ title: c.name, icon: 'flag', clearToast: true });
   const q = s => sh.body.querySelector(s);
   const today = todayISO();
   let sending = false;
