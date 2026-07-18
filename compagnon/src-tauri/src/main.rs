@@ -29,14 +29,23 @@ fn montrer(app: &tauri::AppHandle) {
 }
 
 fn main() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            montrer(app); // une seconde instance ramène la fenêtre
-        }))
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
-        ))
+    /* Les scénarios d'intégration pilotent le vrai canal et le vrai moteur,
+    mais peuvent tourner dans un conteneur sans D-Bus ni /proc. Les
+    services de bureau, hors périmètre de ces scénarios, y sont donc
+    explicitement désactivés. Cette variable n'est jamais posée en prod. */
+    let integration_test = std::env::var_os("OC_INTEGRATION_TEST").is_some();
+    let mut builder = tauri::Builder::default();
+    if !integration_test {
+        builder = builder
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                montrer(app); // une seconde instance ramène la fenêtre
+            }))
+            .plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                None,
+            ));
+    }
+    builder
         .invoke_handler(tauri::generate_handler![
             commandes::etat_compagnon,
             commandes::cerveau_pret,
@@ -51,7 +60,7 @@ fn main() {
             commandes::appairage_sel,
             commandes::dissocier
         ])
-        .setup(|app| {
+        .setup(move |app| {
             /* l'état partagé (identité, association) + le canal local */
             let dossier = app
                 .path()
@@ -65,7 +74,6 @@ fn main() {
                 let mut sel = [0u8; 16];
                 rand::RngCore::fill_bytes(&mut rand::thread_rng(), &mut sel);
                 *p.appairage.lock().unwrap() = Some(partage::Appairage {
-                    code: code.clone(),
                     sel,
                     kc: oc_coeur::cle_du_code(&code, &sel),
                     depuis: std::time::Instant::now(),
@@ -77,24 +85,26 @@ fn main() {
             planif::demarrer(p);
             // un bureau sans zone de notification ne doit pas empêcher
             // le Compagnon de vivre : la fenêtre reste le poste de repli
-            let tray = (|| -> tauri::Result<()> {
-                let ouvrir = MenuItem::with_id(app, "ouvrir", "Ouvrir", true, None::<&str>)?;
-                let quitter = MenuItem::with_id(app, "quitter", "Quitter", true, None::<&str>)?;
-                let menu = Menu::with_items(app, &[&ouvrir, &quitter])?;
-                TrayIconBuilder::with_id("principal")
-                    .icon(app.default_window_icon().expect("icône").clone())
-                    .tooltip("OpenContact Compagnon")
-                    .menu(&menu)
-                    .on_menu_event(|app, e| match e.id.as_ref() {
-                        "ouvrir" => montrer(app),
-                        "quitter" => app.exit(0),
-                        _ => {}
-                    })
-                    .build(app)?;
-                Ok(())
-            })();
-            if let Err(e) = tray {
-                eprintln!("compagnon : zone de notification indisponible ({e})");
+            if !integration_test {
+                let tray = (|| -> tauri::Result<()> {
+                    let ouvrir = MenuItem::with_id(app, "ouvrir", "Ouvrir", true, None::<&str>)?;
+                    let quitter = MenuItem::with_id(app, "quitter", "Quitter", true, None::<&str>)?;
+                    let menu = Menu::with_items(app, &[&ouvrir, &quitter])?;
+                    TrayIconBuilder::with_id("principal")
+                        .icon(app.default_window_icon().expect("icône").clone())
+                        .tooltip("OpenContact Compagnon")
+                        .menu(&menu)
+                        .on_menu_event(|app, e| match e.id.as_ref() {
+                            "ouvrir" => montrer(app),
+                            "quitter" => app.exit(0),
+                            _ => {}
+                        })
+                        .build(app)?;
+                    Ok(())
+                })();
+                if let Err(e) = tray {
+                    eprintln!("compagnon : zone de notification indisponible ({e})");
+                }
             }
             println!("compagnon : prêt");
             Ok(())
