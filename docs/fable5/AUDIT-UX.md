@@ -263,3 +263,24 @@ compréhensible. **Une seule est absente** (relais, F3).
 
 Aucun de ces points n'est bloquant pour une mise en main : F1 est le seul à
 traiter en priorité pour ne pas laisser un bouton principal sans effet.
+
+## 8. Suivi de correction — 18 juillet 2026
+
+Le présent audit reste la photographie du constat initial. La reprise suivante
+a traité les priorités sans redesign ni ajout de capacité IA :
+
+| Point | État après correction | Preuve |
+|---|---|---|
+| F1 — action morte sans e-mail | corrigé : « Envoyer » est désactivé et « Copier » devient primaire ; même garde au contrôle de campagne | `e2e-ux-audit.mjs` |
+| F2 — Compagnon ambigu sur téléphone | corrigé : copie explicite dans « Mes appareils » et « Depuis mes e-mails », sans bouton d'appairage local impossible | `e2e-ux-audit.mjs` en 390×844 |
+| F3 — relais invisibles | corrigé : volet « Connexion avancée », `wss://` uniquement, huit adresses max, dédoublonnage et retour aux relais publics | stockage `oc_relays_v1` vérifié par E2E |
+| F4 — cibles sous 44 px | corrigé pour `.btn-sm` et `.abtn-sm` en tactile/petit écran | dimensions calculées par E2E |
+| F5 — contact dupliqué | corrigé : l'e-mail ou le téléphone n'est plus répété quand il sert déjà de titre | cas orphelin vérifié par E2E |
+| F6 — finitions prioritaires | corrigé pour le toast de la feuille du jour et les libellés/disponibilités IA | parcours verrou + audit UX verts |
+
+La constante morte `VIEW_KEY` et la respiration des grands écrans ne sont pas
+des défauts prioritaires et restent à examiner avec le mainteneur pendant la
+revue écran par écran. La validation après correction donne **79/79 tests
+unitaires**, **10/10 scénarios réellement joués**, **3 scénarios natifs sautés
+explicitement** faute de binaire Compagnon, et zéro erreur navigateur. Les
+tests Rust natifs restent à refaire ici car `cargo` n'est pas installé.
