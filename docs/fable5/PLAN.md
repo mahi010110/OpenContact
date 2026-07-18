@@ -73,7 +73,7 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | V2 | Service worker : le retour OAuth n'est plus détourné | Navigation vers `oauth.html` servie telle quelle (l'app une-page garde le reste) ; favicon de la popup | P4-1 | terminée | E2E `e2e-oauth-sw.mjs` (SW au contrôle, popup + postMessage réels) ; `sw.js` → oc-v23 |
 | V3 | Effacement distant complet | `wipe` emporte AUSSI campagnes, jetons messagerie, clés IA, missions, relais, identité d'appareil et documents (`cv`, `lettre`) | P2-2 | terminée | Liste au CONTRAT §5.7 |
 | V4 | Plafond 15/j GLOBAL + fenêtre d'envoi | `dueSendsAll`/`sentTodayAll` (toutes campagnes), `inSendWindow` (lun–ven 8-19 h locales) ; feuille du jour : boutons retenus hors fenêtre, reste « glisse à demain » | P5-1 | terminée | 1 test unitaire (plafond global + fenêtre) + E2E campagne (samedi = retenu) |
-| V5 | Tests Playwright versionnés | `tests/e2e/` : outillage sans chemin en dur, 13 scénarios recensés par `tous.mjs`, dont l'audit UX et 3 scénarios vrai-binaire | — | terminée | Reprise 2026-07-18 : 79/79 unitaires ; 10/10 scénarios réellement joués verts ; 3 natifs sautés explicitement faute de binaire |
+| V5 | Tests Playwright versionnés | `tests/e2e/` : outillage sans chemin en dur, 13 scénarios recensés par `tous.mjs`, dont l'audit UX et 3 scénarios vrai-binaire | — | terminée | Reprise 2026-07-18 : 79/79 unitaires ; 10/10 scénarios navigateur verts ; 3/3 scénarios natifs verts contre le binaire construit ici |
 | V6 | Stockage : connexion IndexedDB fermée de force (navigateurs mobiles sous pression mémoire) | Réouverture à la demande + une re-tentative par requête — plus jamais un `null` silencieux sur connexion morte | — | terminée | Découvert par les E2E (Chromium évince les contextes éphémères) ; suite 8/8 stable |
 
 ## Phase 7 — Compagnon v1
@@ -81,27 +81,29 @@ L'UX suit `UX-PLAN.md` (validé) sans réinterprétation.
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
 | P7-1 | Contrat de missions idempotentes (`engine/mission.js` : bornées, révocables, rapport replié sur le journal de campagne sans doublon, `oc_missions_v1` au CONTRAT) | Le socle consommé par le binaire Tauri | P2-2 | **terminée** | Fil signé JS/Rust, expiration, révocation et repli idempotent couverts ; appairage et présence livrés en C2 |
-| P7-2 | App Tauri : trousseau OS, envois app fermée, rattrapage | Kill/redémarrage sans doublon | P7-1, P3-1 | **terminée — C1 à C4 + C7** | E2E vrai binaire livré ; preuve précédente verte. **À rejouer ici avec Cargo + xvfb** |
-| P7-3 | Lecture Gmail (mot de passe d'app, D8) + Outlook OAuth → détection de réponses | Relances annulées sur réponse | P7-2 | **terminée pour Gmail/IMAP — Outlook OAuth attend l'app externe** | C5 : faux IMAP + vrai binaire livrés ; essai natif à rejouer. Outlook dépend de la déclaration OAuth mainteneur |
+| P7-2 | App Tauri : trousseau OS, envois app fermée, rattrapage | Kill/redémarrage sans doublon | P7-1, P3-1 | **terminée — C1 à C4 + C7** | Rejoué ici contre le vrai binaire : 2 envois SMTP, kill −9, relance sans doublon, rapport PWA et reprise en main verts |
+| P7-3 | Lecture Gmail (mot de passe d'app, D8) + Outlook OAuth → détection de réponses | Relances annulées sur réponse | P7-2 | **terminée pour Gmail/IMAP — Outlook OAuth attend l'app externe** | Rejoué ici : vrai binaire + faux IMAP, réponse détectée et relances arrêtées. Outlook dépend de la déclaration OAuth mainteneur |
 
 ## Chantier Compagnon (D17/D18 — `compagnon/`, hybride Tauri)
 
 **État de reprise vérifié le 18 juillet 2026 :** le code de C1 à C7 est présent
-sur la branche et les commits de livraison sont poussés. Le cœur contient
-18 tests Rust et la coquille Tauri 1 test Rust supplémentaire ; leur dernière
-preuve vient des livraisons Fable5. Ils restent à **rejouer dans l'environnement
-courant**, où la commande `cargo` n'est pas installée. Ce manque d'outil ne
-remet pas en cause la présence des crates, du `Cargo.lock` ni des sources.
+sur la branche et les commits de livraison sont poussés. Rust/Cargo 1.97.1 a
+été installé dans l'environnement de reprise : les **18 tests du cœur + 1 test
+de la coquille passent**, le binaire de développement se construit et les
+**3 scénarios natifs passent contre ce vrai binaire**. Le mode explicite
+`OC_INTEGRATION_TEST` neutralise uniquement les services de bureau absents du
+conteneur (instance unique, démarrage automatique et zone de notification) ;
+le canal, la garde, SMTP/IMAP, Ollama, la persistance et la webview restent réels.
 
 | ID | Tâche | Résultat attendu | Dépend de | État | Acceptation / tests |
 |---|---|---|---|---|---|
-| C1 | Socle : crate `coeur` (garde D17 : mission signée, anti-double-envoi, plafond global, fenêtre) + coquille Tauri (tray, arrière-plan, démarrage auto, fenêtre de réglages) + moteur partagé préparé par `preparer.mjs` + fil signé côté moteur JS (`signMission`/`openMissionWire`) | Tout compile, la garde est testée, le vecteur signé JS se vérifie en Rust | E4 | terminée | `cargo test -p oc-coeur` ; test JS « fil signé » ; build + lancement xvfb (« compagnon : prêt »). Rust à rejouer ici |
+| C1 | Socle : crate `coeur` (garde D17 : mission signée, anti-double-envoi, plafond global, fenêtre) + coquille Tauri (tray, arrière-plan, démarrage auto, fenêtre de réglages) + moteur partagé préparé par `preparer.mjs` + fil signé côté moteur JS (`signMission`/`openMissionWire`) | Tout compile, la garde est testée, le vecteur signé JS se vérifie en Rust | E4 | terminée | Rejoué le 2026-07-18 : 18/18 tests `oc-coeur` + 1/1 test Tauri, build et lancement xvfb (« compagnon : prêt ») |
 | C2 | Canal local (serveur 127.0.0.1, enveloppes `OCV1.` uniquement) + appairage code court (PBKDF2 partagé, 5 essais, 2 min) + secrets au trousseau (repli fichier 0600) + le Compagnon dans « Mes appareils » (associer, présence prêt/éteint, rompre) | Anneau appris (TOFU canal authentifié par le code), rôle `companion`, clé de canal scellée (`oc_companion_v1`) | C1 | terminée | `cargo test` 12/12 (vecteurs enveloppe + dérivation) ; E2E `e2e-compagnon.mjs` (faux Compagnon au protocole exact : mauvais code, association, présence, rupture) ; canal du VRAI binaire interrogé sous xvfb. Au passage : le SW ne touche plus aux requêtes hors origine (il mettait en cache les réponses d'API) |
 | C3 | Missions : bon signé (`{m, sig, dev}`) confié sur le canal, re-vérifié à CHAQUE lecture ; révocation (mise en file si éteint) ; arrêt de cible sur réponse ; rapport = journal replié idempotent | Contrôle de campagne : « Qui appuie sur Envoyer ? » (D13 : toi par défaut) ; ligne d'Aujourd'hui « ton ordinateur s'en occupe » ; feuille confiée (état honnête, Reprendre la main) | C2 | terminée | E2E réel (voir C4) |
 | C4 | Exécution app fermée : **planificateur Rust** (`coeur/planifier.rs`, miroir du moteur JS verrouillé par fixtures croisées — la webview peut être morte, les envois partent) ; journal scellé écrit AVANT l'envoi (incertain→fait ; refus=erreur ; transitoire=re-tentable) ; SMTP lettre/rustls, réglage scellé + mot de passe au trousseau | Kill −9/relance sans doublon | C3 | terminée | `cargo test` 18/18 (fixtures croisées) ; **E2E `e2e-compagnon-envoi.mjs` contre le VRAI binaire** : appairage réel, campagne confiée par l'assistant, 2 envois SMTP reçus par un puits local, kill −9 + relance = zéro doublon, rapport replié dans la PWA, reprise en main |
 | C5 | Détection des réponses (D8) : IMAP en-têtes seulement (`FROM … SINCE …`, jamais le contenu), même mot de passe d'application, toutes les 10 min ; cible arrêtée non débrayable + `reponses[]` au rapport ; PWA replie (fiche « réponse », trace, relances annulées). Outlook OAuth : reporté avec l'app OAuth mainteneur | Relances annulées seules | C4 | terminée | E2E `e2e-compagnon-reponses.mjs` (vrai binaire + faux IMAP local via OC_IMAP_TEST) |
 | C6 | Analyse d'e-mails : mission `mail-scan` bornée (jours, 40 messages, 100 Ko) → Ollama local → le résultat repasse par l'aperçu multi-sélection de la PWA (jamais d'écriture directe) ; annulable (révocation = rien n'est produit) ; chemin auto dans « Depuis mes e-mails » quand le Compagnon est associé | Aucune création silencieuse ; corpus = données, jamais des instructions | C5 | terminée | E2E `e2e-compagnon-scan.mjs` (vrai binaire, corpus piégé imposé, faux Ollama) : injection neutralisée par le rail, tri respecté, confiance non transmise |
-| C7 | États & finitions : éteint/rattrapage, refus/incertain/transitoire, révocations en file, docs (README compagnon, CONTRAT, HANDOFF) | UX complète, rien de moteur sans parcours | C3–C6 | terminée | Relecture UX-PLAN ; suite complète verte |
+| C7 | États & finitions : éteint/rattrapage, refus/incertain/transitoire, révocations en file, docs (README compagnon, CONTRAT, HANDOFF) | UX complète, rien de moteur sans parcours | C3–C6 | terminée | Relecture UX-PLAN ; 19/19 tests Rust et 3/3 E2E vrai-binaire verts dans l'environnement de reprise |
 | C8 | Missions depuis le téléphone : la campagne auto validée sur téléphone doit atteindre le Compagnon (sync des campagnes/missions entre appareils, ou P2P du Compagnon — §8.3 à dérisquer) | Le bon signé voyage, la vérification d'anneau est déjà prête côté Compagnon | C4 | **à faire — hors périmètre de l'étape UX actuelle** | Sur téléphone, l'option « Mon ordinateur envoie » n'apparaît pas (pas d'association locale) — aucune promesse cassée |
 
 ## Phase 8 — Analyser mes e-mails, MCP local
