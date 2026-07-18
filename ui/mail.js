@@ -21,6 +21,7 @@ export function openMail(c, opts){
   const cts = (c.contacts || []).filter(t => t.email);
   const tpls = S.profile.templates;
   let logged = false;
+  let sending = false;
   /* en série (Prospecter) : « Passer » ou « Envoyée » enchaînent la
      suivante ; la croix (ou Échap) arrête TOUTE la série immédiatement */
   let done = false;
@@ -77,6 +78,16 @@ export function openMail(c, opts){
       aMail.removeAttribute('href');
       aMail.classList.add('btn-off');
       q('#mHint').textContent = 'Pas d’email sur cette piste — copie le message et envoie-le via LinkedIn ou le formulaire du site.';
+    }
+    /* Une action principale doit toujours être possible. Sans adresse,
+       « Envoyer » ne promet rien : Copier prend le relais et le raccourci
+       clavier est neutralisé. Réévalué à chaque changement de destinataire. */
+    if (bSend){
+      bSend.disabled = !email || sending;
+      bSend.classList.toggle('btn-primary', !!email);
+      bSend.classList.toggle('btn-off', !email);
+      bSend.setAttribute('aria-disabled', String(!email));
+      bCopy.classList.toggle('btn-primary', !email);
     }
   }
   /* trace « préparé » une seule fois, au premier geste concret */
@@ -162,7 +173,9 @@ export function openMail(c, opts){
   };
   const doSend = async () => {
     const ct = currentCt();
-    if (!ct || !ct.email) return;
+    if (!ct || !ct.email){ toast('Ajoute une adresse e-mail — ou copie le message.'); return; }
+    if (sending) return;
+    sending = true;
     logPrep();
     bSend.disabled = true;
     bSend.textContent = 'Envoi…';
@@ -174,8 +187,9 @@ export function openMail(c, opts){
       });
       markSentAndFollow();
     } catch (e) {
-      bSend.disabled = false;
+      sending = false;
       bSend.textContent = 'Envoyer';
+      sync();
       if (e.message === 'expire') askReconnect();
       else toast('Pas parti — réessaie, ou ouvre dans Mail.');
     }
