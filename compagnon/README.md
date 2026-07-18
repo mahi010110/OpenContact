@@ -25,7 +25,7 @@ d'e-mails — et **rien d'autre**. La PWA reste complète sans elle.
 
 ```
 node compagnon/preparer.mjs        # copie engine/ + tokens dans app/moteur/
-cargo test -p oc-coeur             # la garde (9 tests, vecteur croisé)
+cargo test -p oc-coeur             # la garde (18 tests, vecteurs croisés)
 cargo build -p oc-compagnon        # la coquille (webkit2gtk + gtk3 requis sous Linux)
 ```
 
@@ -48,8 +48,11 @@ Rien d'utile en clair ; un processus local sans le code n'obtient rien.
 `OC_SMTP_TEST=hote:port` (puits SMTP en clair),
 `OC_IMAP_TEST=hote:port` (faux IMAP en clair),
 `OC_OLLAMA=url` / `OC_OLLAMA_MODELE`, `OC_CORPUS_TEST=fichier`,
-`OC_TICK_MS`, `OC_FENETRE_TEST=1`. Les scénarios `tests/e2e/
-e2e-compagnon-*.mjs` les utilisent contre le binaire réel sous xvfb.
+`OC_TICK_MS`, `OC_FENETRE_TEST=1`, `OC_INTEGRATION_TEST=1`. Ce dernier
+désactive uniquement l'instance unique, le démarrage automatique et la zone
+de notification lorsque D-Bus ou `/proc` manquent ; le moteur, le canal, la
+webview et les adaptateurs restent ceux du binaire réel. Les scénarios
+`tests/e2e/e2e-compagnon-*.mjs` utilisent ces crochets sous xvfb.
 
 ## Règles héritées du dépôt
 
