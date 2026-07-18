@@ -37,21 +37,20 @@
   8. **P7-1/P8-1** : `engine/mission.js` (missions bornées/révocables/
      idempotentes) ; « Depuis mes e-mails » dans Recevoir (V1 guidée par
      prompt, aperçu multi-sélection, injection neutralisée par le rail).
-- **Tests de référence après correction UX** : `?test` est vert à **79/79**.
-  `node tests/e2e/tous.mjs` recense 13 scénarios : **10/10 réellement joués
-  avec succès**, **3 sautés explicitement** car ils exigent le vrai binaire
-  Compagnon. `node compagnon/preparer.mjs` passe. Les 18 tests du cœur Rust,
-  le test de la coquille Tauri et les 3 E2E natifs restent à **rejouer ici** :
-  `cargo` n'est pas installé. Le cache PWA est maintenant **oc-v28**.
+- **Tests de référence après correction UX et reprise native** : `?test` est
+  vert à **79/79**. Les 10 scénarios navigateur passent. Rust/Cargo 1.97.1 a
+  été installé localement : `cargo test --locked` passe à **19/19** (18 cœur
+  + 1 coquille), le Compagnon se construit, puis les **3/3 scénarios natifs
+  passent contre le vrai binaire** : envoi + kill/reprise sans doublon,
+  réponse IMAP, analyse locale + fusion sûre. Le cache PWA est **oc-v28**.
 - **Blocages externes (dans l'ordre d'importance)** :
   1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
      renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),
      puis essai réel d'envoi (l'option avancée de Connexions permet de
      tester avec son propre client avant).
-  2. **Validation native et matérielle** : installer une toolchain Rust dans
-     l'environnement de reprise, rejouer 18 tests `oc-coeur` + 1 test Tauri,
-     construire le binaire puis les 3 E2E natifs ; ensuite PRF et anneau sur
-     de vrais appareils.
+  2. **Validation matérielle** : la validation native automatisée est faite ;
+     restent le `.deb`, le trousseau, le démarrage automatique, la zone de
+     notification, le verrou PRF et l'anneau sur de vrais appareils.
   3. **Distribution** : Outlook OAuth, signatures, AppImage réel,
      installateurs Windows/macOS et publication restent externes ou à faire.
 - **Compagnon (D17/D18 validés — C1 à C7 terminés, `compagnon/`)** :
@@ -88,7 +87,7 @@
     rapport replié idempotent. E2E contre le VRAI binaire : envois
     SMTP réels, kill −9 + relance = zéro doublon.
     Crochets de développement (jamais en prod) : OC_APPAIRAGE_AUTO,
-    OC_SMTP_TEST, OC_TICK_MS, OC_FENETRE_TEST.
+    OC_SMTP_TEST, OC_TICK_MS, OC_FENETRE_TEST, OC_INTEGRATION_TEST.
   - **C5 livré — les réponses arrêtent les relances toutes seules** :
     lecture IMAP en-têtes seulement (`FROM … SINCE …`), même mot de
     passe d'application (D8), toutes les 10 min ; la cible s'arrête
@@ -114,15 +113,16 @@
     sync des campagnes/missions entre appareils ou P2P du Compagnon ;
     sur téléphone l'option auto n'apparaît pas (aucune promesse
     cassée), la vérification côté Compagnon est déjà prête.
-- **Ordre de suite recommandé** : rejouer le vrai natif avec Cargo/xvfb, puis
-  tester le `.deb`, le verrou PRF, l'anneau et les parcours Compagnon sur
-  matériel réel. Ensuite : récupération des résultats d'analyse après
-  fermeture, C8, MCP, connexions OAuth externes, puis distribution multi-OS.
+- **Ordre de suite recommandé** : tester le `.deb`, le verrou PRF, l'anneau
+  et les parcours Compagnon sur matériel réel. Ensuite : récupération des
+  résultats d'analyse après fermeture, C8, MCP, connexions OAuth externes,
+  puis distribution multi-OS.
   Les ajustements visuels écran par écran restent un chantier séparé avec le
   mainteneur.
 - **Première vérification à la prochaine reprise** :
   `git log --oneline -8 && git status`, puis
   `node tests/e2e/unitaires.mjs` (**79/79 attendus**) et
-  `node tests/e2e/tous.mjs`. Avec la toolchain native :
-  `cargo test --manifest-path compagnon/Cargo.toml` puis construire le
-  binaire avant de rejouer les trois E2E Compagnon réels.
+  `node tests/e2e/tous.mjs`. Pour le natif :
+  `cargo test --locked --manifest-path compagnon/Cargo.toml`,
+  `cargo build --locked --manifest-path compagnon/Cargo.toml -p oc-compagnon`,
+  puis les trois `e2e-compagnon-*.mjs`.
