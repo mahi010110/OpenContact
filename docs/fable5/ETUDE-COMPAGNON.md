@@ -1,8 +1,9 @@
 # Étude — le cœur permanent du Compagnon : Rust ou Node.js ?
 
-> **Statut : recommandation rendue, arbitrage mainteneur attendu.**
-> Rien ici n'est une décision validée. Le développement du Compagnon ne
-> commence pas avant l'arbitrage. Références : `SPECIFICATIONS.md` §8
+> **Statut : arbitrage rendu et mis en œuvre.** Le mainteneur a validé
+> l'option D et le dossier `compagnon/` (D17/D18) ; C1 à C7 sont livrés.
+> Le raisonnement ci-dessous reste la trace de la décision, complétée par le
+> retour réel d'implémentation. Références : `SPECIFICATIONS.md` §8
 > (rôle, association, points à vérifier), §9 (IA), §11 (MCP local),
 > `engine/mission.js` (contrat de missions livré et testé côté PWA).
 
@@ -20,7 +21,8 @@ charge ce qu'un navigateur ne peut pas garantir :
    OAuth (XOAUTH2), SMTP générique ; détection des réponses par lecture des
    en-têtes récents.
 4. **Parler à la PWA** : canal local + repli P2P **Trystero** (la lib JS déjà
-   vendorisée), appairage par code court, missions idempotentes.
+   vendorisée), appairage par code court, missions idempotentes. Le canal
+   local est livré ; le trajet depuis un téléphone reste le chantier C8.
 5. **Servir les runtimes IA** : Ollama (HTTP local), Codex App Server.
 6. **Exposer un serveur MCP local** : lecture limitée, propositions seulement.
 7. Une petite fenêtre de réglages (Tauri, déjà acté en spec).
@@ -83,13 +85,22 @@ processus de fond :
   - serveur MCP (`rmcp`) : surface minuscule (outils de lecture +
     propositions), les outils appellent le cerveau ;
   - minuteries qui réveillent le cerveau.
-- **Côté JS (fenêtre cachée = le cerveau)** — les décisions :
-  - **les mêmes modules `engine/` que la PWA, à l'identique** :
+- **Côté JS (fenêtre Tauri = moteur partagé)** — les décisions et formats :
+  - **les mêmes modules `engine/` que la PWA, préparés sans les réécrire** :
     `mission.js`, `campaign.js` (journal idempotent), `mailer.js`
     (construction MIME), `crypto.js`/`exchange.js`/`ring.js` (appairage,
     même WebCrypto), et **Trystero vendorisé tel quel** pour le P2P ;
-  - le cerveau ne touche jamais le réseau ni les secrets : il demande tout
+  - le moteur ne touche jamais les secrets : il demande les capacités natives
     à Rust par `invoke` ; la CSP de la webview reste fermée.
+
+**Retour d'implémentation important :** la preuve C3/C4 a montré qu'une
+webview cachée ne constitue pas une horloge fiable lorsque l'application est
+sans fenêtre ou relancée. Le planificateur permanent vit donc en Rust
+(`coeur/planifier.rs`). Ce n'est pas une seconde vérité laissée libre : ses
+fixtures sont croisées avec le moteur JS et la garde Rust re-vérifie à chaque
+envoi la signature, l'autorisation, l'anti-double, le plafond global et la
+fenêtre horaire. Cette adaptation conserve l'intention de D17 tout en rendant
+l'exécution app fermée réellement indépendante de la webview.
 
 ## 3. Analyse par critère
 
@@ -99,7 +110,7 @@ processus de fond :
 | Secrets | tas V8, keytar mort | trousseau + zeroize | **trousseau + zeroize, et le JS ne voit jamais un secret** |
 | IMAP/SMTP | meilleures libs (imapflow) | libs correctes, surface étroite suffisante | libs Rust correctes ; besoin étroit (en-têtes, XOAUTH2) |
 | P2P Trystero | réutilisable | **réécriture Nostr+WebRTC : risque majeur** | réutilisé tel quel |
-| Logique risquée (campagnes, missions) | portage Node du code navigateur (proche mais dupliqué) | **réécriture Rust : deux vérités** | **le même fichier testé, zéro duplication** |
+| Logique risquée (campagnes, missions) | portage Node du code navigateur (proche mais dupliqué) | **réécriture Rust : deux vérités** | **contrat JS partagé + planificateur/garde Rust verrouillés par fixtures croisées** |
 | MCP | SDK TS, le plus mûr | rmcp officiel, suffisant | rmcp officiel, suffisant |
 | Livrable | binaire + runtime ~80 Mo, 2 processus | ~15 Mo, 1 processus | **~15 Mo, 1 processus (webview système)** |
 | Maintenance | JS partout mais plomberie fragile | langue neuve sur TOUT le code | **langue neuve sur ~peu de code stable ; le vivant reste en JS** |
@@ -113,40 +124,46 @@ chemin simple qui garantit l'identité de comportement avec la PWA.
 
 ## 4. Recommandation
 
-**Option D — hybride Tauri.** Rust n'est pas choisi « pour Rust » : il est
-là où le système l'exige (trousseau, sockets, vie du processus), en
-adaptateurs courts écrits une fois. Le cerveau — tout ce qui décide, tout ce
-qui peut doubler un envoi — reste **l'unique implémentation JS déjà testée**,
-partagée avec la PWA. C'est la seule option qui satisfait à la fois la
-sécurité des secrets (meilleure que Node), le réemploi de Trystero et du
-contrat de missions (impossible en tout-Rust), et une maintenance réaliste.
+**Option D — hybride Tauri, validée (D17).** Rust n'est pas choisi « pour
+Rust » : il porte le trousseau, les sockets, la vie du processus et, après la
+preuve C4, l'ordonnancement qui doit survivre sans webview. Les formats et la
+construction des missions restent partagés avec la PWA ; Rust en est le
+gardien indépendant au dernier mètre. C'est le compromis effectivement livré :
+sécrets hors JS, réemploi du contrat existant, et aucune confiance aveugle
+dans une fenêtre cachée pour éviter les doubles envois.
 
 ### Sous-décision associée : où vit le code ?
 
 La spec dit « projet distinct » — distinct comme *application et build*,
-pas forcément comme dépôt. **Recommandation : un dossier `compagnon/` dans
-ce dépôt**, dont la webview importe directement `../engine/*.js` et
-`../assets/vendor/trystero-nostr.min.js`. Zéro copie, zéro script de
-synchronisation, les tests `?test` restent la vérité unique du contrat.
-(L'alternative — dépôt séparé + subtree/submodule sur `engine/` — recrée le
-risque de divergence que l'hybride vient d'éliminer.)
+pas forcément comme dépôt. **Décision D18 : un dossier `compagnon/` dans ce
+dépôt.** Le script `compagnon/preparer.mjs` prépare dans la webview les
+modules `engine/` nécessaires au build ; les sources de vérité restent à la
+racine et les tests croisés empêchent une divergence silencieuse. Le build
+Tauri reste indépendant et le dossier demeure déplaçable.
 
 ### Risques assumés et parades
 
 | Risque | Parade |
 |---|---|
 | Courbe Rust pour le mainteneur | adaptateurs petits, délimités, quasi figés après écriture ; la logique produit n'y vit pas |
-| Webview cachée qui doit rester vivante pour les envois planifiés | point de test n° 1 du squelette : tray sans fenêtre visible + minuterie Rust → réveil du cerveau, vérifié sur Windows (WebView2) d'abord |
+| Webview cachée qui ne reste pas fiable pour les envois planifiés | risque rencontré en C4 : planificateur Rust autonome + journal scellé avant envoi + fixtures croisées JS/Rust |
 | Maintenance d'`async-imap` | surface étroite (FETCH d'en-têtes, XOAUTH2) ; replis identifiés : `imap-next`, crates Stalwart |
 | RAM de la webview | acceptée en V1 ; issue QuickJS documentée ci-dessus |
 | Signature/SmartScreen des binaires | identique quel que soit le langage — traité au moment de la distribution (spec §8.3) |
 
-## 5. Si l'arbitrage est rendu
+## 5. Résultat de l'arbitrage et état réel
 
-1. Consigner D17 (cœur hybride) et D18 (dossier `compagnon/`) dans
-   `CONTEXT.md`.
-2. Débloquer P7-2 : squelette Tauri v2 (tray, autostart, instance unique,
-   fenêtre cachée important `engine/`), premier test de bout en bout =
-   une mission `campaign-run` rejouée après kill/redémarrage, zéro doublon.
-3. Puis, dans l'ordre : trousseau + envoi SMTP/API, IMAP lecture (P7-3),
-   MCP local `rmcp` (P8-2).
+1. **D17/D18 sont consignées** dans `CONTEXT.md`.
+2. **C1–C4 sont livrées** : Tauri v2, appairage et canal local chiffré,
+   trousseau/repli 0600, missions signées, planificateur Rust, SMTP et preuve
+   kill/redémarrage sans doublon.
+3. **C5–C7 sont livrées** : réponses IMAP, analyse bornée via Ollama,
+   révocation/états, documentation et paquet Linux `.deb` prouvé.
+4. **Preuve actuelle** : la préparation du moteur partagé passe, ainsi que
+   79/79 tests unitaires et 10/10 scénarios navigateur réellement joués.
+   Restent à refaire dans l'environnement courant : 18 tests du crate
+   `oc-coeur` + 1 test de la coquille, build du vrai binaire et trois E2E
+   natifs. Les sources et `Cargo.lock` sont présents ; c'est la toolchain
+   `cargo` qui manque ici.
+5. **Restent hors de cette reprise UX** : C8 (missions depuis le téléphone),
+   MCP local, Outlook OAuth, essais matériels et distribution multi-OS.
