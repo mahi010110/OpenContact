@@ -1,6 +1,7 @@
 # Fable 5 — point de reprise (checkpoint)
 
-- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1) et
+- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1, y
+  compris la reprise d'analyse après fermeture) et
   **Compagnon C1–C7 livré** dans `compagnon/`. Les corrections UX prioritaires
   de `AUDIT-UX.md` sont maintenant livrées et testées. C8, MCP, nouvelles IA
   et installateurs Windows/macOS restent volontairement hors périmètre.
@@ -36,13 +37,17 @@
      brouillon relu dans le composeur.
   8. **P7-1/P8-1** : `engine/mission.js` (missions bornées/révocables/
      idempotentes) ; « Depuis mes e-mails » dans Recevoir (V1 guidée par
-     prompt, aperçu multi-sélection, injection neutralisée par le rail).
-- **Tests de référence après correction UX et reprise native** : `?test` est
-  vert à **79/79**. Les 10 scénarios navigateur passent. Rust/Cargo 1.97.1 a
+     prompt + chemin Compagnon), suivi/résultat scellé dans
+     `oc_analysis_v1`, reprise après fermeture dans Aujourd'hui, aperçu
+     multi-sélection et injection neutralisée par le rail.
+- **Tests de référence après reprise persistante des analyses** : `?test` est
+  vert à **81/81**. La suite complète passe à **13/13, zéro saut**.
+  Rust/Cargo 1.97.1 a
   été installé localement : `cargo test --locked` passe à **19/19** (18 cœur
   + 1 coquille), le Compagnon se construit, puis les **3/3 scénarios natifs
   passent contre le vrai binaire** : envoi + kill/reprise sans doublon,
-  réponse IMAP, analyse locale + fusion sûre. Le cache PWA est **oc-v28**.
+  réponse IMAP, analyse locale fermée/reprise + fusion sûre. Le cache PWA est
+  **oc-v29**.
 - **Blocages externes (dans l'ordre d'importance)** :
   1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
      renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),
@@ -59,7 +64,9 @@
     `cargo test` 9/9 dont **vecteur croisé** avec le test JS « fil
     signé » (`signMission`/`openMissionWire` dans `engine/mission.js`) ;
     coquille Tauri v2 (tray non fatal, arrière-plan sur fermeture,
-    instance unique, démarrage auto par commandes, fenêtre de réglages)
+    instance unique, démarrage auto par commandes, fenêtre de réglages ; en
+    mode intégration la commande vérifie désormais que le composant autostart
+    existe avant de l'appeler, donc aucun plantage au build propre)
     qui **compile et démarre** (xvfb : « compagnon : prêt ») ; cerveau
     webview qui charge le **moteur partagé copié par `preparer.mjs`**
     (vérifié : « moteur partagé chargé ✓ »).
@@ -85,7 +92,10 @@
     « ton ordinateur s'en occupe », feuille confiée avec état honnête
     et « Reprendre la main » (révocation, mise en file si éteint),
     rapport replié idempotent. E2E contre le VRAI binaire : envois
-    SMTP réels, kill −9 + relance = zéro doublon.
+    SMTP réels, kill −9 + relance = zéro doublon. Le `journal_lock` sérialise
+    aussi le premier passage lancé par le canal et la boucle périodique : la
+    course qui produisait occasionnellement deux e-mails est fermée (8/8
+    répétitions sous charge vertes).
     Crochets de développement (jamais en prod) : OC_APPAIRAGE_AUTO,
     OC_SMTP_TEST, OC_TICK_MS, OC_FENETRE_TEST, OC_INTEGRATION_TEST.
   - **C5 livré — les réponses arrêtent les relances toutes seules** :
@@ -98,9 +108,12 @@
     `mail-scan` bornée (jours, 40 messages, 100 Ko), Ollama local
     (OC_OLLAMA), résultat scellé, annulable (révoquée = rien n'est
     produit) ; la PWA offre le chemin auto dans « Depuis mes e-mails »
-    (Compagnon associé) et le résultat repasse par l'aperçu
-    multi-sélection — E2E vrai binaire, corpus piégé, injection
-    neutralisée par le rail.
+    (Compagnon associé). La PWA écrit le `mid` avant l'appel réseau, garde
+    l'état et le résultat sous coffre (`oc_analysis_v1`), reprend le sondage
+    après déverrouillage et affiche le résultat dans Aujourd'hui. L'aperçu
+    peut être fermé sans consommer le résultat ; seule la fusion l'efface.
+    E2E vrai binaire : fermeture pendant Ollama, reprise, corpus piégé et
+    injection neutralisée par le rail.
   - **C7 livré** : états partout (éteint/rattrapage, refus/incertain/
     transitoire, révocations en file), docs, oc-v27 à la livraison C7
     (oc-v28 après corrections UX). **Installable
@@ -114,14 +127,14 @@
     sur téléphone l'option auto n'apparaît pas (aucune promesse
     cassée), la vérification côté Compagnon est déjà prête.
 - **Ordre de suite recommandé** : tester le `.deb`, le verrou PRF, l'anneau
-  et les parcours Compagnon sur matériel réel. Ensuite : récupération des
-  résultats d'analyse après fermeture, C8, MCP, connexions OAuth externes,
-  puis distribution multi-OS.
+  et les parcours Compagnon sur matériel réel ; déclarer et essayer les apps
+  OAuth Google/Microsoft ; puis seulement C8, le MCP local et la distribution
+  multi-OS. La récupération des analyses après fermeture est maintenant faite.
   Les ajustements visuels écran par écran restent un chantier séparé avec le
   mainteneur.
 - **Première vérification à la prochaine reprise** :
   `git log --oneline -8 && git status`, puis
-  `node tests/e2e/unitaires.mjs` (**79/79 attendus**) et
+  `node tests/e2e/unitaires.mjs` (**81/81 attendus**) et
   `node tests/e2e/tous.mjs`. Pour le natif :
   `cargo test --locked --manifest-path compagnon/Cargo.toml`,
   `cargo build --locked --manifest-path compagnon/Cargo.toml -p oc-compagnon`,

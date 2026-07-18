@@ -18,20 +18,26 @@ import { probeCompanion, companionCall } from '../engine/companion.js';
 import { makeMission, signMission } from '../engine/mission.js';
 import { loadCompanion } from './compagnon.js';
 import { requireCode } from './verrou.js';
+import { mailAnalysis, beginMailAnalysis, markMailAnalysisRunning,
+         failMailAnalysis, clearMailAnalysis, reconcileMailAnalysis,
+         subscribeMailAnalysis } from './analyse.js';
 
 export function openRecevoir(){
   let stopScan = null;
+  let stopAnalysis = null;
   let room = null;         /* salle de rendez-vous (QR OCR1 / code tapé) */
   let gen = 0;
   const halt = () => { if (stopScan){ stopScan(); stopScan = null; } };
+  const leaveAnalysis = () => { if (stopAnalysis){ stopAnalysis(); stopAnalysis = null; } };
   const leaveRdv = () => { if (room){ try { room.leave(); } catch (e) {} room = null; } };
   /* caméra et salle se coupent quelle que soit la façon de fermer */
-  const sh = openSheet({ title: 'Recevoir', icon: 'inbox', onClose: () => { gen++; halt(); leaveRdv(); } });
+  const sh = openSheet({ title: 'Recevoir', icon: 'inbox', onClose: () => { gen++; halt(); leaveAnalysis(); leaveRdv(); } });
   const q = s => sh.body.querySelector(s);
 
   const menu = () => {
     gen++;
     halt();
+    leaveAnalysis();
     leaveRdv();
     sh.setTitle('Recevoir');
     sh.body.innerHTML =
@@ -136,17 +142,28 @@ export function openRecevoir(){
   };
 
   /* ---- depuis mes e-mails : l'IA lit chez toi, propose ici ----
-     Aujourd'hui : le prompt guidé (copier → coller le résultat) — le
-     même rail que tout le reste, avec un aperçu où l'on TRIE (une
-     proposition d'IA se trie, un fichier de camarade se prend en
-     bloc). Demain : le Compagnon fera la lecture tout seul, cette
-     feuille gagnera simplement le chemin automatique. */
+     Le prompt guidé reste le repli. Avec le Compagnon, la mission est
+     mémorisée avant son départ : fermer cette feuille ou l'app ne la
+     perd plus, et le résultat revient dans le même aperçu triable. */
   const mails = async () => {
+    const view = ++gen;
+    leaveAnalysis();
     sh.setTitle('Depuis mes e-mails');
     const prompt = (S.profile.prompts.find(p => /mails?|e-?mails?/i.test(p.name)) || S.profile.prompts[0]);
     const assoc = await loadCompanion().catch(() => null);
+    if (view !== gen || !sh.body.isConnected) return;
+    const pending = mailAnalysis();
+    const pendingPick = pending ? (pending.state === 'ready'
+      ? `<button class="pick" id="rcLastAnalysis"><b>${ic('sparkles', 'ic-14')} La dernière analyse</b>
+           <span>${pending.count} piste${pending.count > 1 ? 's' : ''} proposée${pending.count > 1 ? 's' : ''} à trier</span></button>`
+      : (pending.state === 'error'
+        ? `<button class="pick" id="rcAnalysisError"><b>${ic('square-alert', 'ic-14')} La dernière analyse s’est arrêtée</b>
+             <span>voir le détail ou recommencer</span></button>`
+        : `<button class="pick" id="rcCurrentAnalysis"><b>${ic('clock', 'ic-14')} Analyse en cours</b>
+             <span>ton ordinateur continue même si tu fermes cette fenêtre</span></button>`)) : '';
     sh.body.innerHTML =
-      `${assoc ? `
+      `${pendingPick ? `<div class="pick-list">${pendingPick}</div>` : ''}
+       ${assoc ? `
        <div class="pick-list">
          <button class="pick" id="rcScan7"><b>${ic('zap', 'ic-14')} Ton ordinateur lit tes 7 derniers jours</b>
            <span>l’IA lit chez toi, propose ici — annulable</span></button>
@@ -165,6 +182,9 @@ export function openRecevoir(){
          : 'Le Compagnon s’installe et s’associe depuis ton ordinateur — ouvre OpenContact là-bas.'}</p>`}
        <div class="field" style="margin-top:10px"><label for="rcMailTxt">La réponse de l’IA</label>
          <textarea id="rcMailTxt" style="min-height:120px" placeholder="Colle ici le texte produit par l’assistant"></textarea></div>`;
+    q('#rcLastAnalysis')?.addEventListener('click', showReady);
+    q('#rcCurrentAnalysis')?.addEventListener('click', () => showProgress(pending.mid));
+    q('#rcAnalysisError')?.addEventListener('click', showError);
     q('#rcScan7')?.addEventListener('click', () => scan(7));
     q('#rcScan30')?.addEventListener('click', () => scan(30));
     sh.setFoot([
@@ -175,51 +195,115 @@ export function openRecevoir(){
       }, 'copy'),
       btn('Lire', 'btn-primary', () => treat(q('#rcMailTxt').value, undefined, { select: true }))
     ]);
+    if (pending && (pending.state === 'sending' || pending.state === 'running'))
+      reconcileMailAnalysis().catch(() => {});
 
-    /* le chemin automatique : mission bornée, visible, annulable —
-       le résultat repasse par le MÊME aperçu que le collage */
+    async function showReady(){
+      const rec = mailAnalysis();
+      if (!rec || rec.state !== 'ready'){ mails(); return; }
+      gen++;
+      leaveAnalysis();
+      await mergeReadyAnalysisInto(sh, mails);
+    }
+
+    function showError(){
+      const rec = mailAnalysis();
+      if (!rec || rec.state !== 'error'){ mails(); return; }
+      gen++;
+      leaveAnalysis();
+      sh.setTitle('Analyse interrompue');
+      sh.body.innerHTML =
+        `<p class="hint warn" style="margin:8px 0 12px">${ic('square-alert', 'ic-14')} ${esc(rec.error)}</p>
+         <p class="hint">Aucune piste n’a été ajoutée. Tu peux oublier ce résultat puis relancer une lecture.</p>`;
+      sh.setFoot([
+        btn('← Retour', 'btn-ghost', mails),
+        btn('Oublier et recommencer', 'btn-primary', async () => { await clearMailAnalysis(rec.mid); mails(); })
+      ]);
+    }
+
+    function showProgress(mid){
+      const mine = ++gen;
+      leaveAnalysis();
+      sh.setTitle('Lecture en cours');
+      sh.body.innerHTML =
+        `<p class="hint" style="margin:12px 0">${ic('zap', 'ic-14')} Ton ordinateur lit tes e-mails
+           et l’IA locale prépare des propositions.</p>
+         <p class="hint" id="rcScanSt">Tu peux fermer : le résultat reviendra dans Aujourd’hui.</p>`;
+      const cancel = async () => {
+        const rec = mailAnalysis();
+        if (!rec || rec.mid !== mid){ mails(); return; }
+        const st = q('#rcScanSt');
+        if (st) st.textContent = 'Annulation auprès de ton ordinateur…';
+        const assoc2 = await loadCompanion().catch(() => null);
+        const found = assoc2 && await probeCompanion();
+        if (!found){
+          if (st) st.textContent = 'Ton ordinateur ne répond pas : ouvre le Compagnon pour confirmer l’annulation.';
+          return;
+        }
+        try {
+          const rep = await companionCall(found.base, assoc2.k, { t: 'revoquer', mid });
+          if (!rep || rep.t !== 'ok') throw new Error('revoquer');
+          await clearMailAnalysis(mid);
+          toast('Analyse annulée — aucune proposition conservée.');
+          mails();
+        } catch (e) {
+          if (st) st.textContent = 'Annulation non confirmée — réessaie quand le Compagnon répond.';
+        }
+      };
+      sh.setFoot([btn('Annuler l’analyse', 'btn-ghost', cancel)]);
+      stopAnalysis = subscribeMailAnalysis(rec => {
+        if (mine !== gen || !sh.body.isConnected || !rec || rec.mid !== mid) return;
+        if (rec.state === 'ready') showReady();
+        else if (rec.state === 'error') showError();
+      });
+      reconcileMailAnalysis().catch(() => {});
+    }
+
+    /* Mission bornée, visible, annulable. Sa trace est écrite avant le
+       réseau pour fermer la petite course « accepté puis app fermée ». */
     async function scan(jours){
+      const old = mailAnalysis();
+      if (old){
+        if (old.state === 'ready') showReady();
+        else if (old.state === 'error') showError();
+        else showProgress(old.mid);
+        return;
+      }
       const assoc2 = await loadCompanion().catch(() => null);
       if (!assoc2) return;
       if (!await requireCode('Ton code, pour lancer la lecture')) return;
       const found = await probeCompanion();
       if (!found){ toast('Ton ordinateur est éteint — ouvre le Compagnon d’abord.'); return; }
-      let mid = null, annule = false;
-      sh.setTitle('Lecture en cours');
-      sh.body.innerHTML =
-        `<p class="hint" style="margin:12px 0">${ic('zap', 'ic-14')} Ton ordinateur lit tes ${jours} derniers jours
-           et l’IA locale prépare des propositions — une à deux minutes.</p>
-         <p class="hint" id="rcScanSt"></p>`;
-      sh.setFoot([btn('Annuler', 'btn-ghost', async () => {
-        annule = true;
-        try { if (mid) await companionCall(found.base, assoc2.k, { t: 'revoquer', mid }); } catch (e) {}
-        mails();
-      })]);
       try {
         const self = await deviceSelf();
         const keys = await ensureKeys();
         const m = makeMission('mail-scan', { jours, prompt: prompt.text });
         const wire = await signMission(m, self.id, keys.seed);
-        mid = m.mid;
-        const rep = await companionCall(found.base, assoc2.k, { t: 'mission', wire });
-        if (!rep || rep.t !== 'mission-ok') throw new Error('mission');
-        for (;;){
-          await new Promise(r => setTimeout(r, 1500));
-          if (annule || !sh.body.isConnected) return;
-          const e = await companionCall(found.base, assoc2.k, { t: 'analyse-etat', mid });
-          if (!e || e.etat === 'en cours' || e.etat === 'inconnue') continue;
-          if (e.etat === 'annulee') return;
-          if (e.etat === 'erreur') throw new Error(e.e || 'analyse');
-          treat(String(e.resultat || ''), undefined, { select: true });
+        await beginMailAnalysis({
+          mid: m.mid, days: jours, startedAt: m.createdAt, expiresAt: m.expiresAt
+        });
+        showProgress(m.mid);
+        let rep;
+        try { rep = await companionCall(found.base, assoc2.k, { t: 'mission', wire }); }
+        catch (e) {
+          /* Le paquet a pu être accepté avant la coupure : garder le mid
+             et laisser la réconciliation trancher, plutôt que le perdre. */
+          await markMailAnalysisRunning(m.mid);
+          toast('Connexion interrompue — ton ordinateur peut continuer, le résultat reste suivi.');
           return;
         }
+        if (!rep || rep.t !== 'mission-ok'){
+          await failMailAnalysis(m.mid, 'Le Compagnon a refusé cette analyse.');
+          return;
+        }
+        await markMailAnalysisRunning(m.mid);
+        reconcileMailAnalysis().catch(() => {});
       } catch (err) {
-        if (annule) return;
-        const st = q('#rcScanSt');
-        if (st) st.textContent = /messagerie/.test(String(err && err.message))
-          ? 'Règle la messagerie dans la fenêtre du Compagnon, puis reviens.'
-          : 'Pas de proposition — ' + (err && err.message === 'analyse' ? 'l’IA n’a pas répondu.' : (err && err.message || 'réessaie.'));
-        sh.setFoot([btn('← Retour', 'btn-ghost', mails)]);
+        const msg = err && err.message === 'stockage'
+          ? 'Impossible de mémoriser cette analyse : vérifie le stockage avant de réessayer.'
+          : 'Impossible de lancer l’analyse — ' + (err && err.message || 'réessaie.');
+        toast(msg);
+        if (sh.body.isConnected) mails();
       }
     }
   };
@@ -272,6 +356,35 @@ export function openRecevoir(){
   };
 
   menu();
+}
+
+/* Ouverture directe depuis le chip d'Aujourd'hui. Annuler ferme seulement
+   l'aperçu : la proposition reste disponible jusqu'à fusion ou abandon
+   explicite dans « Depuis mes e-mails ». */
+export async function openPendingMailAnalysis(){
+  const rec = mailAnalysis();
+  if (!rec || rec.state !== 'ready'){ toast('Aucune analyse prête à trier.'); return; }
+  const sh = openSheet({ title: 'Propositions de l’analyse', icon: 'sparkles' });
+  sh.body.innerHTML = `<p class="hint">${ic('clock', 'ic-14')} Ouverture du résultat…</p>`;
+  await mergeReadyAnalysisInto(sh, () => sh.close());
+}
+
+async function mergeReadyAnalysisInto(sh, onCancel){
+  const rec = mailAnalysis();
+  if (!rec || rec.state !== 'ready'){ if (onCancel) onCancel(); return; }
+  let obj;
+  try { obj = await parseInput(rec.result); }
+  catch (e) {
+    await failMailAnalysis(rec.mid, 'Le résultat mémorisé est devenu illisible.');
+    toast('Ce résultat ne peut plus être lu.');
+    if (onCancel) onCancel();
+    return;
+  }
+  mergePreviewInto(sh, obj, {
+    select: true,
+    onCancel,
+    onDone: () => { clearMailAnalysis(rec.mid).catch(() => {}); }
+  });
 }
 
 /* ---- aperçu avant fusion + fusion + annulation — réutilisé par le

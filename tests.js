@@ -20,7 +20,7 @@ import { filterCompanies, NATURAL_DIR } from './engine/filter.js';
 import { scoreOf } from './engine/score.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, SYNC_KEY,
          RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, VAULT_KEY,
-         THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1,
+         ANALYSIS_KEY, SEALABLE, THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1,
          kvGet, kvSet, kvDel, vaultActive, vaultDetach, vaultReseal } from './engine/storage.js';
 import { VAULT_WORDS, PHRASE_LEN, makeVaultPhrase, normVaultPhrase, phraseUnknownWords,
          createVault, unlockWithPin, unlockWithPhrase, unlockWithPrf,
@@ -40,6 +40,7 @@ import { makeMission, missionUsable, revokeMission, foldCampaignReport,
          signMission, openMissionWire } from './engine/mission.js';
 import { normCode, pairKey } from './engine/companion.js';
 import { AI_FAMILIES, browserProviders, aiComplete, draftPrompt } from './engine/ai.js';
+import { normaliseMailAnalysis } from './ui/analyse.js';
 
 export async function runSelfTests(){
   const R = [];
@@ -905,6 +906,24 @@ export async function runSelfTests(){
       }
       eq(cc.state, 'done');
       eq(campaignStats(cc).sent, 3);
+    },
+    'analyse e-mails : résultat sensible scellé au repos': () => {
+      eq(ANALYSIS_KEY, 'oc_analysis_v1');
+      ok(SEALABLE.has(ANALYSIS_KEY));
+    },
+    'analyse e-mails : reprise valide, mission expirée signalée': () => {
+      const now = 1900000000000;
+      const ready = normaliseMailAnalysis({
+        mid: 'ms-test', days: 30, state: 'ready', startedAt: now - 1000,
+        expiresAt: now + 1000, result: '{"companies":[]}', count: 6
+      }, now);
+      eq({ mid: ready.mid, days: ready.days, state: ready.state, count: ready.count },
+         { mid: 'ms-test', days: 30, state: 'ready', count: 6 });
+      const expired = normaliseMailAnalysis({
+        mid: 'ms-old', days: 7, state: 'running', startedAt: now - 2000, expiresAt: now - 1
+      }, now);
+      eq(expired.state, 'error');
+      ok(/expiré/.test(expired.error));
     },
     'verrou : codes triviaux refusés (suites, répétitions)': async () => {
       const { isWeakPin } = await import('./ui/verrou.js');

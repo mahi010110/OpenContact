@@ -15,6 +15,8 @@ import { openMail } from './mail.js';
 import { openFiche } from './fiche.js';
 import { openCapture } from './capture.js';
 import { campaignLines, openCampaignById } from './campagnes.js';
+import { mailAnalysis } from './analyse.js';
+import { openPendingMailAnalysis } from './recevoir.js';
 
 const CAP = 8;                      /* lignes visibles par tranche avant « voir plus » */
 const expanded = new Set();         /* tranches dépliées à la main (le temps de la session) */
@@ -87,6 +89,7 @@ export function renderToday(){
   const soon = alive.filter(c => c.nextAction && c.nextAction > today).sort(byDate);
   const noAction = alive.filter(c => !c.nextAction);
   const done = doneTodayCount();
+  const analysis = mailAnalysis();
 
   let html =
     `<div class="page-inner">
@@ -97,6 +100,7 @@ export function renderToday(){
        ${done ? `<div class="done-line">${ic('check', 'ic-14')} ${done} action${done > 1 ? 's' : ''} faite${done > 1 ? 's' : ''} aujourd’hui</div>` : ''}
        ${S.orphans.length ? `<button class="td-chip" data-go="pistes">${ic('contact', 'ic-14')} ${S.orphans.length} contact${S.orphans.length > 1 ? 's' : ''} à rattacher</button>` : ''}
        ${receivedTodayCount() ? `<button class="td-chip" data-go="pistes">${ic('inbox', 'ic-14')} reçu de la promo : ${receivedTodayCount()}</button>` : ''}
+       ${analysis && analysis.state === 'ready' ? `<button class="td-chip" id="tdAnalysis">${ic('sparkles', 'ic-14')} ${analysis.count} piste${analysis.count > 1 ? 's' : ''} proposée${analysis.count > 1 ? 's' : ''} à trier</button>` : ''}
        ${campaignLines().map(l =>
          `<button class="camp-line" data-camp="${esc(l.id)}">${ic('flag', 'ic-14')} <span>${esc(l.txt)}</span> <em>Voir</em></button>`).join('')}`;
 
@@ -158,6 +162,7 @@ export function renderToday(){
   root.querySelectorAll('[data-go="pistes"]').forEach(b => b.addEventListener('click', goPistes));
   root.querySelectorAll('[data-camp]').forEach(b =>
     b.addEventListener('click', () => openCampaignById(b.dataset.camp)));
+  root.querySelector('#tdAnalysis')?.addEventListener('click', openPendingMailAnalysis);
   root.querySelector('#tdNoAct')?.addEventListener('click', goPistes);
   root.querySelector('#tdeAdd')?.addEventListener('click', () => openCapture());
   root.querySelector('#tdeDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le quand tu veux.'); });

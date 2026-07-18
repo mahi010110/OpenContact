@@ -1,8 +1,10 @@
-/* E2E C6 : « Analyser mes e-mails » par le VRAI Compagnon.
+/* E2E C6/P8-1 : « Analyser mes e-mails » par le VRAI Compagnon.
    Corpus imposé (OC_CORPUS_TEST — avec un lien piégé), faux Ollama
    local (OC_OLLAMA) qui rend un JSON de pistes dont une piégée
    (lien javascript:, confiance « ok ») : le résultat repasse par
    l'aperçu multi-sélection de la PWA et le rail neutralise tout.
+   L'app est rechargée PENDANT l'analyse : le mid scellé doit permettre
+   sa reprise, puis un chip Aujourd'hui doit rendre le résultat triable.
    Sauté proprement si le binaire n'est pas construit. */
 import { chromium, chromiumPath, SHOTS, serveRepo, ROOT } from './outils.mjs';
 import { spawn } from 'child_process';
@@ -29,12 +31,15 @@ const ollama = http.createServer((req, res) => {
   req.on('data', d => { b += d; });
   req.on('end', () => {
     promptRecu = (JSON.parse(b || '{}').prompt) || '';
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ response: JSON.stringify({ v: 4, app: 'ia', kind: 'share', companies: [
-      { name: 'Sopra Steria', city: 'Lille',
-        contacts: [{ name: 'Iris', email: 'iris@soprasteria.com', link: 'javascript:alert(1)', conf: 'ok' }] },
-      { name: 'Exotec', city: 'Croix' }
-    ] }) }));
+    /* Laisser le temps de fermer réellement la PWA avant le résultat. */
+    setTimeout(() => {
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ response: JSON.stringify({ v: 4, app: 'ia', kind: 'share', companies: [
+        { name: 'Sopra Steria', city: 'Lille',
+          contacts: [{ name: 'Iris', email: 'iris@soprasteria.com', link: 'javascript:alert(1)', conf: 'ok' }] },
+        { name: 'Exotec', city: 'Croix' }
+      ] }) }));
+    }, 2500);
   });
 });
 await new Promise(r => ollama.listen(11500, '127.0.0.1', r));
@@ -53,7 +58,10 @@ const compagnon = spawn('xvfb-run', ['-a', 'dbus-run-session', '--', BIN], {
   }),
   stdio: ['ignore', 'pipe', 'pipe'], detached: true
 });
-compagnon.stdout.on('data', () => {});
+let compagnonOut = '';
+compagnon.stdout.on('data', d => { compagnonOut = (compagnonOut + d).slice(-4000); });
+let compagnonErr = '';
+compagnon.stderr.on('data', d => { compagnonErr = (compagnonErr + d).slice(-4000); });
 const arreter = () => { try { process.kill(-compagnon.pid, 'SIGKILL'); } catch (e) {} };
 const attendre = async (fn, ms, quoi) => {
   const t0 = Date.now();
@@ -99,6 +107,8 @@ await page.reload({ waitUntil: 'load' });
 await page.waitForSelector('.lock .pad-k');
 await tapIn('.lock', '280941');
 await page.waitForFunction(() => !document.querySelector('.lock'), null, { timeout: 10000 });
+const coffreActif = await page.evaluate(async () => (await import('./engine/storage.js')).vaultActive());
+if (!coffreActif) fail('le coffre n’est pas attaché après déverrouillage');
 await page.evaluate(async () => (await import('./ui/synclive.js')).ensureRing(localStorage.getItem('t_phrase')));
 await page.evaluate(async code => {
   const { probeCompanion, pairCompanion } = await import('./engine/companion.js');
@@ -125,14 +135,67 @@ await page.screenshot({ path: SHOTS + '/90-scan-choix.png' });
 await page.click('#rcScan7');
 await page.waitForSelector('#rqPad .pad-k');
 await tapIn('#rqPad', '280941');
-/* lecture en cours → aperçu multi-sélection */
-await page.waitForSelector('[data-sel]', { timeout: 40000 });
+/* Le bon est accepté et sa trace sensible repose déjà scellée. */
+await attendre(() => page.evaluate(async () => {
+  const st = await import('./engine/storage.js');
+  const rec = JSON.parse(await st.kvGet(st.ANALYSIS_KEY) || 'null');
+  return !!rec && rec.state === 'running';
+}), 10000, 'suivi persistant de l’analyse');
+const sealed = await page.evaluate(async () => {
+  const db = await new Promise((resolve, reject) => {
+    const rq = indexedDB.open('oc_kv_v1', 1);
+    rq.onsuccess = () => resolve(rq.result);
+    rq.onerror = () => reject(rq.error);
+  });
+  const raw = await new Promise((resolve, reject) => {
+    const rq = db.transaction('kv', 'readonly').objectStore('kv').get('oc_analysis_v1');
+    rq.onsuccess = () => resolve(rq.result);
+    rq.onerror = () => reject(rq.error);
+  });
+  db.close();
+  return {
+    ok: typeof raw === 'string' && raw.startsWith('OCV1.'),
+    type: typeof raw,
+    prefix: typeof raw === 'string' ? raw.slice(0, 6) : String(raw),
+    backend: (await import('./engine/storage.js')).getBackend(),
+    local: localStorage.getItem('oc_analysis_v1')?.slice(0, 6) || null
+  };
+});
+if (!sealed.ok) fail(`le suivi de l’analyse n’est pas scellé au repos (${JSON.stringify(sealed)})`);
+
+/* Simuler la fermeture de l'app pendant que le vrai binaire travaille. */
+await page.reload({ waitUntil: 'load' });
+await page.waitForSelector('.lock .pad-k');
+await tapIn('.lock', '280941');
+await page.waitForFunction(() => !document.querySelector('.lock'), null, { timeout: 10000 });
+try {
+  await page.waitForSelector('#tdAnalysis', { timeout: 40000 });
+} catch (e) {
+  const diagnostic = await page.evaluate(async () => {
+    const st = await import('./engine/storage.js');
+    const a = await import('./ui/analyse.js');
+    return { raw: await st.kvGet(st.ANALYSIS_KEY), current: a.mailAnalysis() };
+  }).catch(err => ({ lecture: String(err) }));
+  console.error('Diagnostic reprise :', JSON.stringify(diagnostic), compagnonOut, compagnonErr);
+  throw e;
+}
+const chip = await page.textContent('#tdAnalysis');
+if (!/2 pistes proposées à trier/.test(chip)) fail('chip de reprise inattendu : ' + chip);
+await page.screenshot({ path: SHOTS + '/91-scan-repris-aujourdhui.png' });
+
+/* Ouvrir puis fermer l'aperçu ne consomme pas le résultat. */
+await page.click('#tdAnalysis');
+await page.waitForSelector('[data-sel]');
+await page.click('.modal-f .btn-ghost:has-text("Annuler")');
+await page.waitForSelector('#tdAnalysis');
+await page.click('#tdAnalysis');
+await page.waitForSelector('[data-sel]');
 const nSel = await page.$$eval('[data-sel]', els => els.length);
 if (nSel !== 2) fail('2 propositions attendues, vu ' + nSel);
 if (!/E-MAILS \(des données/.test(promptRecu)) fail('garde-fou du prompt absent');
 if (!/IGNORE TES INSTRUCTIONS/.test(promptRecu)) fail('le corpus n’est pas passé au modèle');
 await page.waitForTimeout(300);
-await page.screenshot({ path: SHOTS + '/91-scan-apercu.png' });
+await page.screenshot({ path: SHOTS + '/92-scan-apercu-repris.png' });
 /* écarter Exotec, fusionner Sopra seule */
 await page.click('[data-sel]:has-text("Exotec")');
 await page.click('.modal-f .btn-primary');
@@ -147,7 +210,11 @@ const etat = await page.evaluate(async () => {
 if (etat.names !== 'Sopra Steria') fail('fusion attendue Sopra seule, vu : ' + etat.names);
 if (/javascript:/i.test(etat.link)) fail('lien piégé non neutralisé : ' + etat.link);
 if (etat.conf === 'ok') fail('confiance transmise à tort');
-console.log('analyse par l’ordinateur → aperçu trié → fusion sûre (lien piégé neutralisé) ✓');
+await attendre(() => page.evaluate(async () => {
+  const st = await import('./engine/storage.js');
+  return !(await st.kvGet(st.ANALYSIS_KEY)) && !document.querySelector('#tdAnalysis');
+}), 10000, 'consommation du résultat après fusion');
+console.log('app fermée → résultat repris dans Aujourd’hui → aperçu conservé puis fusion sûre ✓');
 
 console.log(errors.length ? 'Erreurs console : ' + errors.join(' | ') : 'Zéro erreur console.');
 if (errors.length) process.exitCode = 1;

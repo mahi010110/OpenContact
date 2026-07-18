@@ -67,6 +67,7 @@ function applyTheme(t, persist){
   await loadAll();
   await import('./ui/connexions.js').then(m => m.loadMail()).catch(() => {});
   await import('./ui/campagnes.js').then(m => m.loadCampaigns()).catch(() => {});
+  await import('./ui/analyse.js').then(m => m.loadMailAnalysis()).catch(() => {});
   applyTheme(S.theme, false);
   $('#sbVer').textContent = APP_VERSION;
 

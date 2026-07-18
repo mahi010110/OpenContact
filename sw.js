@@ -4,7 +4,7 @@
    arrière-plan — la version suivante s'applique à l'ouverture d'après.
    Jamais mis en cache : le géocodage (données fraîches) et les tuiles de
    carte (volume) — la carte demande donc du réseau, tout le reste non. */
-const CACHE = 'oc-v28';
+const CACHE = 'oc-v29';
 const PRECACHE = ['./', './index.html', './app.js', './tests.js',
   './engine/crypto.js', './engine/exchange.js', './engine/filter.js',
   './engine/geo.js', './engine/merge.js', './engine/model.js',
@@ -13,7 +13,7 @@ const PRECACHE = ['./', './index.html', './app.js', './tests.js',
   './ui/dom.js', './ui/dates.js', './ui/state.js', './ui/actions.js', './ui/sort.js', './ui/verrou.js',
   './ui/mail.js', './ui/capture.js', './ui/fiche.js', './ui/today.js',
   './ui/pistes.js', './ui/moi.js', './ui/echanger.js', './ui/direct.js', './ui/synclive.js',
-  './ui/contact.js', './ui/edit.js', './ui/prospect.js',
+  './ui/contact.js', './ui/edit.js', './ui/prospect.js', './ui/analyse.js',
   './ui/qr.js', './ui/donner.js', './ui/recevoir.js', './ui/profil.js', './ui/connexions.js', './ui/campagnes.js', './ui/compagnon.js', './oauth.html',
   './assets/vendor/qrcode-generator.mjs', './assets/vendor/jsQR.js',
   './assets/vendor/trystero-nostr.min.js',

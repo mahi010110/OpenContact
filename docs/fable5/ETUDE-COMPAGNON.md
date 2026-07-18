@@ -160,10 +160,15 @@ Tauri reste indépendant et le dossier demeure déplaçable.
 3. **C5–C7 sont livrées** : réponses IMAP, analyse bornée via Ollama,
    révocation/états, documentation et paquet Linux `.deb` prouvé.
 4. **Preuve actuelle (rejouée le 2026-07-18)** : la préparation du moteur
-   partagé passe, ainsi que 79/79 tests unitaires et 10/10 scénarios
-   navigateur. Rust/Cargo 1.97.1 a permis de refaire les 18 tests du crate
+   partagé passe, ainsi que **81/81 tests unitaires et 13/13 scénarios sans
+   saut**. Rust/Cargo 1.97.1 a permis de refaire les 18 tests du crate
    `oc-coeur` + 1 test de la coquille (**19/19**), de construire le vrai
    binaire et de réussir les trois E2E natifs (envoi sans doublon après
-   kill/reprise, réponse IMAP, analyse Ollama bornée et fusion sûre).
-5. **Restent hors de cette reprise UX** : C8 (missions depuis le téléphone),
+   kill/reprise, réponse IMAP, analyse Ollama bornée fermée/reprise et fusion
+   sûre). Le `journal_lock` ferme aussi la course entre premier passage et
+   boucle périodique ; le mode intégration ne suppose plus l'autostart présent.
+5. **P8-1 est maintenant complète** : le `mid` et le résultat d'analyse sont
+   scellés dans la PWA, le sondage reprend après fermeture/déverrouillage et
+   Aujourd'hui expose le résultat sans le consommer avant fusion.
+6. **Restent hors de cette reprise UX** : C8 (missions depuis le téléphone),
    MCP local, Outlook OAuth, essais matériels et distribution multi-OS.
