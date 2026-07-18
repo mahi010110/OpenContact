@@ -12,7 +12,7 @@
 import { esc } from '../engine/utils.js';
 import { fnv } from '../engine/crypto.js';
 import { sharePayload } from '../engine/exchange.js';
-import { PROMO_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { PROMO_KEY, RELAYS_KEY, kvGet, kvSet } from '../engine/storage.js';
 import { S, bus, isClosed, logJ } from './state.js';
 import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mergePreviewInto } from './recevoir.js';
@@ -24,6 +24,49 @@ import { requireCode } from './verrou.js';
 import { loadCompanion, openAddCompanion, openCompanionSheet, companionPresence } from './compagnon.js';
 
 const isDesktop = () => matchMedia('(min-width:901px)').matches;
+const relayList = async () => {
+  try {
+    const urls = JSON.parse(await kvGet(RELAYS_KEY) || '[]');
+    return Array.isArray(urls) ? urls.filter(x => typeof x === 'string').slice(0, 8) : [];
+  } catch (e) { return []; }
+};
+const relaySettingsHTML = urls =>
+  `<details class="pcard pcard-details sy-relays" style="margin-top:14px">
+     <summary><h3>${ic('settings-2', 'ic-14')} Connexion avancée</h3></summary>
+     <p class="hint">Seulement si ton réseau bloque la liaison. Une adresse sécurisée <b>wss://</b> par ligne.</p>
+     <div class="field"><label for="syRelays">Relais personnalisés</label>
+       <textarea id="syRelays" class="ta-s" spellcheck="false" autocapitalize="off"
+         placeholder="wss://relais.exemple.org">${esc(urls.join('\n'))}</textarea></div>
+     <button class="btn btn-sm" id="sySaveRelays">Enregistrer</button>
+     <button class="linklike" id="syPublicRelays"${urls.length ? '' : ' hidden'}>Revenir aux relais publics</button>
+   </details>`;
+function parseRelays(raw){
+  const values = String(raw || '').split(/[\n,]+/).map(x => x.trim()).filter(Boolean);
+  if (values.length > 8) throw new Error('huit');
+  const out = [];
+  for (const value of values){
+    let u;
+    try { u = new URL(value); } catch (e) { throw new Error('adresse'); }
+    if (u.protocol !== 'wss:' || !u.hostname || u.username || u.password) throw new Error('adresse');
+    if (!out.includes(u.href)) out.push(u.href);
+  }
+  return out;
+}
+function wireRelays(q, phrase, rerender){
+  const save = async urls => {
+    await kvSet(RELAYS_KEY, JSON.stringify(urls));
+    if (phrase) await startSync(phrase);
+    toast(urls.length
+      ? 'Relais enregistrés — la liaison redémarre.'
+      : 'Relais publics rétablis.');
+    rerender();
+  };
+  q('#sySaveRelays')?.addEventListener('click', async () => {
+    try { await save(parseRelays(q('#syRelays').value)); }
+    catch (e) { toast(e.message === 'huit' ? 'Huit relais maximum.' : 'Adresse attendue : wss://…'); }
+  });
+  q('#syPublicRelays')?.addEventListener('click', () => save([]));
+}
 /* la ligne Compagnon — présente avec ou sans phrase de liaison */
 const compRowHTML = comp => comp
   ? `<button class="dev-row dev-open" id="devComp"><b>${esc(comp.nom || 'Compagnon')}</b> <span class="tag-beta">compagnon</span>
@@ -97,7 +140,7 @@ function openDeviceSheet(d, onDone){
 export function openAppareils(){
   let onSync = null;
   const sh = openSheet({
-    title: 'Mes appareils', icon: 'switch',
+    title: 'Mes appareils', icon: 'switch', clearToast: true,
     onClose: () => { if (onSync){ document.removeEventListener('oc:sync', onSync); onSync = null; } }
   });
   const q = s => sh.body.querySelector(s);
@@ -133,6 +176,7 @@ export function openAppareils(){
     const st = sy.lastStats;
     const iAmMain = await amMain();
     const comp = await loadCompanion();
+    const relays = await relayList();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
@@ -157,14 +201,17 @@ export function openAppareils(){
                 <button class="abtn abtn-sm" data-rm="${esc(d.id)}" aria-label="Retirer ${esc(d.name)}" title="Retirer">${ic('trash', 'ic-14')}</button>
               </div>`).join('')}
          ${comp ? compRowHTML(comp)
-           : (iAmMain && isDesktop()
-             ? `<button class="linklike" id="devAddComp" style="margin-top:6px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
+           : (iAmMain
+             ? (isDesktop()
+               ? `<button class="linklike" id="devAddComp" style="margin-top:6px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
+               : `<div class="dev-row"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur</span></div>`)
              : '')}
          ${getRing() && !iAmMain ? `<p class="hint" style="margin-top:6px">Seul ton appareil principal peut gérer les autres.</p>` : ''}
          ${1 + devs.length > DEVICES_MAX
            ? `<p class="hint warn" style="margin-top:6px">Plus de ${DEVICES_MAX} appareils — change la phrase de liaison pour écarter ceux que tu ne reconnais pas.</p>`
            : ''}
        </div>
+       ${relaySettingsHTML(relays)}
        <button class="linklike" id="syNewPhrase" style="margin-top:12px">Changer la phrase de liaison</button>`;
 
     q('#syRetry')?.addEventListener('click', () => startSync(sy.phrase));
@@ -191,6 +238,7 @@ export function openAppareils(){
         if (d) openDeviceSheet(d, render);
       }));
     wireComp(q, comp, render);
+    wireRelays(q, sy.phrase, render);
     sh.setFoot([
       btn('Rompre le lien', 'btn-ghost', async () => {
         const ok = await confirmSheet({
@@ -208,6 +256,7 @@ export function openAppareils(){
 
   async function renderStart(changing){
     const comp = await loadCompanion();
+    const relays = await relayList();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 12px">${changing
@@ -223,9 +272,14 @@ export function openAppareils(){
          </div>` : ''}
        ${!changing && !comp && isDesktop()
          ? `<button class="linklike" id="devAddComp" style="margin-top:12px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
-         : ''}`;
+         : ''}
+       ${!changing && !comp && !isDesktop()
+         ? `<div class="sy-devs"><div class="dev-row"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur</span></div></div>`
+         : ''}
+       ${relaySettingsHTML(relays)}`;
     sh.setFoot(changing ? [btn('← Retour', 'btn-ghost', render)] : null);
     wireComp(q, comp, render);
+    wireRelays(q, '', render);
     q('#syNew').addEventListener('click', () => { startSync(makePhrase()); render(); });
     q('#syJoin').addEventListener('click', () => {
       sh.body.innerHTML =
