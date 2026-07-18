@@ -2,10 +2,10 @@
    OpenContact — moteur · connexions IA (rédaction & analyse)
    Trois familles (D5), toutes optionnelles — sans IA, tout marche :
    · clé API navigateur : Anthropic, Gemini (CORS OK depuis le
-     navigateur) ; OpenAI / OpenRouter marqués « via ton
-     ordinateur » (le Compagnon relaiera) ;
-   · Ollama local (via le Compagnon) ;
-   · abonnement (ChatGPT via Codex App Server) — par le Compagnon.
+     navigateur) ;
+   · OpenAI / OpenRouter, Ollama local et l'abonnement ChatGPT sont
+     répertoriés pour la suite, mais non activables tant que leurs
+     adaptateurs Compagnon ne sont pas livrés.
    Ici : la fabrique d'un appel « texte → texte » pour la V1
    navigateur (Anthropic, Gemini). L'IA ne fait que PROPOSER : le
    texte retombe dans un champ éditable, jamais un envoi.
@@ -14,12 +14,12 @@
    ============================================================ */
 
 export const AI_FAMILIES = {
-  gemini:     { label: 'Gemini (clé)',     channel: 'browser', key: true },
-  anthropic:  { label: 'Claude (clé)',     channel: 'browser', key: true },
-  openai:     { label: 'OpenAI (clé)',     channel: 'companion', key: true },
-  openrouter: { label: 'OpenRouter (clé)', channel: 'companion', key: true },
-  ollama:     { label: 'Ollama (local)',   channel: 'companion', key: false },
-  chatgpt:    { label: 'ChatGPT (abonnement)', channel: 'companion', key: false }
+  gemini:     { label: 'Gemini',     channel: 'browser', key: true },
+  anthropic:  { label: 'Claude',     channel: 'browser', key: true },
+  openai:     { label: 'OpenAI',     channel: 'companion', key: true },
+  openrouter: { label: 'OpenRouter', channel: 'companion', key: true },
+  ollama:     { label: 'Ollama',     channel: 'companion', key: false },
+  chatgpt:    { label: 'ChatGPT',    channel: 'companion', key: false }
 };
 export const browserProviders = () =>
   Object.keys(AI_FAMILIES).filter(k => AI_FAMILIES[k].channel === 'browser');
