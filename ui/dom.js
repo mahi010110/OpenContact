@@ -89,6 +89,10 @@ function focusables(root){
 }
 export function openSheet(o){
   o = o || {};
+  /* Les feuilles qui succèdent directement à une action transitoire peuvent
+     écarter son ancien toast. Ce choix reste explicite : une confirmation
+     importante (biométrie après protection, par exemple) conserve le retour. */
+  if (o.clearToast) hideToast();
   const ov = el(
     `<div class="overlay open">
       <div class="modal ${o.className || ''}" role="dialog" aria-modal="true" aria-label="${esc(o.title || '')}">
