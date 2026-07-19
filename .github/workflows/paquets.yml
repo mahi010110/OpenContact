@@ -1,0 +1,46 @@
+# OpenContact Compagnon — paquets NON SIGNÉS, à la demande.
+# Prouve que le binaire se construit sur les trois systèmes visés et
+# produit les artefacts d'essai (Linux : .deb comme localement ;
+# Windows/macOS : bundles par défaut de Tauri). La signature et la
+# publication restent un geste du mainteneur (spec §8.3) : rien ici
+# ne signe ni ne distribue.
+name: Paquets Compagnon
+
+on:
+  workflow_dispatch:
+
+jobs:
+  paquets:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dépendances système Tauri (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libssl-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compagnon
+      - name: CLI Tauri
+        run: cargo install tauri-cli --version '^2' --locked
+      - name: Construire (bundles par défaut de l'OS, non signés)
+        working-directory: compagnon/src-tauri
+        run: cargo tauri build ${{ runner.os == 'Linux' && '--bundles deb' || '' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compagnon-${{ matrix.os }}
+          path: |
+            compagnon/target/release/bundle/
+          if-no-files-found: error
