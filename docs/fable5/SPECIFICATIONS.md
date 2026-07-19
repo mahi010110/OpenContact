@@ -329,13 +329,18 @@ L'application OpenContact reste utile sans lui.
 
 ### 8.3 Points à vérifier
 
-- Fiabilité de Trystero dans l'environnement du Compagnon et comportement lors
-  des transitions local/P2P.
-- Signature, distribution et mises à jour du binaire sur les systèmes visés.
+- ~~Fiabilité de Trystero dans l'environnement du Compagnon~~ — **tranché à
+  l'implémentation (C8, juillet 2026)** : le Compagnon n'ouvre pas de session
+  P2P directe. Le repli sans serveur permanent est la **synchronisation privée
+  « Mes appareils » déjà éprouvée** : depuis un téléphone, campagnes et bons
+  signés voyagent par la sync chiffrée jusqu'à l'ordinateur associé, qui remet
+  la mission au Compagnon par le canal local — une seule fois (`mid`
+  idempotent). Aucun écran ne promet autre chose ; le choix reste automatique
+  et sans jargon (D4 respecté).
+- Signature, distribution et mises à jour du binaire sur les systèmes visés
+  (la CI construit des paquets **non signés** sur les trois OS à la demande ;
+  la signature reste un geste du mainteneur).
 - Compatibilité réelle de chaque fournisseur IMAP/SMTP et des trousseaux OS.
-
-Si le canal P2P du Compagnon n'est pas assez fiable, le canal local reste
-obligatoire et le repli doit être décidé sans introduire de serveur permanent.
 
 ## 9. Connexions IA
 
@@ -554,15 +559,26 @@ nouvel arbitrage produit, sécurité, coûts et maintenance.
 
 ## 17. Points restant réellement ouverts
 
-1. Le plan UX détaillé et sa validation par le mainteneur.
-2. Les formats internes complets, paramètres cryptographiques et migrations,
-   à figer avec tests avant l'interface.
-3. La fiabilité du transport P2P dans le Compagnon.
+État au 19 juillet 2026 — après livraison du chantier :
+
+1. ~~Le plan UX détaillé et sa validation par le mainteneur~~ — validé le
+   16 juillet 2026 (`UX-PLAN.md`).
+2. ~~Les formats internes complets, paramètres cryptographiques et
+   migrations~~ — figés avec vecteurs de test (`CONTRAT.md`, `?test`).
+3. ~~La fiabilité du transport P2P dans le Compagnon~~ — tranché : repli par
+   la sync privée « Mes appareils » (voir §8.3), aucune session P2P directe.
 4. Les conditions officielles et durables d'un abonnement Claude dans une
-   application tierce.
+   application tierce — **toujours ouvert** : Claude reste par clé API.
+   L'abonnement ChatGPT est, lui, livré via le mode non interactif documenté
+   de l'outil officiel Codex (`codex exec --output-last-message`, bac à sable
+   lecture seule), exécuté par le Compagnon.
 5. Les politiques OAuth, scopes, validations et quotas exacts lors de la mise
-   en production Gmail/Microsoft.
-6. La signature, distribution et maintenance du Compagnon sur les OS ciblés.
+   en production Gmail/Microsoft — **toujours ouvert** (geste mainteneur :
+   déclarer les applications ; l'option avancée « son propre client » permet
+   d'essayer avant).
+6. La signature, distribution et maintenance du Compagnon sur les OS ciblés —
+   **toujours ouvert** pour la signature et la publication ; la construction
+   multi-OS non signée est couverte par la CI (`paquets.yml`).
 
 Tout autre choix décrit comme **validé** dans ce document est considéré acquis
 jusqu'à décision contraire explicite du mainteneur.

@@ -85,4 +85,4 @@ build, moteur pur sans DOM. Chemin recommandé le moment venu :
    auto-hébergé, sinon confirmer que le repli QR/fichier est fluide.
 4. Partage en groupe à 5+ : débit, files d'aperçus, doublons après fusions
    croisées (l'idempotence doit tenir).
-5. Toujours vérifier après coup : `?test` → 38 tests verts.
+5. Toujours vérifier après coup : `?test` → tous les auto-tests verts.

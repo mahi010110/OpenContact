@@ -77,10 +77,23 @@ Celles de `CLAUDE.md` et `CONTRAT.md`, plus, pour ce chantier :
   éléments durables (modèle de clés, phases techniques) sont résumés dans
   `PLAN.md`.
 
+Précision d'implémentation (juillet 2026, sans changer les décisions) :
+- D5 — l'abonnement ChatGPT est servi par le mode **non interactif documenté**
+  de l'outil officiel Codex (`codex exec --output-last-message`, bac à sable
+  lecture seule), lancé par le Compagnon ; OpenRouter passe en clé navigateur
+  (CORS autorisé par le fournisseur) ; OpenAI passe par le Compagnon (pas de
+  CORS), la clé sert l'appel puis s'oublie — jamais écrite là-bas.
+- D4 — le « P2P » entre PWA et Compagnon est réalisé par la sync privée
+  « Mes appareils » (C8) : les missions voyagent chiffrées jusqu'à
+  l'ordinateur associé, qui les remet au canal local. Pas de session
+  Trystero directe dans le Compagnon.
+
 ## Conventions de reprise
 
-- Branche de travail : `claude/opencontact-repo-study-3bw0ju` (ne pas pousser
-  ailleurs sans accord).
+- Branche de travail : celle indiquée par l'environnement de la session
+  (historiquement `claude/opencontact-repo-study-3bw0ju`, puis
+  `claude/opencontact-p8-2-mcp-7e958f`) ; l'intégration se fait dans `main`
+  par revue. Ne pas pousser ailleurs sans accord.
 - Démarrage d'une discussion : lire `CLAUDE.md`, `CONTRAT.md`, `CONTEXT.md`,
   `SPECIFICATIONS.md`, `PLAN.md` et `HANDOFF.md`, puis `git status`/`git log` ;
   le dépôt et les tests font foi ; reprendre à « prochaine action exacte » de

@@ -17,11 +17,13 @@ données vivent sur les appareils et circulent **en direct de pair à pair**
 | `engine/` | Le moteur : modèle, stockage (IndexedDB), chiffrement, fusions (communautaire `merge.js`, appareils `sync.js`), score, filtres — aucun accès à l'écran |
 | `assets/` | Polices (WOFF2 + licences OFL), icônes pixel (pixelarticons, MIT), logos, libs vendorisées (jsQR, qrcode-generator, Trystero — MIT) |
 | `design/` | Le kit de design « Utilitaire 98 » : composants de référence, guidelines, maquettes |
-| `tests.js` | Auto-tests du moteur (`?test` dans l'URL) |
+| `tests.js` | Auto-tests du moteur (`?test` dans l'URL, avec `tests-c8.js` et `tests-mcp.js`) |
+| `tests/e2e/` | Scénarios de bout en bout (Playwright, `node tests/e2e/tous.mjs`) |
 | `sw.js` | Service worker : hors-ligne + installation (PWA) |
 | `manifest.webmanifest` | Manifeste d'installation |
 | `icon.svg` | Icône de l'app |
-| `docs/` | Briefs et feuille de route (`plan-v7.md`) |
+| `compagnon/` | Le Compagnon (Tauri, **facultatif**) : campagnes app fermée, IMAP/SMTP, analyse d'e-mails, IA locale, serveur MCP local — voir `compagnon/README.md` |
+| `docs/` | Briefs et feuilles de route (`plan-v7.md`, `docs/fable5/` pour le chantier connecté) |
 
 ## Le direct (P2P)
 
