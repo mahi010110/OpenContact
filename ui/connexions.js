@@ -358,7 +358,8 @@ function openAiSheet(after){
       return;
     }
     if (!liste.length){ etapeLibre(k, key, 'Le fournisseur n’a rendu aucun modèle.'); return; }
-    const actuel = (ai && ai.provider === k && ai.model) || '';
+    /* « actuel » seulement si cette famille est vraiment celle en service */
+    const actuel = ai && ai.provider === k ? (ai.model || '') : null;
     const entrees = (k === 'chatgpt' ? [{ id: '', nom: 'Celui réglé dans Codex' }] : []).concat(liste);
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 10px">La liste vient du fournisseur, à l’instant — choisis, c’est ce modèle qui écrira.</p>
