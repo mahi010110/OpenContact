@@ -95,10 +95,12 @@ console.log('brouillon IA : texte dans le champ éditable, contexte piste seulem
 await page.waitForTimeout(350);
 await page.screenshot({ path: SHOTS + '/40-brouillon-ia.png' });
 
-/* quota : message court, le texte en place ne bouge pas */
+/* quota : message court, le texte en place ne bouge pas
+   (le toast du brouillon précédent reste affiché ~3,4 s — on attend le
+   CONTENU attendu, pas juste « .toast.on », déjà vrai depuis l’appel d’avant) */
 mode = 'quota';
 await page.click('#mAi');
-await page.waitForSelector('.toast.on');
+await page.waitForFunction(() => /Quota IA atteint/.test(document.querySelector('#toast')?.textContent || ''), null, { timeout: 10000 });
 const toastTxt = await page.textContent('#toast');
 if (!/Quota IA atteint/.test(toastTxt)) fail('message quota : ' + toastTxt);
 const after = await page.inputValue('#mBody');
