@@ -42,6 +42,25 @@ Tout le reste voyage en enveloppes `OCV1.` (AES-GCM, AAD liée) :
 lecture), `revoquer`, `arreter-cible`, `rapport`, `analyse-etat`.
 Rien d'utile en clair ; un processus local sans le code n'obtient rien.
 
+## Le serveur MCP local (P8-2)
+
+`oc-compagnon --mcp` sert le protocole MCP sur **stdio** (SDK officiel
+`rmcp`) : c'est le client IA compatible qui lance le processus — aucun
+port, aucun relais, aucun compte. **Coupé par défaut** ; l'autorisation
+se donne et se révoque dans OpenContact (Mes appareils → feuille du
+Compagnon), relue à CHAQUE appel. Deux outils, pas un de plus :
+`resume_pistes` (lecture bornée d'un résumé en liste blanche — nom,
+ville, domaine, postes, dernière activité, suivi agrégé — poussé par la
+PWA et re-filtré par `oc_coeur::mcp`) et `proposer_pistes` (schéma
+fermé, bornes strictes ; la proposition devient une enveloppe `share`
+scellée en attente, rejouable sans doublon par son `pid`, et repasse
+par l'aperçu multi-sélection de la PWA — jamais une écriture directe,
+aucune suppression exposée). Les fichiers d'échange (`mcp-*.ocv`) sont
+scellés sous une clé fichier 0600 dédiée — deux processus indépendants
+doivent les ouvrir et les trousseaux de session ne se partagent pas
+entre un bureau et un client tiers. Journal sobre : `mcp-journal.log`
+(gestes et comptes, jamais un contenu).
+
 ## Crochets de développement (jamais en production)
 
 `OC_APPAIRAGE_AUTO=code` (appairage ouvert au démarrage),

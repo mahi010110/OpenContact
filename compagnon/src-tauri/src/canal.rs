@@ -175,7 +175,8 @@ fn repondre_boite(
         Some("ping") => {
             let (r, _) = p.reglage_mail();
             serde_json::json!({ "t": "pong", "nom": p.nom, "associe": true,
-                "messagerie": !r.hote.is_empty() || std::env::var("OC_SMTP_TEST").is_ok() })
+                "messagerie": !r.hote.is_empty() || std::env::var("OC_SMTP_TEST").is_ok(),
+                "mcp": crate::mcp::actif(p.dossier()) })
         }
         Some("dissocier") => {
             p.dissocier();
@@ -271,6 +272,39 @@ fn repondre_boite(
             let em = EtatMissions::charger(&p.coffre);
             serde_json::json!({ "t": "rapport", "journal": em.journal,
                 "arrets": em.arrets, "reponses": em.reponses })
+        }
+        /* ---- l'assistant IA (P8-2) — géré depuis OpenContact ---- */
+        Some("mcp-regler") => {
+            let on = msg["actif"].as_bool().unwrap_or(false);
+            crate::mcp::regler(p.dossier(), on);
+            serde_json::json!({ "t": "ok", "actif": on })
+        }
+        /* le résumé en liste blanche que l'assistant a le droit de lire —
+           refusé tant que l'assistant n'est pas autorisé */
+        Some("resume") => {
+            if !crate::mcp::actif(p.dossier()) {
+                return serde_json::json!({ "e": "coupe" });
+            }
+            match crate::mcp::ranger_resume(p.dossier(), &msg["resume"]) {
+                Ok(()) => serde_json::json!({ "t": "ok" }),
+                Err(e) => serde_json::json!({ "e": e }),
+            }
+        }
+        /* les propositions en attente de tri — la PWA les rapporte,
+           l'utilisateur décide, puis les règle une à une */
+        Some("propositions") => {
+            serde_json::json!({ "t": "propositions",
+                "actif": crate::mcp::actif(p.dossier()),
+                "liste": crate::mcp::lister_propositions(p.dossier()) })
+        }
+        Some("proposition-reglee") => {
+            let pid = msg["pid"].as_str().unwrap_or("");
+            let action = msg["action"].as_str().unwrap_or("fusion");
+            if crate::mcp::regler_proposition(p.dossier(), pid, action) {
+                serde_json::json!({ "t": "ok" })
+            } else {
+                serde_json::json!({ "e": "pid" })
+            }
         }
         _ => serde_json::json!({ "t": "?" }),
     }

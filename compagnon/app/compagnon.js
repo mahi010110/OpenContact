@@ -83,6 +83,19 @@ auto.addEventListener('change', async () => {
   catch (e) { auto.checked = !auto.checked; }
 });
 
+/* assistant IA (écran technique) : l'état — décidé dans OpenContact —
+   et la commande exacte pour un client compatible */
+async function majMcp(){
+  try {
+    const i = await invoke('mcp_infos');
+    q('#cgMcpEtat').textContent = i.actif
+      ? 'Autorisé depuis OpenContact ✓'
+      : 'Coupé — l’assistant ne peut ni lire ni proposer.';
+    q('#cgMcpCmd').textContent = i.commande;
+  } catch (e) {}
+}
+await majMcp();
+
 /* preuve que le moteur partagé se charge tel quel */
 try {
   const { MISSION_KINDS } = await import('./moteur/engine/mission.js');

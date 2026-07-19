@@ -17,6 +17,7 @@
 pub mod anneau;
 pub mod enveloppe;
 pub mod garde;
+pub mod mcp;
 pub mod mission;
 pub mod planifier;
 

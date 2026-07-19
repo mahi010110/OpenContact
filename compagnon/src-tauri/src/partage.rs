@@ -143,12 +143,18 @@ impl Partage {
         self.assoc.lock().unwrap().is_some()
     }
 
+    pub fn dossier(&self) -> &std::path::Path {
+        &self.dossier
+    }
+
     /// Rompre l'association : l'appareil pair et la clé de canal
-    /// disparaissent — un nouvel appairage repart de zéro.
+    /// disparaissent — un nouvel appairage repart de zéro. L'assistant
+    /// IA perd aussi tout : plus de consommateur pour ses propositions.
     pub fn dissocier(&self) {
         *self.assoc.lock().unwrap() = None;
         *self.canal_k.lock().unwrap() = None;
         self.secrets.effacer("canal.k");
+        crate::mcp::purger(&self.dossier);
         self.persister();
     }
 

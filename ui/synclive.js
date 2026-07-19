@@ -19,7 +19,7 @@ import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
 import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
          DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, PROMO_KEY, VAULT_KEY,
          CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY, ANALYSIS_KEY,
-         kvGet, kvSet, kvDel, docDel } from '../engine/storage.js';
+         PROPOSALS_KEY, kvGet, kvSet, kvDel, docDel } from '../engine/storage.js';
 import { S, bus, applySynced, saveProfile, logJ } from './state.js';
 import { ic, toast, showUndo } from './dom.js';
 
@@ -215,7 +215,8 @@ async function onRingMsg(incoming){
          identité d'appareil, documents (CV, lettre) */
       for (const k of [DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY,
                        SYNC_KEY, RELAYS_KEY, PROMO_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY,
-                       CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY, ANALYSIS_KEY]) await kvDel(k);
+                       CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY, ANALYSIS_KEY,
+                       PROPOSALS_KEY]) await kvDel(k);
       for (const dk of ['cv', 'lettre']) await docDel(dk).catch(() => {});
       location.replace(location.pathname);
       return;

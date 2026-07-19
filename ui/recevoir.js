@@ -418,6 +418,7 @@ export function mergePreviewInto(sh, obj, opts){
             </button>`).join('')}
        </div>` : ''}
        <p class="hint">${ic('shield', 'ic-14')} Rien n’est écrasé, annulable juste après.</p>
+       ${opts.onDiscard ? `<button class="linklike" id="rcDiscard">Écarter ces propositions</button>` : ''}
      </div>`;
   const bGo = btn(dry.addedC + dry.enriched + dry.addedCt === 0 ? 'Rien à ajouter' : 'Fusionner', 'btn-primary', () => {
     const chosen = opts.select ? obj.companies.filter((_, i) => !unsel.has(i)) : obj.companies;
@@ -445,6 +446,7 @@ export function mergePreviewInto(sh, obj, opts){
       relabel();
     }));
   relabel();
+  sh.body.querySelector('#rcDiscard')?.addEventListener('click', () => opts.onDiscard());
   sh.setFoot([
     btn('Annuler', 'btn-ghost', () => opts.onCancel ? opts.onCancel() : sh.close()),
     bGo

@@ -1,10 +1,26 @@
 # Fable 5 — point de reprise (checkpoint)
 
-- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-1, y
-  compris la reprise d'analyse après fermeture) et
-  **Compagnon C1–C8 livré** dans `compagnon/`. Les corrections UX prioritaires
-  de `AUDIT-UX.md` sont maintenant livrées et testées. MCP, nouvelles IA
-  et installateurs Windows/macOS restent volontairement hors périmètre.
+- **Phase actuelle** : chantier connecté V1 livré côté PWA (P0 → P8-2) et
+  **Compagnon C1–C8 + serveur MCP local livrés** dans `compagnon/`. Les
+  corrections UX prioritaires de `AUDIT-UX.md` sont livrées et testées.
+  Nouvelles IA et installateurs Windows/macOS restent volontairement hors
+  périmètre.
+- **P8-2 livrée — serveur MCP local** : `oc-compagnon --mcp` (SDK officiel
+  `rmcp`, transport **stdio** : le client IA compatible lance le processus,
+  aucun port). Coupé par défaut ; autorisé et révoqué depuis la feuille du
+  Compagnon (Mes appareils), l'état est relu à CHAQUE appel. Deux outils :
+  `resume_pistes` (résumé en liste blanche construit par `engine/mcp.js`,
+  poussé par la PWA, re-filtré par `oc_coeur::mcp` — nom, ville, domaine,
+  postes, dernière activité, suivi agrégé, jamais une note ni un contact)
+  et `proposer_pistes` (schéma fermé + bornes, enveloppe `share` scellée
+  en attente, `pid` = hash du contenu → rejeu idempotent). La PWA rapporte
+  les propositions (`ui/propositions.js`), les garde scellées sous
+  `oc_proposals_v1` (SEALABLE, wipe, CONTRAT §1), chip d'Aujourd'hui →
+  aperçu multi-sélection existant → fusion + Annuler, ou « Écarter » +
+  retour. Les fichiers d'échange `mcp-*.ocv` sont scellés sous une clé
+  fichier 0600 dédiée (les trousseaux de session ne se partagent pas
+  entre processus indépendants). Journal sobre `mcp-journal.log`. Cache
+  PWA **oc-v31**.
 - **Phase V (durcissement) livrée** : rotation du coffre interruptible et
   reprenable (`prev` dans `oc_vault_v1`), le SW ne détourne plus
   `oauth.html` (oc-v23), `wipe` complet (jetons, clés IA, campagnes,
@@ -40,14 +56,14 @@
      prompt + chemin Compagnon), suivi/résultat scellé dans
      `oc_analysis_v1`, reprise après fermeture dans Aujourd'hui, aperçu
      multi-sélection et injection neutralisée par le rail.
-- **Tests de référence après C8** : `?test` est vert à **83/83**. La suite
-  complète passe à **14/14, zéro saut**.
-  Rust/Cargo 1.97.1 a
-  été installé localement : `cargo test --locked` passe à **21/21** (20 cœur
-  + 1 coquille), le Compagnon se construit, puis les **4/4 scénarios natifs
-  passent contre le vrai binaire** : envoi + kill/reprise sans doublon,
-  réponse IMAP, analyse locale fermée/reprise + fusion sûre, et téléphone C8.
-  Le cache PWA est **oc-v30**.
+- **Tests de référence après P8-2** : `?test` est vert à **87/87** (dont
+  4 tests assistant/MCP). La suite complète passe à **15/15, zéro saut**.
+  `cargo test --locked` passe à **26/26** (25 cœur dont 5 MCP + 1 coquille),
+  le Compagnon se construit, puis les **5/5 scénarios natifs passent contre
+  le vrai binaire** : envoi + kill/reprise sans doublon, réponse IMAP,
+  analyse locale fermée/reprise + fusion sûre, téléphone C8, et MCP local
+  (client JSON-RPC réel sur stdio, rejoué trois fois).
+  Le cache PWA est **oc-v31**.
 - **Blocages externes (dans l'ordre d'importance)** :
   1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
      renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),
@@ -133,16 +149,16 @@
     l'ordinateur. E2E vrai binaire : téléphone 390×844, ordinateur 1280×800,
     clair/sombre, trois rejeux de sync puis plusieurs cycles = un seul SMTP ;
     scénario rejoué trois fois sans flakiness.
-- **Ordre de suite recommandé** : réaliser P8-2 (MCP local), puis tester le
-  `.deb`, le verrou PRF, l'anneau et les parcours Compagnon sur matériel réel ;
-  déclarer et essayer les apps OAuth Google/Microsoft ; enfin la distribution
-  multi-OS. La récupération des analyses après fermeture est maintenant faite.
-  Les ajustements visuels écran par écran restent un chantier séparé avec le
-  mainteneur.
+- **Ordre de suite recommandé** : tester le `.deb`, le verrou PRF, l'anneau
+  et les parcours Compagnon (dont un vrai client MCP type Claude Desktop)
+  sur matériel réel ; déclarer et essayer les apps OAuth Google/Microsoft ;
+  enfin la distribution multi-OS. P8-2 était la dernière brique de code du
+  chantier. Les ajustements visuels écran par écran restent un chantier
+  séparé avec le mainteneur.
 - **Première vérification à la prochaine reprise** :
   `git log --oneline -8 && git status`, puis
-  `node tests/e2e/unitaires.mjs` (**83/83 attendus**) et
+  `node tests/e2e/unitaires.mjs` (**87/87 attendus**) et
   `node tests/e2e/tous.mjs`. Pour le natif :
   `cargo test --locked --manifest-path compagnon/Cargo.toml`,
   `cargo build --locked --manifest-path compagnon/Cargo.toml -p oc-compagnon`,
-  puis les quatre scénarios natifs, dont `e2e-c8-telephone.mjs`.
+  puis les cinq scénarios natifs, dont `e2e-mcp.mjs`.

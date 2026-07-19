@@ -10,7 +10,7 @@ const DIR = path.dirname(fileURLToPath(import.meta.url));
 const scripts = ['unitaires.mjs',
   ...readdirSync(DIR).filter(f => f.startsWith('e2e-') && f.endsWith('.mjs')).sort()];
 const natifs = new Set(['e2e-c8-telephone.mjs', 'e2e-compagnon-envoi.mjs',
-  'e2e-compagnon-reponses.mjs', 'e2e-compagnon-scan.mjs']);
+  'e2e-compagnon-reponses.mjs', 'e2e-compagnon-scan.mjs', 'e2e-mcp.mjs']);
 const compDir = path.resolve(DIR, '..', '..', 'compagnon');
 const bin = path.join(compDir, 'target', 'debug', 'oc-compagnon');
 

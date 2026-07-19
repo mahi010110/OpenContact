@@ -29,7 +29,7 @@ export async function companionPresence(){
   try {
     const pong = await companionCall(found.base, assoc.k, { t: 'ping' });
     return pong && pong.t === 'pong'
-      ? { assoc, state: 'on', base: found.base }
+      ? { assoc, state: 'on', base: found.base, mcp: !!pong.mcp }
       : { assoc, state: 'off' };
   } catch (e) { return { assoc, state: 'off' }; }
 }
@@ -136,15 +136,60 @@ export function openCompanionSheet(assoc, onDone){
   sh.body.innerHTML =
     `<p class="hint" id="cgLive" style="margin:0 0 10px">${ic('clock', 'ic-14')} État…</p>
      <div class="pick-list">
+       <button class="pick" id="cgMcp"><b>${ic('sparkles', 'ic-14')} Ton assistant IA</b><span id="cgMcpSt">état…</span></button>
        <button class="pick pick-danger" id="cgBreak"><b>Rompre l’association</b><span>il ne recevra plus de missions</span></button>
      </div>`;
   const q = s => sh.body.querySelector(s);
-  companionPresence().then(p => {
+  let live = null;
+  const majLive = () => companionPresence().then(p => {
+    live = p;
     const el = q('#cgLive');
     if (!el) return;
     el.innerHTML = p && p.state === 'on'
       ? `${ic('radio', 'ic-14')} Prêt — il répond sur cet ordinateur.`
       : `${ic('clock', 'ic-14')} Éteint ou pas sur cet ordinateur. Il reprendra à son réveil.`;
+    const st = q('#cgMcpSt');
+    if (st) st.textContent = p && p.state === 'on'
+      ? (p.mcp ? 'autorisé — il propose, tu tries' : 'coupé')
+      : 'ton ordinateur est éteint';
+  });
+  majLive();
+
+  /* l'assistant IA : autorisé / coupé — décidé ICI, appliqué là-bas.
+     Une feuille, une question ; couper est immédiat et sans code. */
+  q('#cgMcp').addEventListener('click', async () => {
+    if (!live || live.state !== 'on'){
+      toast('Ton ordinateur est éteint — ouvre le Compagnon d’abord.');
+      return;
+    }
+    const on = !!live.mcp;
+    const sa = openSheet({ title: 'Ton assistant IA', icon: 'sparkles' });
+    sa.body.innerHTML = on
+      ? `<p class="hint" style="margin:0 0 10px">Autorisé ✓ — il lit un résumé de tes pistes
+           et dépose des propositions. Rien ne s’ajoute sans ton accord.</p>
+         <p class="hint">Couper prend effet immédiatement.</p>`
+      : `<div class="pick-list">
+           <div class="lk-why">${ic('eye', 'ic-14')} <span>Il lira un résumé : nom, ville, domaine — jamais tes notes ni tes contacts.</span></div>
+           <div class="lk-why">${ic('inbox', 'ic-14')} <span>Ses propositions passent par l’aperçu : tu coches, tu fusionnes ou tu écartes.</span></div>
+           <div class="lk-why">${ic('shield', 'ic-14')} <span>Tu peux le couper ici à tout moment.</span></div>
+         </div>
+         <p class="hint">${ic('lock', 'ic-14')} Jamais ton suivi privé.</p>`;
+    const apply = async actif => {
+      if (actif && !await requireCode('Ton code, pour autoriser l’assistant')) return;
+      try {
+        const rep = await companionCall(live.base, assoc.k, { t: 'mcp-regler', actif });
+        if (!rep || rep.t !== 'ok') throw new Error('canal');
+        logJ(actif ? 'Assistant IA autorisé sur le Compagnon' : 'Assistant IA coupé sur le Compagnon');
+        sa.close(null, true);
+        toast(actif ? 'Autorisé — ses propositions arriveront dans Aujourd’hui.' : 'Coupé.');
+        import('./propositions.js').then(async m => {
+          await m.setAssistantActive(actif);
+          if (actif) m.reconcileProposals().catch(() => {});
+        }).catch(() => {});
+        majLive();
+      } catch (e) { toast('Pas de réponse — le Compagnon est toujours ouvert ?'); }
+    };
+    sa.setFoot([btn(on ? 'Couper' : 'Autoriser', 'btn-primary', () => apply(!on))]);
   });
   q('#cgBreak').addEventListener('click', async () => {
     const ok = await confirmSheet({

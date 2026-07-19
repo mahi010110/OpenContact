@@ -26,3 +26,8 @@ lettre = { version = "0.11", default-features = false, features = ["smtp-transpo
 imap = "2.4"
 native-tls = "0.2"
 ureq = { version = "2", default-features = false, features = ["json"] }
+# serveur MCP local (P8-2) — SDK Rust officiel, transport stdio uniquement
+rmcp = { version = "2.2", features = ["transport-io"] }
+schemars = "1"
+tokio = { version = "1", features = ["rt"] }
+dirs = "6"

@@ -173,6 +173,9 @@ Tauri reste indépendant et le dossier demeure déplaçable.
 5. **P8-1 est maintenant complète** : le `mid` et le résultat d'analyse sont
    scellés dans la PWA, le sondage reprend après fermeture/déverrouillage et
    Aujourd'hui expose le résultat sans le consommer avant fusion.
-6. **Reste comme dernière brique de code** : MCP local. Outlook OAuth,
-   essais matériels et distribution multi-OS demandent encore leur travail
+6. **P8-2 (MCP local) est livrée** : `oc-compagnon --mcp` sert le protocole
+   sur stdio avec `rmcp` (le SDK pressenti par cette étude), lecture bornée
+   + propositions qui repassent par l'aperçu de la PWA — prouvé par un
+   client JSON-RPC réel contre le binaire construit. Outlook OAuth, essais
+   matériels et distribution multi-OS demandent encore leur travail
    extérieur ou sur les OS cibles.

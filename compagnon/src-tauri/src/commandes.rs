@@ -91,6 +91,25 @@ pub fn mail_reglage_ecrire(p: State<Arc<Partage>>, reglage: crate::envoi::Reglag
     p.ecrire_reglage_mail(&reglage, &mdp);
 }
 
+/// L'assistant IA (écran technique de la fenêtre) : l'état du
+/// drapeau — géré depuis OpenContact — et la commande exacte à
+/// donner à un client compatible.
+#[derive(Serialize)]
+pub struct McpInfos {
+    pub actif: bool,
+    pub commande: String,
+}
+#[tauri::command]
+pub fn mcp_infos(p: State<Arc<Partage>>) -> McpInfos {
+    McpInfos {
+        actif: crate::mcp::actif(p.dossier()),
+        commande: std::env::current_exe()
+            .ok()
+            .and_then(|e| e.to_str().map(|s| format!("{s} --mcp")))
+            .unwrap_or_else(|| "oc-compagnon --mcp".into()),
+    }
+}
+
 #[tauri::command]
 pub fn etat_compagnon(p: State<Arc<Partage>>) -> Etat {
     Etat {

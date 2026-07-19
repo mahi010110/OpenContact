@@ -33,6 +33,7 @@ doit être repensée, pas forcée.
 | `oc_ai_v1` | Connexions IA : fournisseur actif + clé API — **exige le profil protégé** (valeur toujours scellée) ; la clé ne sort jamais dans un log ni un export | JSON : `{provider, key, model}` |
 | `oc_missions_v1` | Bons de mission du Compagnon : idempotents (repliés sur le journal de campagne), bornés (expiration), révocables ; un résultat d'analyse = enveloppe `share` qui repasse par l'aperçu. Sur le fil, une mission voyage **signée** : `{m, sig, dev}` — `m` est la chaîne JSON exacte signée Ed25519 par l'appareil émetteur, vérifiée octet à octet (PWA `openMissionWire` ET cœur Rust du Compagnon, à CHAQUE lecture). `dev` peut être l'ordinateur appairé ou un autre membre (téléphone) : le Compagnon résout sa clé dans l'anneau signé. Côté PWA la clé garde les remises : `[{mid, cpId, wire, state: a_confier·confiee·revoquee, stops[], revOk?}]` | JSON : tableau de missions |
 | `oc_companion_v1` | Association au Compagnon : clé de canal née de l'appairage par code court + identité du Compagnon (`{k, id, nom, pub, at}`) — **exige le profil protégé** (valeur toujours scellée). Le canal local (127.0.0.1) ne transporte que des enveloppes `OCV1.` : l'appairage sous PBKDF2(code, 120 000 itér.), la suite sous `k` — rien d'utile en clair | JSON |
+| `oc_proposals_v1` | Propositions de l'assistant IA (serveur MCP local du Compagnon, coupé par défaut) en attente de tri : `{v, actif, list: [{pid, at, n, share}], done: [{pid, a}]}` — `actif` mémorise l'autorisation donnée dans la feuille du Compagnon (sans lui, la PWA ne sonde jamais) ; `share` est une enveloppe `share` ordinaire qui repasse par `parseInput` → aperçu multi-sélection → fusion §4, JAMAIS une écriture directe ; `pid` (hash du contenu) rend le rejeu idempotent, `done` (50 max) garde les propositions déjà fusionnées/écartées pour qu'elles ne réapparaissent jamais ; 5 en attente max ; scellée (SEALABLE), emportée par le `wipe` | JSON |
 | `oc_theme` | `light` ou `dark` | chaîne |
 | `oc_view` | `map`, `list` ou `grid` (héritée, plus écrite) | chaîne |
 | `oc_data_v2`, `ais_stage_targets_v1` | Anciennes clés (v1/v2), lues une seule fois pour migration | lecture seule |
@@ -241,7 +242,8 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    l'utilisateur sur l'appareil visé : données, profil, journal, bac,
    tombstones, phrase de liaison, relais, identité d'appareil, appareils
    vus, anneau, coffre, campagnes, jetons de messagerie, clés d'IA,
-   missions, et les documents (`cv`, `lettre`) de `oc_docs_v1`.
+   missions, propositions de l'assistant (`oc_proposals_v1`), et les
+   documents (`cv`, `lettre`) de `oc_docs_v1`.
 8. **Campagnes C8** : les instantanés privés du canal `full` peuvent porter
    `campaigns` (`oc_campaigns_v1`) et `missions` (`oc_missions_v1`). Ce sont
    des champs optionnels : un ancien appareil les ignore sans casser le

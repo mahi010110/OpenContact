@@ -68,6 +68,7 @@ function applyTheme(t, persist){
   await import('./ui/connexions.js').then(m => m.loadMail()).catch(() => {});
   await import('./ui/campagnes.js').then(m => m.loadCampaigns()).catch(() => {});
   await import('./ui/analyse.js').then(m => m.loadMailAnalysis()).catch(() => {});
+  await import('./ui/propositions.js').then(m => m.loadProposals()).catch(() => {});
   applyTheme(S.theme, false);
   $('#sbVer').textContent = APP_VERSION;
 
@@ -98,6 +99,12 @@ function applyTheme(t, persist){
   /* sync appareils : si une phrase de liaison existe, l'app rejoint la
      salle en arrière-plan et y RESTE — différé pour un démarrage net */
   setTimeout(() => { initSyncLive().catch(() => {}); }, 2000);
+
+  /* propositions de l'assistant IA (Compagnon associé) : rapportées en
+     arrière-plan, sobrement — rien ne s'ajoute sans l'aperçu */
+  setTimeout(() => {
+    import('./ui/propositions.js').then(m => m.startProposalsLoop()).catch(() => {});
+  }, 2500);
 
   /* partage entrant (PWA share_target) : « Partager » depuis LinkedIn ou
      le navigateur → capture pré-remplie ; les params sont consommés puis
@@ -131,8 +138,8 @@ function applyTheme(t, persist){
   }
 
   if (new URLSearchParams(location.search).has('test')){
-    Promise.all([import('./tests.js'), import('./tests-c8.js')])
-      .then(async ([base, c8]) => [...await base.runSelfTests(), ...await c8.runC8Tests()])
+    Promise.all([import('./tests.js'), import('./tests-c8.js'), import('./tests-mcp.js')])
+      .then(async ([base, c8, mcp]) => [...await base.runSelfTests(), ...await c8.runC8Tests(), ...await mcp.runMcpTests()])
       .then(R => {
       window.__ocTests = R;
       const ko = R.filter(r => r.résultat !== '✓').length;

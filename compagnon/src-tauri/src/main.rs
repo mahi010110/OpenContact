@@ -15,6 +15,7 @@ mod canal;
 mod coffrelocal;
 mod commandes;
 mod envoi;
+mod mcp;
 mod missions;
 mod partage;
 mod planif;
@@ -29,6 +30,12 @@ fn montrer(app: &tauri::AppHandle) {
 }
 
 fn main() {
+    /* Mode serveur MCP local (P8-2) : c'est le client IA compatible qui
+       lance `oc-compagnon --mcp` — pas de fenêtre, pas de canal, stdout
+       réservé au protocole. Tout le reste du binaire ne démarre pas. */
+    if std::env::args().any(|a| a == "--mcp") {
+        mcp::lancer();
+    }
     /* Les scénarios d'intégration pilotent le vrai canal et le vrai moteur,
     mais peuvent tourner dans un conteneur sans D-Bus ni /proc. Les
     services de bureau, hors périmètre de ces scénarios, y sont donc
@@ -58,6 +65,7 @@ fn main() {
             commandes::appairage_demarrer,
             commandes::appairage_annuler,
             commandes::appairage_sel,
+            commandes::mcp_infos,
             commandes::dissocier
         ])
         .setup(move |app| {

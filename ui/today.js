@@ -17,6 +17,7 @@ import { openCapture } from './capture.js';
 import { campaignLines, openCampaignById } from './campagnes.js';
 import { mailAnalysis } from './analyse.js';
 import { openPendingMailAnalysis } from './recevoir.js';
+import { pendingProposals, openPendingProposals } from './propositions.js';
 
 const CAP = 8;                      /* lignes visibles par tranche avant « voir plus » */
 const expanded = new Set();         /* tranches dépliées à la main (le temps de la session) */
@@ -90,6 +91,8 @@ export function renderToday(){
   const noAction = alive.filter(c => !c.nextAction);
   const done = doneTodayCount();
   const analysis = mailAnalysis();
+  const props = pendingProposals();
+  const nProps = props.reduce((n, p) => n + p.n, 0);
 
   let html =
     `<div class="page-inner">
@@ -101,6 +104,7 @@ export function renderToday(){
        ${S.orphans.length ? `<button class="td-chip" data-go="pistes">${ic('contact', 'ic-14')} ${S.orphans.length} contact${S.orphans.length > 1 ? 's' : ''} à rattacher</button>` : ''}
        ${receivedTodayCount() ? `<button class="td-chip" data-go="pistes">${ic('inbox', 'ic-14')} reçu de la promo : ${receivedTodayCount()}</button>` : ''}
        ${analysis && analysis.state === 'ready' ? `<button class="td-chip" id="tdAnalysis">${ic('sparkles', 'ic-14')} ${analysis.count} piste${analysis.count > 1 ? 's' : ''} proposée${analysis.count > 1 ? 's' : ''} à trier</button>` : ''}
+       ${nProps ? `<button class="td-chip" id="tdProps">${ic('sparkles', 'ic-14')} ton assistant propose ${nProps} piste${nProps > 1 ? 's' : ''} — à trier</button>` : ''}
        ${campaignLines().map(l =>
          `<button class="camp-line" data-camp="${esc(l.id)}">${ic('flag', 'ic-14')} <span>${esc(l.txt)}</span> <em>Voir</em></button>`).join('')}`;
 
@@ -163,6 +167,7 @@ export function renderToday(){
   root.querySelectorAll('[data-camp]').forEach(b =>
     b.addEventListener('click', () => openCampaignById(b.dataset.camp)));
   root.querySelector('#tdAnalysis')?.addEventListener('click', openPendingMailAnalysis);
+  root.querySelector('#tdProps')?.addEventListener('click', openPendingProposals);
   root.querySelector('#tdNoAct')?.addEventListener('click', goPistes);
   root.querySelector('#tdeAdd')?.addEventListener('click', () => openCapture());
   root.querySelector('#tdeDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le quand tu veux.'); });
