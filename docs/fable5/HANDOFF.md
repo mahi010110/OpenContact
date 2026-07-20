@@ -83,7 +83,10 @@
   versionnés dans `tests/e2e/` (`node tests/e2e/tous.mjs`),
   et reconnexion IndexedDB automatique (les navigateurs mobiles ferment
   la connexion sous pression mémoire — l'app rouvre et re-tente).
-- **Branche Git** : `claude/opencontact-repo-study-3bw0ju`
+- **Branche Git** : tout vit dans `main` (les branches de chantier —
+  étude, MCP, audits — ont été fusionnées puis supprimées en juillet
+  2026 ; le travail courant passe par une branche jetable re-basée sur
+  `main`).
 - **Livré, dans l'ordre** :
   1. **P0 — coffre** : `engine/vault.js` (clé maîtresse, wraps
      code/phrase/PRF, `OCV1.`, 256 mots), couche scellante de
