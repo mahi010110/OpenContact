@@ -137,8 +137,17 @@ await page.keyboard.press('Escape');
    verrouillé (compteur persistant, pas par feuille) --- */
 await page.click('#moiRestore');
 await page.waitForSelector('.modal-confirm .pad-k');
+/* openSheet place le focus à la frame suivante : on l'ancre explicitement
+   dans la feuille avant la preuve clavier pour ne pas dépendre du rythme CI. */
+await page.focus('.modal-confirm .x');
 const wrongOnce = async () => {
   await page.keyboard.type('111111');           /* clavier : accepté ici aussi */
+  /* prouve que cette tentative a réellement démarré, plutôt que de relire
+     le message de l'essai précédent */
+  await page.waitForFunction(() => {
+    const r = document.querySelector('.modal-confirm .rq-pad');
+    return !!r && r.classList.contains('pad-off');
+  }, null, { timeout: 5000 });
   await page.waitForFunction(() => {
     const r = document.querySelector('.modal-confirm .rq-pad');
     const msg = (r && r.querySelector('.lock-msg').textContent) || '';
