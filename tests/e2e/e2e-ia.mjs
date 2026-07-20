@@ -74,6 +74,26 @@ const sansModele = await page.evaluate(async () => {
 });
 if (sansModele !== 'modele') fail('un modèle implicite est passé : ' + sansModele);
 console.log('modèles : liste vivante du fournisseur, jamais d’implicite ✓');
+
+/* OpenRouter en navigateur : la CSP (connect-src) doit laisser passer.
+   Une route de test s'applique APRÈS la CSP — si l'origine sort de la
+   liste d'index.html, ce test meurt AVANT d'être servi : c'est voulu,
+   la famille entière serait morte pareil en production. */
+await page.route('https://openrouter.ai/**', route =>
+  /\/models$/.test(route.request().url())
+    ? route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ data: [{ id: 'or/modele-test', name: 'Modèle test' }] }) })
+    : route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ choices: [{ message: { content: 'ok openrouter' } }] }) }));
+const orOk = await page.evaluate(async () => {
+  const { aiListModels, aiComplete } = await import('./engine/ai.js');
+  const liste = await aiListModels({ provider: 'openrouter', key: 'k' });
+  const txt = await aiComplete({ provider: 'openrouter', key: 'k', model: liste[0].id }, 'test');
+  return { n: liste.length, id: liste[0].id, txt };
+});
+if (orOk.n !== 1 || orOk.id !== 'or/modele-test' || orOk.txt !== 'ok openrouter')
+  fail('OpenRouter navigateur : ' + JSON.stringify(orOk));
+console.log('OpenRouter : la CSP laisse passer, liste + brouillon servis ✓');
 const dbg = await page.evaluate(async () => {
   const { S } = await import('./ui/state.js');
   const st = await import('./engine/storage.js');

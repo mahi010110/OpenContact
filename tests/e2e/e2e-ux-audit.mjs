@@ -114,6 +114,18 @@ const deviceText = await page.locator('.modal-b').innerText();
 if (!/Compagnon[\s\S]*depuis ton ordinateur/.test(deviceText))
   fail('explication Compagnon mobile absente : ' + deviceText.slice(0, 220));
 if (await page.$('#devAddComp')) fail('le téléphone ne doit pas proposer un appairage local impossible');
+/* la ligne s'ouvre : le téléphone apprend le chemin (ordinateur d'abord),
+   peut s'envoyer le lien, et sait quoi faire ensuite depuis ici */
+await page.click('#devCompInfo');
+await page.waitForSelector('.modal-f .btn-primary');
+const phoneTxt = await page.locator('.modal-b').last().innerText();
+if (!/depuis ton ordinateur/.test(phoneTxt) || !/Ajouter le Compagnon/.test(phoneTxt))
+  fail('feuille Compagnon téléphone : chemin absent — ' + phoneTxt.slice(0, 200));
+if (!/depuis ce téléphone/.test(phoneTxt))
+  fail('feuille Compagnon téléphone : l’usage depuis le téléphone manque');
+if (!/Copier le lien/.test(await page.locator('.modal-f').last().innerText()))
+  fail('feuille Compagnon téléphone : pas de lien à copier');
+await page.evaluate(async () => (await import('./ui/dom.js')).topSheet()?.close());
 await page.click('.sy-relays summary');
 await page.fill('#syRelays', 'https://pas-un-relais.example');
 await page.click('#sySaveRelays');

@@ -337,10 +337,13 @@ L'application OpenContact reste utile sans lui.
   la mission au Compagnon par le canal local — une seule fois (`mid`
   idempotent). Aucun écran ne promet autre chose ; le choix reste automatique
   et sans jargon (D4 respecté).
-- Signature, distribution et mises à jour du binaire sur les systèmes visés
-  (la CI construit des paquets **non signés** — `.deb`, installateur NSIS,
-  `.app`+`.dmg` — à la demande et sur toute PR touchant `paquets.yml` ;
-  la signature reste un geste du mainteneur).
+- Signature et mises à jour du binaire (la distribution existe : `release.yml`
+  publie la GitHub Release aux noms stables — `.deb`+AppImage, installateur
+  NSIS, `.dmg` universel — chaque paquet fumé avant publication, et la feuille
+  « Ajouter le Compagnon » la sert dans l'app ; restent la **signature** et,
+  pour un téléchargement anonyme, la **publication du dépôt** — gestes du
+  mainteneur ; tant que le dépôt est privé, la feuille le dit honnêtement et
+  renvoie vers la page des releases).
 - Compatibilité réelle de chaque fournisseur IMAP/SMTP et des trousseaux OS.
 
 ## 9. Connexions IA

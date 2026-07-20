@@ -5,6 +5,23 @@
   familles IA de D5 complètes** (plus aucune famille « pas encore
   disponible »). Les corrections UX prioritaires de `AUDIT-UX.md` sont
   livrées et testées. Une CI GitHub Actions rejoue tout (V7).
+- **V8 livrée — le Compagnon se télécharge depuis l'app** : la feuille
+  « Ajouter le Compagnon » propose le bon installateur pour LE système de
+  la personne (détection UA pure `engine/distribution.js`, liste RÉELLE
+  des assets via `api.github.com/…/releases/latest`, CORS sans compte),
+  dit l'honnêteté non-signé au moment du geste (SmartScreen, Gatekeeper,
+  logithèque), puis enchaîne chercher → code → associer ; hors ligne ou
+  release absente = repli court vers la page des téléchargements, jamais
+  un lien mort déguisé. Sur téléphone, la même entrée explique que tout
+  se passe sur l'ordinateur (chemin exact), copie le lien, et dit quoi
+  faire ensuite depuis le téléphone. `release.yml` construit et publie la
+  release aux noms STABLES (deb + AppImage, NSIS, dmg universel) et FUME
+  chaque paquet avant publication (installé/lancé, `GET /oc-compagnon`
+  doit répondre). Au passage, deux vraies failles corrigées : la CSP ne
+  laissait passer NI `api.github.com` NI `openrouter.ai` — la famille
+  OpenRouter livrée en P6-3 était donc morte en production (les routes de
+  test s'appliquent APRÈS la CSP ; un E2E la verrouille désormais).
+  Cache PWA **oc-v33**.
 - **P6-3 livrée — l'IA passe aussi par ton ordinateur (D5 complet), sans
   modèle implicite** : OpenRouter rejoint Claude/Gemini en clé navigateur
   (CORS autorisé par le fournisseur, vérifié) ; Ollama (local, sans clé),
@@ -104,10 +121,12 @@
      notification, le verrou PRF, l'anneau, un vrai client MCP de bureau et
      les runtimes IA réels (Ollama installé, Codex connecté) sur de vrais
      appareils.
-  3. **Distribution** : `paquets.yml` construit les bundles NON SIGNÉS
-     (`.deb` Linux, installateur NSIS Windows, `.app`+`.dmg` macOS) ;
-     restent la signature, la publication et Outlook OAuth — gestes du
-     mainteneur.
+  3. **Distribution** : `release.yml` publie la release téléchargeable
+     (noms stables, paquets fumés) et la feuille « Ajouter le Compagnon »
+     la sert dans l'app ; restent la **signature**, la **publication du
+     dépôt** (un dépôt privé n'offre pas de téléchargement anonyme — la
+     feuille le dit et renvoie vers la page des releases) et Outlook
+     OAuth — gestes du mainteneur.
 - **Compagnon (D17/D18 validés — C1 à C8 terminés, `compagnon/`)** :
   - **C1 livré** : crate `oc-coeur` (la garde D17 — mission signée
     Ed25519, anti-double-envoi, plafond global, fenêtre, hors-mission)

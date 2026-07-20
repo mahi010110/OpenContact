@@ -39,6 +39,7 @@ import { dueFollowups, contactFromSignature } from './engine/assist.js';
 import { makeMission, missionUsable, revokeMission, foldCampaignReport,
          signMission, openMissionWire } from './engine/mission.js';
 import { normCode, pairKey } from './engine/companion.js';
+import { osFromUA, assetsForOS, DIST_PAGE } from './engine/distribution.js';
 import { AI_FAMILIES, browserProviders, aiComplete, draftPrompt } from './engine/ai.js';
 import { normaliseMailAnalysis } from './ui/analyse.js';
 
@@ -754,6 +755,31 @@ export async function runSelfTests(){
       const raw = Uint8Array.from(atob('0zhUpHdF75HUrzrxzTIA1kwhXaMNsx8wJzed3TBbiwk='), c => c.charCodeAt(0));
       const kBrut = await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['decrypt']);
       eq(await openValue(kBrut, 'canal', env), 'preuve');
+    },
+    'compagnon : distribution — le bon fichier pour le bon système': () => {
+      /* le système d'après le navigateur ; un téléphone = « autre »,
+         il ne télécharge pas, il apprend que ça se passe sur l'ordinateur */
+      eq(osFromUA('Mozilla/5.0 (Windows NT 10.0; Win64; x64)'), 'windows');
+      eq(osFromUA('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'), 'mac');
+      eq(osFromUA('Mozilla/5.0 (X11; Linux x86_64)'), 'linux');
+      eq(osFromUA('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)'), 'autre');
+      eq(osFromUA('Mozilla/5.0 (Linux; Android 15; Pixel 9) Mobile'), 'autre');
+      eq(osFromUA('Mozilla/5.0 (X11; CrOS x86_64)'), 'autre');
+      eq(osFromUA(''), 'autre');
+      /* le choix dans la liste RÉELLE des assets — deb avant AppImage,
+         setup.exe pour Windows, dmg pour macOS, rien pour « autre » */
+      const assets = [
+        { name: 'OpenContact-Compagnon-linux-x64.AppImage', url: 'u1' },
+        { name: 'OpenContact-Compagnon-linux-x64.deb', url: 'u2' },
+        { name: 'OpenContact-Compagnon-windows-x64-setup.exe', url: 'u3' },
+        { name: 'OpenContact-Compagnon-macos-universel.dmg', url: 'u4' }
+      ];
+      eq(assetsForOS(assets, 'linux').map(a => a.url), ['u2', 'u1']);
+      eq(assetsForOS(assets, 'windows').map(a => a.url), ['u3']);
+      eq(assetsForOS(assets, 'mac').map(a => a.url), ['u4']);
+      eq(assetsForOS(assets, 'autre').length, 0);
+      eq(assetsForOS(null, 'linux').length, 0);
+      ok(/^https:\/\/github\.com\/.+\/releases\/latest$/.test(DIST_PAGE));
     },
     'aides : relances dues — retard d’abord, pistes travaillées ensuite': () => {
       const comps = [

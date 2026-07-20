@@ -21,7 +21,7 @@ import { getSync, startSync, breakLink, keepMyProfile, makePhrase, openRoom,
          getRing, amMain, ringDo, ringMakeMain } from './synclive.js';
 import { deviceIn } from '../engine/ring.js';
 import { requireCode } from './verrou.js';
-import { loadCompanion, openAddCompanion, openCompanionSheet, companionPresence } from './compagnon.js';
+import { loadCompanion, openAddCompanion, openCompanionSheet, openCompanionPhoneSheet, companionPresence } from './compagnon.js';
 
 const isDesktop = () => matchMedia('(min-width:901px)').matches;
 const relayList = async () => {
@@ -74,6 +74,7 @@ const compRowHTML = comp => comp
   : '';
 function wireComp(q, comp, render){
   q('#devAddComp')?.addEventListener('click', () => openAddCompanion(render));
+  q('#devCompInfo')?.addEventListener('click', () => openCompanionPhoneSheet());
   if (!comp) return;
   q('#devComp')?.addEventListener('click', () => openCompanionSheet(comp, render));
   companionPresence().then(p => {
@@ -204,7 +205,7 @@ export function openAppareils(){
            : (iAmMain
              ? (isDesktop()
                ? `<button class="linklike" id="devAddComp" style="margin-top:6px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
-               : `<div class="dev-row"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur</span></div>`)
+               : `<button class="dev-row dev-open" id="devCompInfo"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur · voir ›</span></button>`)
              : '')}
          ${getRing() && !iAmMain ? `<p class="hint" style="margin-top:6px">Seul ton appareil principal peut gérer les autres.</p>` : ''}
          ${1 + devs.length > DEVICES_MAX
@@ -274,7 +275,7 @@ export function openAppareils(){
          ? `<button class="linklike" id="devAddComp" style="margin-top:12px">${ic('plus', 'ic-14')} Ajouter le Compagnon — cet ordinateur enverra même app fermée</button>`
          : ''}
        ${!changing && !comp && !isDesktop()
-         ? `<div class="sy-devs"><div class="dev-row"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur</span></div></div>`
+         ? `<div class="sy-devs"><button class="dev-row dev-open" id="devCompInfo"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur · voir ›</span></button></div>`
          : ''}
        ${relaySettingsHTML(relays)}`;
     sh.setFoot(changing ? [btn('← Retour', 'btn-ghost', render)] : null);

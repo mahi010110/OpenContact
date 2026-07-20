@@ -10,10 +10,48 @@
 import { esc } from '../engine/utils.js';
 import { COMPANION_KEY, kvGet, kvSet, kvDel } from '../engine/storage.js';
 import { probeCompanion, pairCompanion, companionCall, normCode } from '../engine/companion.js';
+import { osFromUA, assetsForOS, latestRelease, DIST_PAGE } from '../engine/distribution.js';
 import { bus, logJ } from './state.js';
 import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { deviceSelf, ensureKeys, getRing, amMain, ringDo, ringAddCompanion } from './synclive.js';
 import { isProtected, requireCode, openProtectFlow } from './verrou.js';
+
+const isDesktop = () => matchMedia('(min-width:901px)').matches;
+
+/* pourquoi le Compagnon — les mêmes trois raisons partout */
+const whyHTML = () =>
+  `<div class="pick-list">
+     <div class="lk-why">${ic('zap', 'ic-14')} <span>Tes campagnes partent même app fermée.</span></div>
+     <div class="lk-why">${ic('mail', 'ic-14')} <span>Les réponses arrêtent les relances toutes seules.</span></div>
+     <div class="lk-why">${ic('shield', 'ic-14')} <span>Tes accès restent dans le trousseau de l’ordinateur.</span></div>
+   </div>`;
+
+/* l'honnêteté du premier lancement : paquets non signés, chaque
+   système prévient — on le dit AVANT, au moment du geste */
+const OS_NOM = { windows: 'Windows', mac: 'macOS', linux: 'Linux (.deb)' };
+const OS_AVERTIR = {
+  windows: 'Windows préviendra (installateur non signé) : « Informations complémentaires », puis « Exécuter quand même ».',
+  mac: 'macOS bloquera le premier lancement : clic droit sur l’app, puis « Ouvrir ».',
+  linux: 'Ouvre le .deb avec ta logithèque — ou : sudo apt install ./le-fichier.deb.',
+};
+const enMo = n => n ? ' (' + (n / 1048576).toFixed(1).replace('.', ',') + ' Mo)' : '';
+
+/* ---------- téléphone : le Compagnon se prépare sur l'ordinateur ---------- */
+export function openCompanionPhoneSheet(){
+  const sh = openSheet({ title: 'Le Compagnon', icon: 'switch' });
+  sh.body.innerHTML =
+    `${whyHTML()}
+     <p class="hint" style="margin-top:10px">Il s’installe et s’associe <b>depuis ton ordinateur</b> :
+        ouvre OpenContact là-bas, puis <b>Moi → Mes appareils → Ajouter le Compagnon</b>.</p>
+     <p class="hint">Ensuite, depuis ce téléphone : dans une campagne, choisis
+        « Mon ordinateur envoie tout seul » — il la prendra dès qu’il te rejoint.</p>`;
+  sh.setFoot([btn('Copier le lien de téléchargement', 'btn-primary', async () => {
+    try {
+      await navigator.clipboard.writeText(DIST_PAGE);
+      toast('Lien copié — ouvre-le sur ton ordinateur.');
+    } catch (e) { toast('Copie impossible ici — le lien : ' + DIST_PAGE); }
+  })]);
+}
 
 export async function loadCompanion(){
   try { return JSON.parse(await kvGet(COMPANION_KEY) || 'null'); }
@@ -34,8 +72,11 @@ export async function companionPresence(){
   } catch (e) { return { assoc, state: 'off' }; }
 }
 
-/* ---------- la feuille d'association ---------- */
+/* ---------- la feuille d'association (ordinateur) ---------- */
 export function openAddCompanion(onDone){
+  /* sur un téléphone, cette feuille dirait des choses fausses :
+     l'installation et la première association vivent sur l'ordinateur */
+  if (!isDesktop()){ openCompanionPhoneSheet(); return; }
   const sh = openSheet({ title: 'Ajouter le Compagnon', icon: 'switch', focus: '.x' });
   const q = s => sh.body.querySelector(s);
 
@@ -53,15 +94,44 @@ export function openAddCompanion(onDone){
       sh.setFoot([btn('Fermer', '', () => sh.close())]);
       return;
     }
-    sh.body.innerHTML =
-      `<div class="pick-list">
-         <div class="lk-why">${ic('zap', 'ic-14')} <span>Tes campagnes partent même app fermée.</span></div>
-         <div class="lk-why">${ic('mail', 'ic-14')} <span>Les réponses arrêtent les relances toutes seules.</span></div>
-         <div class="lk-why">${ic('shield', 'ic-14')} <span>Tes accès restent dans le trousseau de l’ordinateur.</span></div>
-       </div>
-       <p class="hint">Installe le Compagnon sur cet ordinateur, ouvre-le, puis
-          clique « Afficher le code » dans sa fenêtre.</p>`;
-    sh.setFoot([btn('Je l’ai ouvert — chercher', 'btn-primary', stepProbe)]);
+    /* déjà là ? on saute l'installation ; sinon, on la guide */
+    sh.body.innerHTML = `${whyHTML()}
+      <p class="hint" style="margin-top:10px">${ic('clock', 'ic-14')} Recherche sur cet ordinateur…</p>`;
+    sh.setFoot(null);
+    const found = await probeCompanion();
+    if (found) stepFound(found);
+    else stepInstall();
+  };
+
+  /* installer : le bon fichier pour CE système, sans fouiller nulle part */
+  const stepInstall = async () => {
+    const os = osFromUA(navigator.userAgent);
+    sh.body.innerHTML = `${whyHTML()}
+      <div id="cgDl" style="margin-top:12px"><p class="hint">${ic('clock', 'ic-14')} Recherche du téléchargement…</p></div>`;
+    sh.setFoot([btn('Je l’ai installé et ouvert — chercher', '', stepProbe)]);
+    const zone = q('#cgDl');
+    const pagePlutot = motif =>
+      `<p class="hint warn">${motif}</p>
+       <a class="btn" href="${DIST_PAGE}" target="_blank" rel="noopener">${ic('share', 'ic-14')} Ouvrir la page des téléchargements</a>`;
+    try {
+      const rel = await latestRelease();
+      const fichiers = assetsForOS(rel.assets, os);
+      if (!zone.isConnected) return;
+      if (!fichiers.length){
+        zone.innerHTML = pagePlutot('Je ne reconnais pas ton système — choisis le fichier toi-même.');
+        return;
+      }
+      zone.innerHTML =
+        `<a class="btn btn-primary" href="${esc(fichiers[0].url)}" id="cgGet">
+           ${ic('download', 'ic-14')} Télécharger pour ${OS_NOM[os] || 'ton système'}${enMo(fichiers[0].taille)}</a>
+         <p class="hint" style="margin-top:8px">${OS_AVERTIR[os] || ''}</p>
+         ${fichiers[1] ? `<a class="linklike" href="${esc(fichiers[1].url)}">Plutôt l’AppImage${enMo(fichiers[1].taille)}</a>` : ''}
+         <a class="linklike" href="${DIST_PAGE}" target="_blank" rel="noopener">Un autre système ? Tous les téléchargements</a>
+         <p class="hint" style="margin-top:8px">Une fois installé : ouvre-le, puis reviens ici.</p>`;
+    } catch (e) {
+      if (!zone.isConnected) return;
+      zone.innerHTML = pagePlutot('La page de téléchargement ne répond pas — hors ligne, ou paquets pas encore publiés.');
+    }
   };
 
   const stepProbe = async () => {
@@ -72,9 +142,13 @@ export function openAddCompanion(onDone){
       sh.body.innerHTML =
         `<p class="hint warn" style="margin:0 0 12px">Je ne trouve pas le Compagnon ici.
            Il est bien installé et ouvert sur <b>cet</b> ordinateur ?</p>`;
-      sh.setFoot([btn('Réessayer', 'btn-primary', stepProbe)]);
+      sh.setFoot([btn('Revoir le téléchargement', '', stepInstall), btn('Réessayer', 'btn-primary', stepProbe)]);
       return;
     }
+    stepFound(found);
+  };
+
+  const stepFound = found => {
     if (!found.info.appairage){
       sh.body.innerHTML =
         `<p class="hint" style="margin:0 0 12px"><b>${esc(found.info.nom || 'Compagnon')}</b> est là ✓ —
@@ -138,7 +212,9 @@ export function openCompanionSheet(assoc, onDone){
      <div class="pick-list">
        <button class="pick" id="cgMcp"><b>${ic('sparkles', 'ic-14')} Ton assistant IA</b><span id="cgMcpSt">état…</span></button>
        <button class="pick pick-danger" id="cgBreak"><b>Rompre l’association</b><span>il ne recevra plus de missions</span></button>
-     </div>`;
+     </div>
+     <p class="hint" style="margin-top:10px">Depuis ton téléphone : dans une campagne,
+        « Mon ordinateur envoie tout seul » — il la prend dès qu’il te rejoint.</p>`;
   const q = s => sh.body.querySelector(s);
   let live = null;
   const majLive = () => companionPresence().then(p => {

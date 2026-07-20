@@ -1,0 +1,180 @@
+# OpenContact Compagnon — publier une release téléchargeable.
+# Les installateurs des trois systèmes sortent sous des noms STABLES,
+# ceux que la feuille « Ajouter le Compagnon » de la PWA sait choisir
+# (engine/distribution.js). NON SIGNÉS — la note de release le dit,
+# l'écran d'installation le dit, chaque OS préviendra au premier
+# lancement. Avant publication, chaque paquet est FUMÉ : installé ou
+# lancé pour de vrai, et son canal local (GET /oc-compagnon) doit
+# répondre — aucun asset publié qui ne démarre pas.
+# Déclenchement : un tag v* … ou à la main (le tag vient alors de la
+# version de tauri.conf.json).
+name: Release Compagnon
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+  # toute PR qui touche cette chaîne la PROUVE en la jouant (construction
+  # + fumage des trois OS) — seule la PUBLICATION reste au tag/dispatch
+  pull_request:
+    paths: ['.github/workflows/release.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  construire:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bundles: deb,appimage
+          - os: windows-latest
+            bundles: nsis
+          - os: macos-latest
+            bundles: app,dmg
+            cible: universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Dépendances système Tauri (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config \
+            libssl-dev xvfb dbus file
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: compagnon
+      - name: CLI Tauri
+        run: cargo install tauri-cli --version '^2' --locked
+      - name: Construire les bundles
+        working-directory: compagnon/src-tauri
+        run: cargo tauri build --bundles ${{ matrix.bundles }} ${{ matrix.cible && format('--target {0}', matrix.cible) || '' }}
+
+      # ---- noms STABLES : ceux que la PWA reconnaît (assetsForOS) ----
+      - name: Renommer (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          cp compagnon/target/release/bundle/deb/*.deb dist/OpenContact-Compagnon-linux-x64.deb
+          cp compagnon/target/release/bundle/appimage/*.AppImage dist/OpenContact-Compagnon-linux-x64.AppImage
+          ls -l dist/
+      - name: Renommer (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          cp compagnon/target/universal-apple-darwin/release/bundle/dmg/*.dmg dist/OpenContact-Compagnon-macos-universel.dmg
+          ls -l dist/
+      - name: Renommer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item "compagnon\target\release\bundle\nsis\*-setup.exe" "dist\OpenContact-Compagnon-windows-x64-setup.exe"
+          Get-ChildItem dist
+
+      # ---- fumage : le paquet construit démarre et répond, sinon rien ----
+      - name: Fumage (Linux — installer le .deb, sonder le canal)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          sudo apt-get install -y ./dist/OpenContact-Compagnon-linux-x64.deb
+          test -x /usr/bin/oc-compagnon
+          xvfb-run -a dbus-run-session -- env OC_INTEGRATION_TEST=1 /usr/bin/oc-compagnon &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:17095/oc-compagnon | grep -q '"v":1'; then ok=1; break; fi
+            sleep 1
+          done
+          pkill -f /usr/bin/oc-compagnon || true
+          [ "${ok:-}" = 1 ] || { echo 'le canal local du paquet installé ne répond pas'; exit 1; }
+      - name: Fumage (macOS — lancer l’app du bundle, sonder le canal)
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          BIN=$(ls compagnon/target/universal-apple-darwin/release/bundle/macos/*.app/Contents/MacOS/* | head -1)
+          echo "binaire : $BIN"
+          OC_INTEGRATION_TEST=1 "$BIN" &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:17095/oc-compagnon | grep -q '"v":1'; then ok=1; break; fi
+            sleep 1
+          done
+          pkill -f "$BIN" || true
+          [ "${ok:-}" = 1 ] || { echo 'le canal local de l’app ne répond pas'; exit 1; }
+      - name: Fumage (Windows — installation silencieuse, sonder le canal)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Start-Process -FilePath "dist\OpenContact-Compagnon-windows-x64-setup.exe" -ArgumentList '/S' -Wait
+          $candidats = @(
+            "$env:LOCALAPPDATA\OpenContact Compagnon",
+            "$env:LOCALAPPDATA\Programs\OpenContact Compagnon",
+            "${env:ProgramFiles}\OpenContact Compagnon"
+          )
+          $bin = $null
+          foreach ($d in $candidats) {
+            if (Test-Path $d) {
+              $bin = Get-ChildItem $d -Filter '*.exe' -Recurse |
+                Where-Object { $_.Name -notmatch 'uninstall' } | Select-Object -First 1
+              if ($bin) { break }
+            }
+          }
+          if (-not $bin) { Write-Error "binaire installé introuvable dans : $($candidats -join ' ; ')" }
+          Write-Host "binaire : $($bin.FullName)"
+          $env:OC_INTEGRATION_TEST = '1'
+          $p = Start-Process -FilePath $bin.FullName -PassThru
+          $ok = $false
+          foreach ($i in 1..30) {
+            try {
+              $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:17095/oc-compagnon' -TimeoutSec 2
+              if ($r.Content -match '"v":1') { $ok = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 1
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { Write-Error 'le canal local du binaire installé ne répond pas' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paquets-${{ matrix.os }}
+          path: dist/
+          if-no-files-found: error
+
+  publier:
+    needs: construire
+    # une PR prouve la chaîne, elle ne publie rien
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publier la release (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v$(node -p "require('./compagnon/src-tauri/tauri.conf.json').version")"
+          fi
+          echo "tag : $TAG"
+          ls -l dist/
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" \
+            --title "OpenContact Compagnon $TAG" \
+            --notes "Installateurs du Compagnon — NON SIGNÉS : Windows et macOS préviennent au premier lancement (« Informations complémentaires » → « Exécuter quand même » ; clic droit → « Ouvrir »). Linux : .deb ou AppImage. macOS : .dmg universel (Intel + Apple Silicon). Windows : installateur NSIS. Chaque paquet a été installé/lancé et son canal local a répondu avant publication (release.yml)."
+          gh release upload "$TAG" dist/* --clobber

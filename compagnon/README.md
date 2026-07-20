@@ -34,6 +34,10 @@ Le bundle passe par la CLI Tauri depuis `compagnon/src-tauri` (elle lance
 sous Linux ; Windows demande `--bundles nsis`, macOS `--bundles app,dmg`
 (icônes `.ico`/`.icns` versionnées dans `icons/`). `paquets.yml` joue les
 trois, non signés, sur toute PR qui le modifie et à la demande.
+`release.yml` publie la **GitHub Release téléchargeable** : mêmes bundles
+sous des noms STABLES (ceux que la feuille « Ajouter le Compagnon » de la
+PWA sait choisir — `engine/distribution.js`), chaque paquet installé/lancé
+et sondé (`GET /oc-compagnon`) avant publication.
 
 ## Le canal local (résumé du protocole)
 

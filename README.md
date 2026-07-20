@@ -25,6 +25,30 @@ données vivent sur les appareils et circulent **en direct de pair à pair**
 | `compagnon/` | Le Compagnon (Tauri, **facultatif**) : campagnes app fermée, IMAP/SMTP, analyse d'e-mails, IA locale, serveur MCP local — voir `compagnon/README.md` |
 | `docs/` | Briefs et feuilles de route (`plan-v7.md`, `docs/fable5/` pour le chantier connecté) |
 
+## Installer le Compagnon (facultatif)
+
+Le Compagnon est l'application d'appoint sur l'ordinateur : campagnes qui
+partent même app fermée, détection des réponses, analyse d'e-mails, IA
+locale. La PWA reste complète sans lui.
+
+- **Depuis l'app** : Moi → Mes appareils → **Ajouter le Compagnon** — la
+  feuille propose le bon fichier pour ton système et guide jusqu'à
+  l'association (le code court s'affiche dans la fenêtre du Compagnon).
+- **À la main** : la [dernière release](https://github.com/mahi010110/Open-Contact/releases/latest)
+  porte des noms stables — `…linux-x64.deb` / `…linux-x64.AppImage`,
+  `…windows-x64-setup.exe` (NSIS), `…macos-universel.dmg` (Intel + Apple
+  Silicon). Construits et fumés par `.github/workflows/release.yml` :
+  chaque paquet est installé/lancé et son canal local doit répondre avant
+  publication.
+- **Paquets NON SIGNÉS** : Windows préviendra (« Informations
+  complémentaires » → « Exécuter quand même ») ; macOS bloquera le premier
+  lancement (clic droit sur l'app → « Ouvrir »). La signature reste un
+  geste du mainteneur.
+- **La première association se fait sur l'ordinateur** (profil protégé et
+  appareil principal requis). Ensuite, depuis le téléphone : dans une
+  campagne, « Mon ordinateur envoie tout seul » — la sync privée fait le
+  relais.
+
 ## Le direct (P2P)
 
 - **Mes appareils** : une phrase de liaison, et téléphone + ordinateur se

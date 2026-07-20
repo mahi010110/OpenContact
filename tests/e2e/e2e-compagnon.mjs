@@ -34,7 +34,7 @@ const kc = new Uint8Array(await wc.subtle.deriveBits(
   { name: 'PBKDF2', salt: sel, iterations: 120000, hash: 'SHA-256' },
   await wc.subtle.importKey('raw', te.encode('code:' + CODE), 'PBKDF2', false, ['deriveBits']), 256));
 
-const faux = { appairage: false, assoc: null, k: null, recus: [] };
+const faux = { appairage: false, assoc: null, k: null, recus: [], visible: false };
 const fauxSrv = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -47,6 +47,8 @@ const fauxSrv = http.createServer(async (req, res) => {
   for await (const ch of req) body += ch;
   try {
     if (req.method === 'GET' && req.url === '/oc-compagnon'){
+      /* « pas encore installé/ouvert » : la découverte ne trouve rien */
+      if (!faux.visible){ res.writeHead(404); res.end('{}'); return; }
       res.end(JSON.stringify({ v: 1, nom: 'FauxOrdi', associe: !!faux.assoc,
         appairage: faux.appairage ? { s: b64(sel) } : null }));
     } else if (req.method === 'POST' && req.url === '/appairage'){
@@ -74,9 +76,13 @@ const { server, base } = await serveRepo();
 const browser = await chromium.launch({ executablePath: chromiumPath() });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
 const errors = [];
-/* le 403 du mauvais code est VOULU (refus propre) — pas une erreur */
+/* attendus, pas des erreurs : le 403 du mauvais code (refus propre),
+   les sondes du canal local quand le Compagnon n'est pas là (404 puis
+   ports fermés), et l'API des releases coupée exprès */
 page.on('console', m => {
-  if (m.type() === 'error' && !/403|Forbidden/.test(m.text())) errors.push(m.text());
+  const txt = m.text(), url = (m.location() || {}).url || '';
+  if (m.type() === 'error' && !/403|Forbidden/.test(txt)
+      && !/127\.0\.0\.1:1709\d|api\.github\.com/.test(txt + ' ' + url)) errors.push(txt);
 });
 page.on('pageerror', e => errors.push(String(e)));
 const fail = m => { console.error('ÉCHEC :', m); process.exitCode = 1; };
@@ -105,15 +111,51 @@ await page.evaluate(async () => {
 });
 console.log('profil protégé + anneau posés ✓');
 
-/* Mes appareils → Ajouter le Compagnon */
+/* Mes appareils → Ajouter le Compagnon. Il n'est pas encore installé
+   et la page des releases est injoignable : le repli reste honnête */
+await page.route('https://api.github.com/**', r => r.abort());
 await page.evaluate(async () => (await import('./ui/direct.js')).openAppareils());
 await page.waitForSelector('#devAddComp');
 await page.click('#devAddComp');
-await page.waitForSelector('.modal-f .btn-primary');
+await page.waitForSelector('.modal-b a[href$="/releases/latest"]');
+const repli = await page.locator('.modal-b').last().innerText();
+if (!/hors ligne|pas encore publiés/.test(repli)) fail('repli téléchargement muet : ' + repli.slice(0, 200));
+if (!/installé et ouvert — chercher/.test(await page.locator('.modal-f').last().innerText()))
+  fail('le pied « chercher » manque dans le repli');
+await page.evaluate(async () => (await import('./ui/dom.js')).topSheet()?.close());
+
+/* la release répond : le bon fichier pour CE système (Linux ici),
+   taille lisible, premier lancement expliqué, AppImage en second */
+await page.unroute('https://api.github.com/**');
+await page.route('https://api.github.com/**', r => r.fulfill({
+  status: 200, contentType: 'application/json',
+  body: JSON.stringify({ tag_name: 'v0.1.0', assets: [
+    { name: 'OpenContact-Compagnon-windows-x64-setup.exe', browser_download_url: 'https://exemple.test/w.exe', size: 4000000 },
+    { name: 'OpenContact-Compagnon-linux-x64.deb', browser_download_url: 'https://exemple.test/l.deb', size: 21000000 },
+    { name: 'OpenContact-Compagnon-linux-x64.AppImage', browser_download_url: 'https://exemple.test/l.AppImage', size: 23000000 },
+    { name: 'OpenContact-Compagnon-macos-universel.dmg', browser_download_url: 'https://exemple.test/m.dmg', size: 11000000 }
+  ] })
+}));
+await page.click('#devAddComp');
+await page.waitForSelector('#cgGet');
+const dl = await page.evaluate(() => ({
+  href: document.querySelector('#cgGet').href,
+  txt: document.querySelector('#cgGet').textContent
+}));
+const corpsDl = await page.locator('.modal-b').last().innerText();
+if (!/\/l\.deb$/.test(dl.href)) fail('mauvais fichier pour Linux : ' + dl.href);
+if (!/Linux/.test(dl.txt) || !/Mo/.test(dl.txt)) fail('bouton de téléchargement : ' + dl.txt);
+if (!/logithèque|apt install/.test(corpsDl)) fail('le premier lancement Linux n’est pas expliqué');
+if (!/AppImage/.test(corpsDl)) fail('l’AppImage de repli manque');
+if (!/Tous les téléchargements/.test(corpsDl)) fail('le lien vers les autres systèmes manque');
 await page.waitForTimeout(300);
 await page.screenshot({ path: SHOTS + '/70-ajouter-compagnon.png' });
-await page.click('.modal-f .btn-primary');            /* Je l'ai ouvert — chercher */
-/* le Compagnon est là mais n'affiche pas encore de code */
+console.log('installation guidée : bon fichier Linux, honnêteté non-signé, replis ✓');
+
+/* le Compagnon vient d'être ouvert : « chercher » le trouve */
+faux.visible = true;
+await page.click('.modal-f .btn:has-text("chercher")');
+/* il est là mais n'affiche pas encore de code */
 await page.waitForSelector('.modal-f button:has-text("J’ai le code")');
 faux.appairage = true;                                /* l'utilisateur clique « Afficher le code » */
 await page.click('.modal-f button:has-text("J’ai le code")');
