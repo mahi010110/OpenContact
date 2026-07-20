@@ -1,0 +1,14 @@
+OpenContact — libs vendorisées (aucun CDN, tout chargé localement)
+==================================================================
+
+Chaque lib est copiée ici avec sa licence (LICENSE-*.txt). Empreintes
+SHA-256 consignées pour détecter toute altération : recalcule avec
+`sha256sum <fichier>` et compare. Une empreinte qui change sans mise à
+jour volontaire = fichier modifié → à investiguer.
+
+jsQR.js                    MIT   sha256 bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859
+qrcode-generator.mjs       MIT   sha256 e4e021710660c0426e4bad9436a96dafa688b50ec7e0c4dbd773ba18108de5b8
+trystero-nostr.min.js      MIT   sha256 4994d99a2da1ffd5e41ed9d39035d7b8bb77e01da272ba61116d500776213013
+
+À la prochaine mise à jour d'une lib : remplacer le fichier, sa licence
+si besoin, et l'empreinte ci-dessus dans le même commit.

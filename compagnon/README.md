@@ -41,7 +41,9 @@ et sondé (`GET /oc-compagnon`) avant publication.
 
 ## Le canal local (résumé du protocole)
 
-`GET /oc-compagnon` — découverte : `{v, nom, associe, appairage?:{s}}`.
+`GET /oc-compagnon` — découverte **anonyme** (répond à toute origine) :
+`{v, appairage?:{s}}` — ni le nom de la machine ni l'état d'association n'y
+figurent, ils voyagent sur le canal authentifié.
 Tout le reste voyage en enveloppes `OCV1.` (AES-GCM, AAD liée) :
 `POST /appairage` sous la clé dérivée du code court (PBKDF2 120 000),
 `POST /boite` sous la clé de canal née de l'appairage — messages

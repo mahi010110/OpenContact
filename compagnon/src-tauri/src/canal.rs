@@ -78,8 +78,13 @@ fn repondre(
 
     match (methode, url) {
         (Method::Get, "/oc-compagnon") => {
-            /* la découverte : qui je suis, et le sel si un appairage
-               attend un code — jamais un secret */
+            /* la découverte est ANONYME : elle répond à toute origine web
+               (CORS `*` + Private-Network), donc elle ne révèle que le
+               strict nécessaire à l'appairage — jamais le nom de la machine
+               (donnée personnelle) ni l'état d'association (empreinte).
+               Le vrai nom voyage plus tard, sur le canal authentifié
+               (réponse d'appairage, `ping`). Le sel n'est exposé que si un
+               appairage attend un code, et il ne suffit pas sans le code. */
             let ap = p.appairage.lock().unwrap();
             let actif = ap
                 .as_ref()
@@ -87,7 +92,7 @@ fn repondre(
             json(
                 200,
                 serde_json::json!({
-                    "v": 1, "nom": p.nom, "associe": p.associe(),
+                    "v": 1,
                     "appairage": actif.map(|a| serde_json::json!({ "s": b64(&a.sel) }))
                 }),
             )
