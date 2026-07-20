@@ -7,6 +7,7 @@
 use crate::partage::{b64, Association, Partage};
 use oc_coeur::{ouvrir, sceller};
 use rand::RngCore;
+use std::io::Read;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,6 +16,10 @@ use tiny_http::{Header, Method, Response, Server};
 pub const PORTS: [u16; 3] = [17095, 17096, 17097];
 const APPAIRAGE_TTL: Duration = Duration::from_secs(120);
 const APPAIRAGE_ESSAIS: u32 = 5;
+/* le plus gros corps légitime est une mission-campagne scellée (données
+   bornées à 4 Mo côté PWA, plus l'enveloppe base64) : au-delà de 8 Mo,
+   c'est un abus — refusé sans jamais le charger en mémoire */
+const CORPS_MAX: u64 = 8 * 1024 * 1024;
 
 fn en_tetes(r: Response<std::io::Cursor<Vec<u8>>>) -> Response<std::io::Cursor<Vec<u8>>> {
     /* la PWA peut venir de n'importe quelle origine : la sécurité est
@@ -58,9 +63,25 @@ pub fn demarrer(p: Arc<Partage>, app: tauri::AppHandle) {
 
 fn boucle(srv: Server, p: Arc<Partage>, app: tauri::AppHandle) {
     for mut req in srv.incoming_requests() {
+        /* lecture BORNÉE : le canal répond à toute origine web — un corps
+           sans limite serait un épuisement mémoire offert à n'importe
+           quelle page visitée */
+        let mut trop = req.body_length().map_or(false, |n| n as u64 > CORPS_MAX);
         let mut corps = String::new();
-        let _ = req.as_reader().read_to_string(&mut corps);
-        let rep = repondre(&p, &app, req.method(), req.url(), &corps);
+        if !trop {
+            let _ = req.as_reader().take(CORPS_MAX + 1).read_to_string(&mut corps);
+            trop = corps.len() as u64 > CORPS_MAX;
+        }
+        let rep = if trop {
+            /* vider le surplus par petits blocs AVANT de répondre : le
+               nettoyage interne de tiny_http (EqualReader::drop) allouerait
+               sinon d'un seul coup toute la taille annoncée restante */
+            let mut puits = [0u8; 65536];
+            while matches!(req.as_reader().read(&mut puits), Ok(n) if n > 0) {}
+            json(413, serde_json::json!({ "e": "troplourd" }))
+        } else {
+            repondre(&p, &app, req.method(), req.url(), &corps)
+        };
         let _ = req.respond(rep);
     }
 }
