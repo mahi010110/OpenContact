@@ -7,11 +7,11 @@
    + Annuler ~30 s — c'est le seul endroit où l'on supprime.
    ============================================================ */
 import { esc, distKm } from '../engine/utils.js';
-import { STATUSES, CLOSE_REASONS, DOMAINS } from '../engine/model.js';
+import { STATUSES, CLOSE_REASONS, DOMAINS, pushHist } from '../engine/model.js';
 import { scoreOf } from '../engine/score.js';
 import { filterCompanies } from '../engine/filter.js';
-import { S, bus, isClosed, hasDemo, addDemo, ctLabel, deletePiste, undeletePiste } from './state.js';
-import { $, ic, toast, showUndo, bindDeleteGesture } from './dom.js';
+import { S, bus, isClosed, hasDemo, addDemo, ctLabel, deletePiste, undeletePiste, saveData, logJ } from './state.js';
+import { $, ic, toast, showUndo, bindDeleteGesture, openSheet } from './dom.js';
 import { sortState, sortArgs, sortHasDist, sortBarHTML, bindSortBar } from './sort.js';
 import { relLabel } from './dates.js';
 import { openFiche } from './fiche.js';
@@ -22,6 +22,12 @@ import { campaignOfPiste } from './campagnes.js';
 
 let q = '';
 const st = sortState('recent');
+
+/* filtre de vue (le temps de la session, comme le tri) : au plus un
+   statut + un domaine — le moteur (filter.js) fait le reste */
+const ft = { status: '', domain: '' };
+const ftOn = () => !!(ft.status || ft.domain);
+const ftClear = () => { ft.status = ''; ft.domain = ''; };
 
 /* au-delà de ce cap, la suite s'ouvre d'un tap (« Voir les N autres ») :
    2 000 lignes d'un coup gelaient l'écran ~250 ms à chaque frappe */
@@ -78,7 +84,7 @@ function cardHTML(c){
   if ((c.contacts || []).length) foot.push(ic('contact', 'ic-14') + ' ' + c.contacts.length);
   foot.push('complète à ' + scoreOf(c) + ' %');
   return (
-    `<div class="bcard" data-id="${c.id}">
+    `<div class="bcard" data-id="${c.id}" draggable="true">
        <div class="sw-in">
          <div class="bc-main" role="button" tabindex="0" aria-label="Ouvrir ${esc(c.name)}">
            <b>${esc(c.name)}</b>
@@ -94,11 +100,102 @@ function boardHTML(alive){
   return `<div class="board">${Object.keys(STATUSES).map(k => {
     const col = alive.filter(c => c.status === k);
     const { shown, more } = capped(col, 'col-' + k, CAP_COL);
-    return `<section class="bcol" aria-label="${STATUSES[k].label}">
+    return `<section class="bcol" data-st="${k}" aria-label="${STATUSES[k].label}">
               <h3 class="bcol-h" style="--c:${STATUSES[k].color}">${STATUSES[k].label} <span class="tr-n">${col.length}</span></h3>
               <div class="bcol-rows">${shown.map(cardHTML).join('') || '<div class="bcol-empty">—</div>'}${more ? moreBtn('col-' + k, more) : ''}</div>
             </section>`;
   }).join('')}</div>`;
+}
+
+/* déposer une carte dans une autre colonne = changer le statut — même
+   trace qu'un « Confirmer » de fiche : une entrée d'historique propre */
+function moveStatus(id, k){
+  const c = S.companies.find(x => x.id === id);
+  if (!c || isClosed(c) || !STATUSES[k] || c.status === k) return;
+  c.status = k;
+  pushHist(c, 'Statut → ' + STATUSES[k].label);
+  logJ(c.name + ' — Statut → ' + STATUSES[k].label, c.id);
+  c.updatedAt = Date.now();
+  saveData();
+  bus.refresh();
+  toast(esc(c.name) + ' → ' + STATUSES[k].label);
+}
+
+/* le tableau se manipule à la souris : glisser une carte vers une autre
+   colonne (HTML5, desktop) — la fiche reste le chemin universel */
+function bindBoardDrag(body){
+  let dragId = null;
+  const clearHints = () =>
+    body.querySelectorAll('.bcol.drop-ok').forEach(x => x.classList.remove('drop-ok'));
+  body.querySelectorAll('.bcard').forEach(card => {
+    card.addEventListener('dragstart', e => {
+      dragId = card.dataset.id;
+      card.classList.add('drag-src');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragId);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('drag-src');
+      clearHints();
+      dragId = null;
+    });
+  });
+  body.querySelectorAll('.bcol').forEach(col => {
+    col.addEventListener('dragover', e => {
+      if (!dragId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearHints();
+      col.classList.add('drop-ok');
+    });
+    col.addEventListener('dragleave', e => {
+      if (!col.contains(e.relatedTarget)) col.classList.remove('drop-ok');
+    });
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      clearHints();
+      const id = dragId || e.dataTransfer.getData('text/plain');
+      if (id) moveStatus(id, col.dataset.st);
+    });
+  });
+}
+
+/* le bouton « Filtrer » à côté du tri — actif = marqué, re-tap = tout montrer */
+function filterBtnHTML(){
+  const names = [ft.status && STATUSES[ft.status].label, ft.domain && DOMAINS[ft.domain].label]
+    .filter(Boolean).join(' + ');
+  const lbl = ftOn() ? `Filtre : ${names} — retaper pour tout montrer` : 'Filtrer';
+  return `<button class="btn icon-btn${ftOn() ? ' sort-on' : ''}" id="piFilt"
+                  aria-label="${esc(lbl)}" title="${esc(lbl)}">${ic('filter', 'ic-14')}</button>`;
+}
+
+/* la feuille « Filtrer » — même grammaire que « Trier » : chaque tap
+   s'applique aussitôt, la croix referme, le bouton actif re-tapé montre
+   tout. Le statut n'est proposé qu'en liste (le tableau segmente déjà). */
+function openFilterSheet(onChange){
+  const sh = openSheet({ title: 'Filtrer', icon: 'filter' });
+  const render = () => {
+    const chips = (grp, defs, cur) => Object.keys(defs).map(k =>
+      `<button class="fl-chip${cur === k ? ' on' : ''}" data-${grp}="${k}" aria-pressed="${cur === k}">
+         <span class="dotc" style="background:${defs[k].color}"></span>${defs[k].label}</button>`).join('');
+    sh.body.innerHTML =
+      `${mqWide.matches ? '' :
+        `<div class="lbl-row"><label>Statut</label></div>
+         <div class="fl-grid">${chips('st', STATUSES, ft.status)}</div>`}
+       <div class="lbl-row"><label>Domaine</label></div>
+       <div class="fl-grid">${chips('dom', DOMAINS, ft.domain)}</div>`;
+    sh.body.querySelectorAll('[data-st]').forEach(b =>
+      b.addEventListener('click', () => {
+        ft.status = (ft.status === b.dataset.st) ? '' : b.dataset.st;
+        onChange(); render();
+      }));
+    sh.body.querySelectorAll('[data-dom]').forEach(b =>
+      b.addEventListener('click', () => {
+        ft.domain = (ft.domain === b.dataset.dom) ? '' : b.dataset.dom;
+        onChange(); render();
+      }));
+  };
+  render();
 }
 
 function orphansHTML(){
@@ -151,6 +248,7 @@ export function renderPistes(){
        <div class="search-wrap">
          <input class="search" id="piQ" type="search" placeholder="Chercher…"
                 aria-label="Rechercher une piste" value="${esc(q)}">
+         ${filterBtnHTML()}
          ${sortBarHTML(st)}
        </div>
        <div id="piBody"></div>
@@ -165,7 +263,7 @@ export function renderPistes(){
      reste le même nœud, le curseur ne saute plus */
   const renderBody = () => {
     const body = root.querySelector('#piBody');
-    const all = filterCompanies(S.companies, { q, ...sortArgs(st) });
+    const all = filterCompanies(S.companies, { q, status: ft.status, domain: ft.domain, ...sortArgs(st) });
     const alive = all.filter(c => !isClosed(c));
     const closed = all.filter(isClosed);
 
@@ -182,7 +280,10 @@ export function renderPistes(){
            </div>
          </div>`;
     } else if (!all.length){
-      html += `<div class="empty-list">Rien ne correspond à « ${esc(q)} ».</div>`;
+      html +=
+        `<div class="empty-list">Rien ne correspond${q ? ` à « ${esc(q)} »` : ' au filtre'}.
+           ${ftOn() ? '<button class="linklike" id="piFtClear">Tout montrer</button>' : ''}
+         </div>`;
     } else {
       if (wide) html += boardHTML(alive);
       else {
@@ -208,6 +309,8 @@ export function renderPistes(){
       });
       bindDeleteGesture(r, () => removeRow(r.dataset.id));
     });
+    if (wide && body.querySelector('.board')) bindBoardDrag(body);
+    body.querySelector('#piFtClear')?.addEventListener('click', () => { ftClear(); renderPistes(); });
     /* bac : la ligne édite, le bouton rattache */
     body.querySelectorAll('.orow').forEach(r => {
       const o = () => S.orphans.find(x => x.id === r.dataset.oid);
@@ -235,6 +338,11 @@ export function renderPistes(){
     h = setTimeout(() => { q = input.value; renderBody(); }, 180);
   });
   bindSortBar(root, st, renderPistes);
+  root.querySelector('#piFilt').addEventListener('click', () => {
+    /* re-tap sur un filtre actif = tout montrer (comme le tri) */
+    if (ftOn()){ ftClear(); renderPistes(); return; }
+    openFilterSheet(renderPistes);
+  });
   root.querySelector('#piProspect')?.addEventListener('click', openProspect);
   renderBody();
 }

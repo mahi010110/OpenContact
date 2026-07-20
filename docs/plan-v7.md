@@ -44,7 +44,12 @@ consigne ce qui a été décidé, ce qui reste à faire, et dans quel ordre.
    personnalisables (`oc_relays_v1`) si l'établissement bloque les publics.
 2. **Tris / filtres exposés** dans « Mes pistes » (le moteur les a déjà :
    domaine, statut, score, A→Z) + changement de statut direct depuis le
-   tableau desktop.
+   tableau desktop. **Livré (juillet 2026)** : bouton « Filtrer » à côté du
+   tri (feuille statut + domaine, même grammaire que le tri : tap =
+   applique, re-tap du bouton actif = tout montrer ; le statut n'est
+   proposé qu'en liste — le tableau segmente déjà), et glisser une carte
+   vers une autre colonne du tableau = statut changé, trace d'historique
+   propre (`e2e-pistes.mjs`).
 3. **Confirmations signées** : une paire de clés locale par utilisateur,
    « vérifié par N camarades » au lieu d'un compteur déclaratif —
    grosse valeur de confiance pour un petit effort (WebCrypto, attestations
