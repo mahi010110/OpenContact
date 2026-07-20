@@ -440,7 +440,38 @@ function startIdleWatch(){
 }
 
 /* ---------- re-authentification des gestes sensibles (P1-2) ----------
-   Résout true si le code est re-prouvé (ou si rien n'est protégé). */
+   Le pavé de re-preuve partage le MÊME garde-fou d'échecs que l'écran
+   verrouillé (compteur persistant, délai progressif) : un téléphone
+   déverrouillé emprunté n'offre pas d'essais illimités ici non plus.
+   Le clavier tape les chiffres (ordinateur), comme sur l'écran verrouillé. */
+function proofPad(sh, onOk){
+  const root = sh.body.querySelector('.rq-pad');
+  const pad = padUI(root, async code => {
+    pad.disable(true);
+    try {
+      await unlockWithPin(meta, code);
+      await clearFails();
+      onOk(code);
+    } catch (e) {
+      await registerFail();
+      if (!holdIfGuarded()){ pad.disable(false); pad.shake('Ce n’est pas ça.'); }
+    }
+  });
+  /* délai actif : pavé tenu fermé, compte à rebours sobre */
+  const holdIfGuarded = () => {
+    if (!root.isConnected) return true;
+    const left = Math.ceil((((meta.guard && meta.guard.until) || 0) - Date.now()) / 1000);
+    if (left <= 0) return false;
+    pad.clear();
+    pad.disable(true);
+    pad.say('Réessaie dans ' + (left > 90 ? Math.ceil(left / 60) + ' min' : left + ' s') + '.');
+    setTimeout(() => { if (root.isConnected && !holdIfGuarded()){ pad.disable(false); pad.say(''); } }, 1000);
+    return true;
+  };
+  holdIfGuarded();
+  sh.ov.addEventListener('keydown', e => pad.key(e));
+  return pad;
+}
 export function requireCode(title){
   if (!meta) return Promise.resolve(true);
   return new Promise(resolve => {
@@ -449,15 +480,8 @@ export function requireCode(title){
       title: title || 'Ton code', icon: 'lock', className: 'modal-confirm',
       onClose: () => resolve(okv)
     });
-    sh.body.innerHTML = '<div id="rqPad"></div>';
-    const pad = padUI(sh.body.querySelector('#rqPad'), async code => {
-      pad.disable(true);
-      try {
-        await unlockWithPin(meta, code);
-        okv = true;
-        sh.close(null, true);
-      } catch (e) { pad.disable(false); pad.shake('Ce n’est pas ça.'); }
-    });
+    sh.body.innerHTML = '<div id="rqPad" class="rq-pad"></div>';
+    proofPad(sh, () => { okv = true; sh.close(null, true); });
   });
 }
 
@@ -568,12 +592,8 @@ export function openManageSheet(){
   };
   const askCurrentPin = (title, then) => {
     const s2 = openSheet({ title, icon: 'lock', className: 'modal-confirm' });
-    s2.body.innerHTML = '<div id="cpPad"></div>';
-    const pad = padUI(s2.body.querySelector('#cpPad'), async code => {
-      pad.disable(true);
-      try { await unlockWithPin(meta, code); s2.close(null, true); then(code); }
-      catch (e) { pad.disable(false); pad.shake('Ce n’est pas ça.'); }
-    });
+    s2.body.innerHTML = '<div id="cpPad" class="rq-pad"></div>';
+    proofPad(s2, code => { s2.close(null, true); then(code); });
   };
   const changePin = () => askCurrentPin('Ton code actuel', cur => {
     const s2 = openSheet({ title: 'Nouveau code', icon: 'lock', className: 'modal-confirm' });

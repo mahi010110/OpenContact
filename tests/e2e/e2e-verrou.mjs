@@ -132,6 +132,35 @@ await page.waitForSelector('.modal-confirm .pad-k');
 await snap(page, 'reauth-restaurer');
 await page.keyboard.press('Escape');
 
+/* --- 5bis. la re-preuve partage le garde-fou d'essais du verrou :
+   clavier accepté, 5 échecs = délai, et le délai suit à l'écran
+   verrouillé (compteur persistant, pas par feuille) --- */
+await page.click('#moiRestore');
+await page.waitForSelector('.modal-confirm .pad-k');
+const wrongOnce = async () => {
+  await page.keyboard.type('111111');           /* clavier : accepté ici aussi */
+  await page.waitForFunction(() => {
+    const r = document.querySelector('.modal-confirm .rq-pad');
+    const msg = (r && r.querySelector('.lock-msg').textContent) || '';
+    return /pas ça|Réessaie/.test(msg) && (/Réessaie/.test(msg) || !r.classList.contains('pad-off'));
+  }, null, { timeout: 15000 });
+};
+for (let i = 0; i < 5; i++) await wrongOnce();
+const heldMsg = await page.textContent('.modal-confirm .lock-msg');
+if (!/Réessaie dans/.test(heldMsg)) fail('5 échecs en re-preuve : délai attendu, vu : ' + heldMsg);
+await snap(page, 'reauth-delai');
+await page.keyboard.press('Escape');
+await page.reload({ waitUntil: 'load' });
+await page.waitForSelector('.lock');
+await page.waitForFunction(() => /Réessaie dans/.test((document.querySelector('.lock .lock-msg') || {}).textContent || ''), null, { timeout: 10000 });
+console.log('re-preuve : 5 échecs → délai, partagé avec l’écran verrouillé ✓');
+/* le délai expire (~30 s) : le pavé se rouvre, le bon code efface le compteur */
+await page.waitForFunction(() => !/Réessaie/.test((document.querySelector('.lock .lock-msg') || {}).textContent || ''), null, { timeout: 45000 });
+await tapLock('280941');
+await page.waitForFunction(() => !document.querySelector('.lock'), null, { timeout: 10000 });
+await page.goto(base + '/#/moi');
+await page.waitForSelector('#btnTheme');
+
 /* --- 6. thème sombre + ordinateur --- */
 await page.click('#btnTheme');
 await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
