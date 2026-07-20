@@ -92,7 +92,8 @@
   annulation qui libère — rejoué trois fois). Le cache PWA est
   **oc-v32**. La CI (`.github/workflows/ci.yml`) rejoue unitaires, cargo
   et la suite complète ; `paquets.yml` construit les bundles non signés
-  des trois OS (joué sur la PR qui le modifie, et à la demande).
+  par OS — `.deb`, installateur NSIS, `.app`+`.dmg` (icônes `.ico`/`.icns`
+  versionnées) — joué sur toute PR qui le modifie, et à la demande.
 - **Blocages externes (dans l'ordre d'importance)** :
   1. **Apps OAuth Google/Microsoft à déclarer par le mainteneur** —
      renseigner les IDs publics dans `MAIL_CLIENTS` (`engine/mailer.js`),
@@ -103,9 +104,10 @@
      notification, le verrou PRF, l'anneau, un vrai client MCP de bureau et
      les runtimes IA réels (Ollama installé, Codex connecté) sur de vrais
      appareils.
-  3. **Distribution** : `paquets.yml` construit les bundles NON SIGNÉS des
-     trois OS à la demande ; restent la signature, la publication et
-     Outlook OAuth — gestes du mainteneur.
+  3. **Distribution** : `paquets.yml` construit les bundles NON SIGNÉS
+     (`.deb` Linux, installateur NSIS Windows, `.app`+`.dmg` macOS) ;
+     restent la signature, la publication et Outlook OAuth — gestes du
+     mainteneur.
 - **Compagnon (D17/D18 validés — C1 à C8 terminés, `compagnon/`)** :
   - **C1 livré** : crate `oc-coeur` (la garde D17 — mission signée
     Ed25519, anti-double-envoi, plafond global, fenêtre, hors-mission)
@@ -168,8 +170,9 @@
     prouvé** : `cargo tauri build --bundles deb` (CLI 2.11) produit
     `OpenContact Compagnon_0.1.0_amd64.deb` (6,1 Mo, release) —
     installé et vérifié dans le conteneur (`/usr/bin/oc-compagnon`).
-    AppImage/Windows/macOS : à produire sur les OS cibles (signature
-    comprise — spec §8.3, geste mainteneur).
+    Windows (installateur NSIS) et macOS (`.app`+`.dmg`) sortent
+    désormais non signés de `paquets.yml` ; restent l'AppImage local et
+    la signature (spec §8.3, geste mainteneur).
   - **C8 livré — confier depuis le téléphone** : l'option auto apparaît sans
     association locale dès que l'anneau connaît un appareil `companion`, avec
     l'état honnête « ton ordinateur la prendra dès qu'il te rejoint ».

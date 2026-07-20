@@ -338,7 +338,8 @@ L'application OpenContact reste utile sans lui.
   idempotent). Aucun écran ne promet autre chose ; le choix reste automatique
   et sans jargon (D4 respecté).
 - Signature, distribution et mises à jour du binaire sur les systèmes visés
-  (la CI construit des paquets **non signés** sur les trois OS à la demande ;
+  (la CI construit des paquets **non signés** — `.deb`, installateur NSIS,
+  `.app`+`.dmg` — à la demande et sur toute PR touchant `paquets.yml` ;
   la signature reste un geste du mainteneur).
 - Compatibilité réelle de chaque fournisseur IMAP/SMTP et des trousseaux OS.
 

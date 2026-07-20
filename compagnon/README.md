@@ -29,8 +29,11 @@ cargo test -p oc-coeur             # la garde (18 tests, vecteurs croisés)
 cargo build -p oc-compagnon        # la coquille (webkit2gtk + gtk3 requis sous Linux)
 ```
 
-Le bundle (`deb`/`appimage`) passe par la CLI Tauri : `cargo tauri build`
-depuis `compagnon/src-tauri` (la CLI lance `preparer.mjs` toute seule).
+Le bundle passe par la CLI Tauri depuis `compagnon/src-tauri` (elle lance
+`preparer.mjs` toute seule) : `cargo tauri build` fait `deb`/`appimage`
+sous Linux ; Windows demande `--bundles nsis`, macOS `--bundles app,dmg`
+(icônes `.ico`/`.icns` versionnées dans `icons/`). `paquets.yml` joue les
+trois, non signés, sur toute PR qui le modifie et à la demande.
 
 ## Le canal local (résumé du protocole)
 
