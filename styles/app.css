@@ -219,6 +219,19 @@ html[data-theme="dark"] .field select{
 }
 .srt-lv .srt-n{font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted)}
 .srt-lv b{flex:1;min-width:0;font-size:var(--text-13)}
+/* feuille « Filtrer » : chips statut/domaine en deux colonnes — un tap
+   montre seulement, re-tap de l'actif remontre tout */
+.fl-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px}
+.fl-chip{
+  display:flex;align-items:center;gap:8px;min-height:var(--ctl);
+  padding:5px 10px;text-align:left;cursor:pointer;
+  background:var(--surface-window);border:1px solid var(--border-strong);
+  border-radius:var(--radius-1);box-shadow:var(--bevel-up);
+  font-family:var(--font-ui);font-size:var(--text-13);color:var(--text-body);
+}
+.fl-chip:active{box-shadow:var(--bevel-down);transform:translate(1px,1px)}
+.fl-chip.on{background:var(--teal-wash);border-color:var(--accent);color:var(--accent);font-weight:var(--weight-semibold)}
+.fl-chip .dotc{width:8px;height:8px;border:1px solid var(--border-strong);flex:none}
 
 /* ============ TÊTE DE PAGE ============ */
 .td-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap}
@@ -720,6 +733,11 @@ a.fk-v{display:inline-flex;align-items:center;gap:5px}
 .bc-na .late{color:var(--amber);font-weight:var(--weight-bold);font-style:normal}
 .bc-none{color:var(--text-muted)}
 .bcol-empty{padding:18px 10px;text-align:center;color:var(--text-muted);font-size:var(--text-12);background-image:var(--dither)}
+/* glisser une carte vers une autre colonne = changer le statut :
+   états francs (opacité nette, contour accent), aucun fondu */
+.bcard.drag-src{opacity:.45}
+.bcol.drop-ok{outline:2px solid var(--accent);outline-offset:-1px}
+.bcol.drop-ok .bcol-rows{background:var(--teal-wash)}
 
 /* ============ SÉLECTION (Prospecter) ============ */
 .pk{justify-content:flex-start}

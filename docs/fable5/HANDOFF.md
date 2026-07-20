@@ -1,5 +1,18 @@
 # Fable 5 — point de reprise (checkpoint)
 
+- **Amélioration livrée (plan v7 §2) — filtres exposés + statut au
+  glisser** : « Mes pistes » gagne un bouton « Filtrer » à côté du tri
+  (icône pixelarticons `filter` vendorisée) — feuille à la grammaire du
+  tri : chaque tap applique aussitôt, la croix referme, re-tap du bouton
+  actif = tout montrer. Statut + domaine combinables en liste (mobile) ;
+  sur le tableau desktop, seul le domaine est proposé (les colonnes
+  segmentent déjà le statut). Vide filtré honnête avec « Tout montrer ».
+  Sur le tableau, glisser une carte vers une autre colonne change le
+  statut : colonne cible allumée (contour accent), une entrée
+  d'historique propre (`Statut → …`), journal, `updatedAt`, toast —
+  dépôt sur place inerte. Moteur inchangé (filterCompanies savait déjà) ;
+  scénario `e2e-pistes.mjs` (390 + 1280, sombre, rechargement qui relit
+  l'écriture). Cache PWA **oc-v34**.
 - **Phase actuelle** : chantier connecté V1 **entièrement livré** — PWA
   (P0 → P8-2), Compagnon C1–C8, serveur MCP local, et **P6-3 : les trois
   familles IA de D5 complètes** (plus aucune famille « pas encore
@@ -212,8 +225,9 @@
   chantier séparé avec le mainteneur.
 - **Première vérification à la prochaine reprise** :
   `git log --oneline -8 && git status`, puis
-  `node tests/e2e/unitaires.mjs` (**87/87 attendus**) et
-  `node tests/e2e/tous.mjs` (**16/16, zéro saut**). Pour le natif :
+  `node tests/e2e/unitaires.mjs` (**88/88 attendus**) et
+  `node tests/e2e/tous.mjs` (**17/17, zéro saut** — dont `e2e-pistes.mjs`,
+  filtres + statut au glisser). Pour le natif :
   `cargo test --locked --manifest-path compagnon/Cargo.toml` (**30/30**),
   `cargo build --locked --manifest-path compagnon/Cargo.toml -p oc-compagnon`,
   puis les six scénarios natifs, dont `e2e-mcp.mjs` et

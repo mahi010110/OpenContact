@@ -4,7 +4,7 @@
    arrière-plan — la version suivante s'applique à l'ouverture d'après.
    Jamais mis en cache : le géocodage (données fraîches) et les tuiles de
    carte (volume) — la carte demande donc du réseau, tout le reste non. */
-const CACHE = 'oc-v33';
+const CACHE = 'oc-v34';
 const PRECACHE = ['./', './index.html', './app.js', './tests.js', './tests-c8.js', './tests-mcp.js',
   './engine/crypto.js', './engine/exchange.js', './engine/filter.js',
   './engine/geo.js', './engine/merge.js', './engine/model.js',
@@ -61,6 +61,7 @@ const PRECACHE = ['./', './index.html', './app.js', './tests.js', './tests-c8.js
   './assets/icons/eye-off.svg',
   './assets/icons/eye.svg',
   './assets/icons/file.svg',
+  './assets/icons/filter.svg',
   './assets/icons/flag.svg',
   './assets/icons/folder.svg',
   './assets/icons/gps.svg',
