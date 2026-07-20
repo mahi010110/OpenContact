@@ -5,7 +5,7 @@
    piste (statut, prochaine action, clôture). Le moteur ne lit
    jamais l'écran ; ici, l'écran pilote le moteur.
    ============================================================ */
-import { todayISO, fmtDate, uid } from '../engine/utils.js';
+import { todayISO, localISO, fmtDate, uid } from '../engine/utils.js';
 import { CLOSE_REASONS, normalizeCompany, normalizeContact,
          normalizeProfile, pushHist } from '../engine/model.js';
 import { contactKey } from '../engine/merge.js';
@@ -208,7 +208,7 @@ export function addDemo(){
     if (text){
       c.nextActionText = text;
       const d = new Date(); d.setDate(d.getDate() + days);
-      c.nextAction = d.toISOString().slice(0, 10);
+      c.nextAction = localISO(d);   /* heure locale — toISOString décalerait d'un jour la nuit */
     }
     c.history = [{ d: todayISO(), t: 'Piste d’exemple' }];
     return c;

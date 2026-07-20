@@ -4,7 +4,7 @@
    arrière-plan — la version suivante s'applique à l'ouverture d'après.
    Jamais mis en cache : le géocodage (données fraîches) et les tuiles de
    carte (volume) — la carte demande donc du réseau, tout le reste non. */
-const CACHE = 'oc-v34';
+const CACHE = 'oc-v35';
 const PRECACHE = ['./', './index.html', './app.js', './tests.js', './tests-c8.js', './tests-mcp.js',
   './engine/crypto.js', './engine/exchange.js', './engine/filter.js',
   './engine/geo.js', './engine/merge.js', './engine/model.js',
@@ -140,8 +140,9 @@ self.addEventListener('fetch', e => {
     caches.open(CACHE).then(async c => {
       const cached = await c.match(req);
       const fresh = fetch(req).then(r => {
-        /* r.ok couvre le même domaine ; « opaque » couvre les libs CDN chargées sans CORS */
-        if (r && (r.ok || r.type === 'opaque')) c.put(req, r.clone());
+        /* même origine uniquement (filtré plus haut) : r.ok suffit,
+           une réponse « opaque » ne peut pas exister ici */
+        if (r && r.ok) c.put(req, r.clone());
         return r;
       }).catch(() => null);
       return cached || fresh.then(r => r || cached);

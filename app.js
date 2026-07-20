@@ -65,10 +65,14 @@ function applyTheme(t, persist){
     : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), false);
   await initVerrou();
   await loadAll();
-  await import('./ui/connexions.js').then(m => m.loadMail()).catch(() => {});
-  await import('./ui/campagnes.js').then(m => m.loadCampaigns()).catch(() => {});
-  await import('./ui/analyse.js').then(m => m.loadMailAnalysis()).catch(() => {});
-  await import('./ui/propositions.js').then(m => m.loadProposals()).catch(() => {});
+  /* quatre chargements indépendants : en parallèle, pas en file — chaque
+     aller-retour IndexedDB sérialisé se paierait au démarrage */
+  await Promise.all([
+    import('./ui/connexions.js').then(m => m.loadMail()).catch(() => {}),
+    import('./ui/campagnes.js').then(m => m.loadCampaigns()).catch(() => {}),
+    import('./ui/analyse.js').then(m => m.loadMailAnalysis()).catch(() => {}),
+    import('./ui/propositions.js').then(m => m.loadProposals()).catch(() => {})
+  ]);
   applyTheme(S.theme, false);
   $('#sbVer').textContent = APP_VERSION;
 

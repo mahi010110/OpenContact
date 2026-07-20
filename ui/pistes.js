@@ -118,7 +118,7 @@ function moveStatus(id, k){
   c.updatedAt = Date.now();
   saveData();
   bus.refresh();
-  toast(esc(c.name) + ' → ' + STATUSES[k].label);
+  toast(c.name + ' → ' + STATUSES[k].label);   /* toast affiche du texte brut : esc() doublerait l'échappement */
 }
 
 /* le tableau se manipule à la souris : glisser une carte vers une autre
