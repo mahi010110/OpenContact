@@ -222,7 +222,9 @@ function syncLabel(){
   const sy = getSync();
   if (!sy.phrase) return 'non relié';
   if (sy.state === 'on') return 'relié — ' + sy.peers + ' en face';
-  if (sy.state === 'err') return 'relié — hors ligne';
+  if (sy.state === 'link') return 'relié — premier échange…';
+  if (sy.state === 'err' || sy.state === 'norelay') return 'relié — réseau bloqué ?';
+  if (sy.state === 'rtcfail') return 'relié — liaison directe en échec';
   return 'relié — en attente';
 }
 export function renderMoi(){

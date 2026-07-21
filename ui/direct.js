@@ -12,12 +12,13 @@
 import { esc } from '../engine/utils.js';
 import { fnv } from '../engine/crypto.js';
 import { sharePayload } from '../engine/exchange.js';
-import { PROMO_KEY, RELAYS_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { PROMO_KEY, RELAYS_KEY, TURN_KEY, kvGet, kvSet } from '../engine/storage.js';
+import { parseTurn, turnText } from '../engine/transport.js';
 import { S, bus, isClosed, logJ } from './state.js';
 import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
 import { mergePreviewInto } from './recevoir.js';
 import { getSync, startSync, breakLink, keepMyProfile, makePhrase, openRoom,
-         deviceSelf, loadDevices, removeDevice, DEVICES_MAX,
+         watchLiaison, deviceSelf, loadDevices, removeDevice, DEVICES_MAX,
          getRing, amMain, ringDo, ringMakeMain } from './synclive.js';
 import { deviceIn } from '../engine/ring.js';
 import { requireCode } from './verrou.js';
@@ -30,15 +31,24 @@ const relayList = async () => {
     return Array.isArray(urls) ? urls.filter(x => typeof x === 'string').slice(0, 8) : [];
   } catch (e) { return []; }
 };
-const relaySettingsHTML = urls =>
+const turnList = async () => {
+  try {
+    const t = JSON.parse(await kvGet(TURN_KEY) || '[]');
+    return Array.isArray(t) ? t : [];
+  } catch (e) { return []; }
+};
+const relaySettingsHTML = (urls, turn) =>
   `<details class="pcard pcard-details sy-relays" style="margin-top:14px">
      <summary><h3>${ic('settings-2', 'ic-14')} Connexion avancée</h3></summary>
      <p class="hint">Seulement si ton réseau bloque la liaison. Une adresse sécurisée <b>wss://</b> par ligne.</p>
      <div class="field"><label for="syRelays">Relais personnalisés</label>
        <textarea id="syRelays" class="ta-s" spellcheck="false" autocapitalize="off"
          placeholder="wss://relais.exemple.org">${esc(urls.join('\n'))}</textarea></div>
+     <div class="field"><label for="syTurn">Serveur TURN — si la liaison directe échoue</label>
+       <textarea id="syTurn" class="ta-s" spellcheck="false" autocapitalize="off"
+         placeholder="turns:relais.exemple.org:443 utilisateur motdepasse">${esc(turnText(turn))}</textarea></div>
      <button class="btn btn-sm" id="sySaveRelays">Enregistrer</button>
-     <button class="linklike" id="syPublicRelays"${urls.length ? '' : ' hidden'}>Revenir aux relais publics</button>
+     <button class="linklike" id="syPublicRelays"${urls.length || (turn && turn.length) ? '' : ' hidden'}>Revenir au réglage d’origine</button>
    </details>`;
 function parseRelays(raw){
   const values = String(raw || '').split(/[\n,]+/).map(x => x.trim()).filter(Boolean);
@@ -53,19 +63,25 @@ function parseRelays(raw){
   return out;
 }
 function wireRelays(q, phrase, rerender){
-  const save = async urls => {
+  const save = async (urls, turn) => {
     await kvSet(RELAYS_KEY, JSON.stringify(urls));
+    await kvSet(TURN_KEY, JSON.stringify(turn));
     if (phrase) await startSync(phrase);
-    toast(urls.length
-      ? 'Relais enregistrés — la liaison redémarre.'
-      : 'Relais publics rétablis.');
+    toast(urls.length || turn.length
+      ? 'Réglages enregistrés — la liaison redémarre.'
+      : 'Réglage d’origine rétabli.');
     rerender();
   };
   q('#sySaveRelays')?.addEventListener('click', async () => {
-    try { await save(parseRelays(q('#syRelays').value)); }
-    catch (e) { toast(e.message === 'huit' ? 'Huit relais maximum.' : 'Adresse attendue : wss://…'); }
+    let urls;
+    try { urls = parseRelays(q('#syRelays').value); }
+    catch (e) { toast(e.message === 'huit' ? 'Huit relais maximum.' : 'Adresse attendue : wss://…'); return; }
+    let turn;
+    try { turn = parseTurn(q('#syTurn').value); }
+    catch (e) { toast(e.message === 'quatre' ? 'Quatre serveurs TURN maximum.' : 'TURN attendu : turns:hôte:port utilisateur motdepasse'); return; }
+    await save(urls, turn);
   });
-  q('#syPublicRelays')?.addEventListener('click', () => save([]));
+  q('#syPublicRelays')?.addEventListener('click', () => save([], []));
 }
 /* la ligne Compagnon — présente avec ou sans phrase de liaison */
 const compRowHTML = comp => comp
@@ -146,15 +162,25 @@ export function openAppareils(){
   });
   const q = s => sh.body.querySelector(s);
 
+  /* le statut dit ce qui est PROUVÉ : relais joints, pair en face,
+     échange reçu — jamais « à jour » sur la foi de la salle (#14) */
   const statusHTML = () => {
     const sy = getSync();
+    const r = sy.relays || {};
     if (sy.state === 'on')
       return `${ic('radio', 'ic-14')} <b>${sy.peers}</b> appareil${sy.peers > 1 ? 's' : ''} en face — à jour en continu`;
+    if (sy.state === 'link')
+      return `${ic('radio', 'ic-14')} <b>${sy.peers}</b> appareil${sy.peers > 1 ? 's' : ''} en face — premier échange…`;
     if (sy.state === 'wait')
-      return `${ic('clock', 'ic-14')} En liaison — les autres appareils se connecteront tout seuls`;
+      return `${ic('clock', 'ic-14')} Relais joints (${r.open}/${r.total}) — personne en face pour l’instant`;
+    if (sy.state === 'norelay')
+      return `${ic('square-alert', 'ic-14')} Aucun relais joignable — réseau bloqué ?
+        <button class="btn btn-sm" id="syRetry">Réessayer</button>`;
+    if (sy.state === 'rtcfail')
+      return `${ic('square-alert', 'ic-14')} Un appareil est en vue, mais la liaison directe échoue — un serveur TURN (Connexion avancée) peut aider`;
     if (sy.state === 'err')
       return `${ic('square-alert', 'ic-14')} Pas de connexion — réseau bloqué ? <button class="btn btn-sm" id="syRetry">Réessayer</button>`;
-    return `${ic('clock', 'ic-14')} Connexion…`;
+    return `${ic('clock', 'ic-14')} Connexion aux relais…`;
   };
 
   /* le rôle d'un appareil dans l'anneau — '' si pas d'anneau */
@@ -178,6 +204,7 @@ export function openAppareils(){
     const iAmMain = await amMain();
     const comp = await loadCompanion();
     const relays = await relayList();
+    const turn = await turnList();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
@@ -212,7 +239,7 @@ export function openAppareils(){
            ? `<p class="hint warn" style="margin-top:6px">Plus de ${DEVICES_MAX} appareils — change la phrase de liaison pour écarter ceux que tu ne reconnais pas.</p>`
            : ''}
        </div>
-       ${relaySettingsHTML(relays)}
+       ${relaySettingsHTML(relays, turn)}
        <button class="linklike" id="syNewPhrase" style="margin-top:12px">Changer la phrase de liaison</button>`;
 
     q('#syRetry')?.addEventListener('click', () => startSync(sy.phrase));
@@ -258,6 +285,7 @@ export function openAppareils(){
   async function renderStart(changing){
     const comp = await loadCompanion();
     const relays = await relayList();
+    const turn = await turnList();
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 12px">${changing
@@ -277,7 +305,7 @@ export function openAppareils(){
        ${!changing && !comp && !isDesktop()
          ? `<div class="sy-devs"><button class="dev-row dev-open" id="devCompInfo"><b>Le Compagnon</b><span class="dev-sub">s’installe et s’associe depuis ton ordinateur · voir ›</span></button></div>`
          : ''}
-       ${relaySettingsHTML(relays)}`;
+       ${relaySettingsHTML(relays, turn)}`;
     sh.setFoot(changing ? [btn('← Retour', 'btn-ghost', render)] : null);
     wireComp(q, comp, render);
     wireRelays(q, '', render);
@@ -300,8 +328,22 @@ export function openAppareils(){
     if (getSync().phrase) renderLinked();
     else renderStart(false);
   }
-  /* l'état vivant pilote la feuille : peers, appareils, lot reçu… */
-  onSync = () => { if (!sh.body.querySelector('#syPhrase')) render(); };
+  /* l'état vivant pilote la feuille : peers, appareils, lot reçu…
+     — sauf pendant une saisie (phrase, relais/TURN ouverts) : un
+     re-rendu au mauvais moment mangerait le texte tapé. Le statut
+     seul, lui, se rafraîchit toujours. */
+  onSync = () => {
+    if (sh.body.querySelector('#syPhrase')) return;
+    if (sh.body.querySelector('.sy-relays[open]')){
+      const el = sh.body.querySelector('#syStatus');
+      if (el){
+        el.innerHTML = statusHTML();
+        el.querySelector('#syRetry')?.addEventListener('click', () => startSync(getSync().phrase));
+      }
+      return;
+    }
+    render();
+  };
   document.addEventListener('oc:sync', onSync);
   render();
 }
@@ -310,10 +352,14 @@ export function openAppareils(){
 export function openPromo(){
   let room = null;
   let peers = 0;
+  let watch = null;         /* honnêteté de la liaison (relais / pair / WebRTC) */
   const queue = [];         /* payloads reçus, présentés un par un */
   const seen = new Set();   /* le même envoi ne se représente pas */
   let showing = false;
-  const leave = () => { if (room){ try { room.leave(); } catch (e) {} room = null; } };
+  const leave = () => {
+    if (watch){ watch.stop(); watch = null; }
+    if (room){ try { room.leave(); } catch (e) {} room = null; }
+  };
   const sh = openSheet({ title: 'Partage en groupe', icon: 'radio', onClose: leave });
   const q = s => sh.body.querySelector(s);
 
@@ -336,9 +382,24 @@ export function openPromo(){
        <p class="hint" id="prHint" style="text-align:center">Chacun garde la feuille ouverte ; chaque envoi montre un aperçu avant fusion.</p>`;
     sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); })]);
     const setStatus = txt => { const el = q('#prStatus'); if (el) el.innerHTML = txt; };
+    /* le statut dit l'étape prouvée — pas « personne » quand c'est le
+       transport qui est mort (#14) */
+    const stageStatus = stage => {
+      if (peers) return;   /* refreshStatus a la main dès qu'on est en face */
+      if (stage === 'norelay')
+        setStatus(`${ic('square-alert', 'ic-14')} Aucun relais joignable — réseau bloqué ? Le QR et le fichier .oc marchent toujours.`);
+      else if (stage === 'rtcfail')
+        setStatus(`${ic('square-alert', 'ic-14')} Quelqu’un est là, mais la liaison directe échoue — réseaux trop fermés ?`);
+      else if (stage === 'wait')
+        setStatus(`${ic('clock', 'ic-14')} Relais joints — personne d’autre pour l’instant…`);
+      else
+        setStatus(`${ic('clock', 'ic-14')} Connexion aux relais…`);
+    };
+    watch = watchLiaison(() => peers, stageStatus);
     try {
-      room = await openRoom('promo', pass);   /* préfixe historique — compat */
+      room = await openRoom('promo', pass, { onJoinError: () => watch && watch.fail() });   /* préfixe historique — compat */
     } catch (e) {
+      leave();
       setStatus(`${ic('square-alert', 'ic-14')} Pas de connexion — réseau bloqué ? Le fichier .oc marche toujours.`);
       return;
     }
@@ -351,9 +412,8 @@ export function openPromo(){
     let choosing = false;
     const refreshStatus = () => {
       const n = chosen().length;
-      setStatus(peers
-        ? `${ic('radio', 'ic-14')} <b>${peers}</b> camarade${peers > 1 ? 's' : ''} dans le groupe`
-        : `${ic('clock', 'ic-14')} Personne d’autre pour l’instant…`);
+      if (peers) setStatus(`${ic('radio', 'ic-14')} <b>${peers}</b> camarade${peers > 1 ? 's' : ''} dans le groupe`);
+      else if (watch) watch.tick();   /* l'étape honnête reprend la main */
       const zone = q('#prZone');
       if (!zone) return;
       if (!peers || !mine().length){ zone.innerHTML = ''; return; }

@@ -8,7 +8,10 @@
 /* ---------- générer (qrcode-generator, MIT) ---------- */
 let genP = null;
 function loadGen(){
-  return genP || (genP = import('../assets/vendor/qrcode-generator.mjs').then(m => m.qrcode));
+  /* un échec de chargement (hors ligne à la première visite…) ne se
+     grave pas : la promesse rejetée s'oublie, l'essai suivant recharge */
+  return genP || (genP = import('../assets/vendor/qrcode-generator.mjs')
+    .then(m => m.qrcode, e => { genP = null; throw e; }));
 }
 /* SVG redimensionnable — à poser sur fond blanc pour rester lisible en sombre */
 export async function makeQrSvg(text){

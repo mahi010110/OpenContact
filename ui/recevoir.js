@@ -12,7 +12,7 @@ import { mergeIncoming } from '../engine/merge.js';
 import { normalizeCompany } from '../engine/model.js';
 import { S, bus, saveData, logJ } from './state.js';
 import { openSheet, toast, btn, ic, showUndo } from './dom.js';
-import { openRoom, deviceSelf, ensureKeys } from './synclive.js';
+import { openRoom, watchLiaison, deviceSelf, ensureKeys } from './synclive.js';
 import { startScan } from './qr.js';
 import { probeCompanion, companionCall } from '../engine/companion.js';
 import { makeMission, signMission } from '../engine/mission.js';
@@ -26,10 +26,14 @@ export function openRecevoir(){
   let stopScan = null;
   let stopAnalysis = null;
   let room = null;         /* salle de rendez-vous (QR OCR1 / code tapé) */
+  let rdvWatch = null;     /* honnêteté de la liaison du rendez-vous */
   let gen = 0;
   const halt = () => { if (stopScan){ stopScan(); stopScan = null; } };
   const leaveAnalysis = () => { if (stopAnalysis){ stopAnalysis(); stopAnalysis = null; } };
-  const leaveRdv = () => { if (room){ try { room.leave(); } catch (e) {} room = null; } };
+  const leaveRdv = () => {
+    if (rdvWatch){ rdvWatch.stop(); rdvWatch = null; }
+    if (room){ try { room.leave(); } catch (e) {} room = null; }
+  };
   /* caméra et salle se coupent quelle que soit la façon de fermer */
   const sh = openSheet({ title: 'Recevoir', icon: 'inbox', onClose: () => { gen++; halt(); leaveAnalysis(); leaveRdv(); } });
   const q = s => sh.body.querySelector(s);
@@ -112,17 +116,35 @@ export function openRecevoir(){
     sh.body.innerHTML = `<div class="qr-prog">${ic('clock', 'ic-14')} Connexion…</div>`;
     sh.setFoot([btn('← Retour', 'btn-ghost', menu)]);
     let r;
+    let joined = false;
+    /* l'étape prouvée, pas une attente muette : relais morts ou liaison
+       directe en échec se DISENT, avec le repli (QR hors ligne, fichier) */
+    const w = watchLiaison(() => joined ? 1 : 0, stage => {
+      if (my !== gen || joined) return;
+      const el = q('#rcRdvSt');
+      if (!el) return;
+      if (stage === 'norelay')
+        el.innerHTML = `${ic('square-alert', 'ic-14')} Aucun relais joignable — demande un QR hors ligne ou un fichier.`;
+      else if (stage === 'rtcfail')
+        el.innerHTML = `${ic('square-alert', 'ic-14')} L’autre appareil est en vue, mais la liaison échoue — passe par le QR hors ligne ou le fichier.`;
+      else if (stage === 'wait')
+        el.innerHTML = `${ic('clock', 'ic-14')} En attente de l’autre appareil…`;
+      else
+        el.innerHTML = `${ic('clock', 'ic-14')} Connexion aux relais…`;
+    });
     try {
-      r = await openRoom('give', code);
+      r = await openRoom('give', code, { onJoinError: () => w.fail() });
     } catch (e) {
+      w.stop();
       if (my !== gen) return;
       toast('Pas de connexion — demande un QR hors ligne ou un fichier.');
       menu();
       return;
     }
-    if (my !== gen){ try { r.leave(); } catch (e) {} return; }
+    if (my !== gen){ w.stop(); try { r.leave(); } catch (e) {} return; }
     room = r;
-    sh.body.innerHTML = `<div class="qr-prog" id="rcRdvSt">${ic('clock', 'ic-14')} En attente de l’autre appareil…</div>`;
+    rdvWatch = w;
+    sh.body.innerHTML = `<div class="qr-prog" id="rcRdvSt">${ic('clock', 'ic-14')} Connexion aux relais…</div>`;
     const give = room.makeAction('give');
     let got = false;
     give.onMessage = obj => {
@@ -136,6 +158,7 @@ export function openRecevoir(){
       mergePreviewInto(sh, obj, { onCancel: menu });
     };
     room.onPeerJoin = () => {
+      joined = true;
       const el = q('#rcRdvSt');
       if (el) el.innerHTML = `${ic('radio', 'ic-14')} Relié — réception…`;
     };

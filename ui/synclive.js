@@ -16,15 +16,43 @@ import { fullPayload } from '../engine/exchange.js';
 import { syncMerge, syncPrivateMerge } from '../engine/sync.js';
 import { edAvailable, makeDeviceKeys, recoveryKeys, ringInit, ringAddDevice,
          ringCommand, ringTransfer, ringRecover, mergeRing, actionsFor, deviceIn } from '../engine/ring.js';
-import { SYNC_KEY, RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
+import { SYNC_KEY, RELAYS_KEY, TURN_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY,
          DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, PROMO_KEY, VAULT_KEY,
          CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY, ANALYSIS_KEY,
          PROPOSALS_KEY, kvGet, kvSet, kvDel, docDel } from '../engine/storage.js';
+import { relayTally, liaisonStage } from '../engine/transport.js';
 import { S, bus, applySynced, saveProfile, logJ } from './state.js';
 import { ic, toast, showUndo } from './dom.js';
 
 let libP = null;
-const loadLib = () => libP || (libP = import('../assets/vendor/trystero-nostr.min.js'));
+let libM = null;    /* le module chargé — pour sonder l'état réel des relais */
+/* un échec de chargement ne se grave pas : sans ça, la première visite
+   hors ligne condamnait le P2P jusqu'au rechargement (la promesse
+   rejetée restait en cache alors que « Réessayer » relançait join) */
+const loadLib = () => libP || (libP = import('../assets/vendor/trystero-nostr.min.js')
+  .then(m => (libM = m), e => { libP = null; throw e; }));
+
+/* l'état réel des WebSockets vers les relais — {total, open, pending}.
+   Sans bibliothèque chargée : rien à sonder, tout à zéro. */
+export const relaySnapshot = () => relayTally(libM && libM.getRelaySockets());
+
+/* délai de grâce avant de déclarer « aucun relais joignable » : les
+   sockets se (re)connectent, on ne crie pas au loup au premier instant */
+const GRACE_MS = 12000;
+
+/* surveille l'honnêteté d'une salle éphémère (promo, rendez-vous QR) :
+   rappelle `cb(stage)` toutes les 2 s — stage de engine/transport.js.
+   `fail()` se branche sur onJoinError (pair annoncé, liaison en échec). */
+export function watchLiaison(getPeers, cb){
+  const t0 = Date.now();
+  let rtcFail = false;
+  const tick = () => cb(liaisonStage({
+    relays: relaySnapshot(), peers: getPeers(), exchanged: getPeers() > 0,
+    rtcFail, graceOver: Date.now() - t0 > GRACE_MS
+  }));
+  const iv = setInterval(tick, 2000);
+  return { stop: () => clearInterval(iv), fail: () => { rtcFail = true; tick(); }, tick };
+}
 
 async function sha256hex(s){
   const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
@@ -34,7 +62,7 @@ async function sha256hex(s){
    Relais personnalisés possibles (oc_relays_v1). Le préfixe reste
    historique (« sync- », « promo- », « give- » pour le QR de
    rendez-vous) — compat entre versions. */
-export async function openRoom(kind, phrase){
+export async function openRoom(kind, phrase, callbacks){
   const { joinRoom } = await loadLib();
   const id = kind + '-' + (await sha256hex('opencontact·' + kind + '·' + phrase)).slice(0, 24);
   const cfg = { appId: 'opencontact', password: phrase };
@@ -42,7 +70,12 @@ export async function openRoom(kind, phrase){
     const urls = JSON.parse(await kvGet(RELAYS_KEY) || 'null');
     if (Array.isArray(urls) && urls.length) cfg.relayConfig = { urls };
   } catch (e) {}
-  return joinRoom(cfg, id);
+  try {
+    /* TURN personnalisé : pour les réseaux qui bloquent le pair-à-pair */
+    const turn = JSON.parse(await kvGet(TURN_KEY) || 'null');
+    if (Array.isArray(turn) && turn.length) cfg.turnConfig = turn;
+  } catch (e) {}
+  return joinRoom(cfg, id, callbacks);
 }
 /* phrase de liaison : 10 caractères sans ambiguïté, faciles à taper */
 export function makePhrase(){
@@ -214,7 +247,7 @@ async function onRingMsg(incoming){
          campagnes, jetons de messagerie, clés d'IA, missions,
          identité d'appareil, documents (CV, lettre) */
       for (const k of [DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY,
-                       SYNC_KEY, RELAYS_KEY, PROMO_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY,
+                       SYNC_KEY, RELAYS_KEY, TURN_KEY, PROMO_KEY, DEVICE_KEY, DEVICES_KEY, RING_KEY, VAULT_KEY,
                        CAMPAIGNS_KEY, MAIL_KEY, AI_KEY, MISSIONS_KEY, COMPANION_KEY, ANALYSIS_KEY,
                        PROPOSALS_KEY]) await kvDel(k);
       for (const dk of ['cv', 'lettre']) await docDel(dk).catch(() => {});
@@ -232,14 +265,41 @@ function sendRing(){
 
 /* ---------- l'état vivant ---------- */
 const live = {
-  state: 'off',        /* off · wait (personne en face) · on · err */
+  state: 'off',        /* off · connecting · norelay · wait · rtcfail · link · on · err */
   peers: 0,
+  relays: { total: 0, open: 0, pending: 0 },
+  exchanged: false,    /* un échange a réellement été reçu — condition de « à jour » */
+  rtcFail: false,      /* pair annoncé mais liaison directe en échec */
+  since: 0,            /* départ de la (re)connexion — pour le délai de grâce */
   phrase: '',
   lastStats: null,     /* dernier lot appliqué (affiché par la feuille) */
   prevProfile: null    /* mon profil d'avant, si celui d'un autre appareil a été pris */
 };
 export const getSync = () => live;
 const emit = () => document.dispatchEvent(new CustomEvent('oc:sync'));
+
+/* recalcule l'étape honnête depuis les faits ; émet si elle a bougé */
+let watchIv = null;
+function refreshStage(force){
+  if (!room) return;
+  const relays = relaySnapshot();
+  const stage = liaisonStage({
+    relays, peers: live.peers, exchanged: live.exchanged,
+    rtcFail: live.rtcFail, graceOver: Date.now() - live.since > GRACE_MS
+  });
+  const moved = stage !== live.state ||
+    relays.open !== live.relays.open || relays.total !== live.relays.total;
+  live.relays = relays;
+  live.state = stage;
+  if (moved || force) emit();
+}
+function startWatch(){
+  stopWatch();
+  watchIv = setInterval(() => refreshStage(false), 2000);
+}
+function stopWatch(){
+  if (watchIv){ clearInterval(watchIv); watchIv = null; }
+}
 
 let room = null;
 let sendFull = null;
@@ -298,28 +358,44 @@ const sendState = () => {
 document.addEventListener('oc:change', () => sendState());
 /* le réseau revient : on retente sans rien demander */
 window.addEventListener('online', () => {
-  if (live.phrase && (live.state === 'err' || live.state === 'off')) join(live.phrase);
+  if (live.phrase && (live.state === 'err' || live.state === 'off' || live.state === 'norelay'))
+    join(live.phrase);
 });
 
 function closeRoom(){
+  stopWatch();
   if (room){ try { room.leave(); } catch (e) {} room = null; }
   sendFull = null;
   sendHello = null;
   sendRingRaw = null;
   lastSent = '';
   live.peers = 0;
+  live.relays = { total: 0, open: 0, pending: 0 };
+  live.exchanged = false;
+  live.rtcFail = false;
 }
 
 async function join(phrase){
   const my = ++gen;
   closeRoom();
   live.phrase = phrase;
-  live.state = 'wait';
+  live.state = 'connecting';
+  live.since = Date.now();
   emit();
   const self = await deviceSelf();
   let r;
   try {
-    r = await openRoom('sync', phrase);
+    r = await openRoom('sync', phrase, {
+      /* un appareil s'est annoncé via les relais mais la liaison
+         directe n'aboutit pas (NAT/pare-feu) — on le dit, on ne
+         laisse plus « en liaison » mentir */
+      onJoinError: () => {
+        if (my !== gen) return;
+        if (!live.rtcFail) logJ('Sync appareils : pair en vue, liaison directe en échec');
+        live.rtcFail = true;
+        refreshStage(false);
+      }
+    });
   } catch (e) {
     if (my !== gen) return;
     live.state = 'err';
@@ -328,6 +404,8 @@ async function join(phrase){
   }
   if (my !== gen){ try { r.leave(); } catch (e) {} return; }
   room = r;
+  startWatch();
+  refreshStage(false);
 
   const keys = await ensureKeys();          /* identité signée de cet appareil */
   const hello = room.makeAction('hello');
@@ -385,23 +463,25 @@ async function join(phrase){
         toast('Sync annulée — tout est revenu comme avant.');
       });
     }
-    live.state = 'on';
-    emit();
+    /* l'échange est CONFIRMÉ : un instantané complet vient d'arriver.
+       C'est lui — pas la salle, pas même le pair — qui autorise
+       « à jour » (incident #14). */
+    live.exchanged = true;
+    refreshStage(true);
     sendState();   /* converge : ne repart que si quelque chose a changé */
   }).catch(() => {}); };
 
   room.onPeerJoin = () => {
     live.peers++;
-    live.state = 'on';
-    emit();
+    refreshStage(true);
     if (sendHello) sendHello();
     sendRing();
     sendState();
   };
   room.onPeerLeave = () => {
     live.peers = Math.max(0, live.peers - 1);
-    if (!live.peers) live.state = 'wait';
-    emit();
+    if (!live.peers) live.exchanged = false;   /* prochaine liaison = nouvelle preuve */
+    refreshStage(true);
   };
 }
 

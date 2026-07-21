@@ -57,9 +57,12 @@ locale. La PWA reste complète sans lui.
 - **Partage en groupe** : un mot de passe de groupe, et les fiches partageables
   circulent en direct — jamais le privé, aperçu avant chaque fusion.
 - Transport : WebRTC via [Trystero](https://github.com/dmotz/trystero)
-  (vendorisé, 58 Ko) ; la signalisation passe par des relais Nostr publics,
-  les données vont de pair à pair, chiffrées. Relais personnalisables via la
-  clé `oc_relays_v1` (utile si un établissement bloque les relais publics).
+  (vendorisé, 59 Ko) ; la signalisation passe par des relais Nostr publics,
+  les données vont de pair à pair, chiffrées. L'écran dit l'étape **prouvée**
+  (relais joints, pair en face, échange reçu) — jamais « à jour » sur la foi
+  de la salle. Réglages avancés : relais personnalisés (`oc_relays_v1`) si
+  un établissement bloque les relais publics, serveur TURN (`oc_turn_v1`)
+  si le réseau bloque le pair-à-pair.
 
 Règle de sens unique : l'interface (`app.js`) appelle le moteur (`engine/`),
 jamais l'inverse — le moteur reçoit des paramètres et rend des valeurs, sans
