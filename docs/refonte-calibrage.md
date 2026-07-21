@@ -237,7 +237,63 @@ ordre, un seul groupe) :
 
 ---
 
-## Prochains forks
+## Décision 9 — Le fil du nouvel arrivant : on apprend en faisant (fork #5)
 
-5. **Le fil du nouvel arrivant** — les tout premiers pas, sans un seul écran
-   d'explication. *(en cours)*
+**Zéro tuto, zéro visite guidée, zéro bulle d'aide.** Les écrans vides + une
+invite au bon moment **sont** l'accueil (cohérent avec la Décision 3).
+
+- **Premier lancement → foncer sur l'ajout d'une piste** (valeur tout de suite).
+  Le profil est demandé **plus tard**, au 1ᵉʳ email seulement — jamais un
+  formulaire « qui es-tu ? » au départ.
+- **« Voir un exemple »** (démo) conservé : montre l'app remplie sans rien lire.
+- Chaque invite = **le prochain geste utile**, au moment où il compte, montré
+  une fois, ignorable, jamais culpabilisant :
+  piste → 1ʳᵉ action (depuis « Aujourd'hui » encore calme) → profil (au 1ᵉʳ
+  email) → « garder une copie » (après quelques pistes).
+
+---
+
+# Fondations calibrées ✓ — et ce qui reste
+
+Les **9 décisions ci-dessus = le squelette + les lois.** C'est le plus dur, et
+c'est fait. Elles ne se re-discutent plus ; tout le reste s'y **applique**.
+
+**Ce qui reste = concevoir chaque écran, un par un, mobile d'abord**, en passant
+chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
+
+## Ce qui reste à concevoir
+
+**Faire :**
+- **Aujourd'hui** — les tranches, la ligne d'action, le dégraissage des rappels
+  (N5), la version desktop (semaine visible + fiche en panneau latéral, C2).
+- **Mes pistes** — ligne (mobile) / carte du tableau (desktop), redondance du
+  statut, bac « à rattacher », clôturées, glisser + équivalent clavier (C9).
+- **La fiche** — contacts, « Compléter », « À savoir », clôture, itinéraire,
+  historique ; c'est là qu'atterrit « Ajouter et compléter » (Décision 7).
+- **Écrire un email** — modèles, variables, **sélecteur CV/LM** (Décision 4),
+  envoi.
+- **Prospecter + Campagnes** — sélection, pistes sans email (N6), la **maison
+  campagnes** dans Mes pistes (Décision 5), feuille du jour, assistant
+  (variables + Compagnon, N7), auto vs manuel.
+- **Échanger** — Donner (QR / fichier), Recevoir (**= camarade seulement**,
+  l'import IA est parti dans la capture), Partage en groupe (assumé ou
+  avancé ?), pont QR desktop→mobile.
+
+**Régler (« Moi ») :**
+- **Profil & données** — mise en écran (profil, modèles, CV/LM, « garder une
+  copie »).
+- **Réglages** — verrou · appareils (quotidien + avancé replié, phrase masquée
+  N11, TURN N10) · connexions (messagerie + tuyauterie IA) · Compagnon.
+
+**Transverse :**
+- **Fin du double-modal** sur desktop (N8).
+- **Montrer au lieu d'expliquer** les concepts à conséquence : privé vs partagé
+  (distinction visuelle), aperçu avant fusion, phrase de liaison.
+- **Verrou déclenché au bon moment** (1ᵉʳ email / 1ʳᵉ connexion), pas en réglage
+  isolé.
+- **Le site séparé** (guide / marketing) — livrable à part (Décisions 3 & 4).
+- **Passe accessibilité clavier** (C9) + **thème sombre** vérifié partout.
+
+**Méthode :** écran par écran, mobile d'abord, vérifié en lançant l'app
+(390 + 1280, clair + sombre, `?test` vert). On peut basculer de *décider* à
+*construire* quand tu veux.
