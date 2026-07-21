@@ -1,7 +1,7 @@
 /* E2E P5 : campagne bout en bout — bifurcation Prospecter, assistant
    (message → contrôle → validation), ligne groupée dans Aujourd'hui,
    feuille du jour, « Tout envoyer » intercepté, arrêt sur réponse. */
-import { chromium, chromiumPath, ROOT, SHOTS } from './outils.mjs';
+import { chromium, chromiumPath, ROOT, SHOTS, attendre } from './outils.mjs';
 import http from 'http';
 import { readFile } from 'fs/promises';
 import path from 'path';
@@ -52,7 +52,7 @@ await page.evaluate(async () => {
     gmail: { token: 'FAKE', exp: Date.now() + 3600000, email: 'mahe@gmail.com' } }));
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length === 3, null, { timeout: 10000 });
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 3, { timeout: 10000 });
 
 /* Prospecter → tout cocher → Continuer → bifurcation */
 await page.goto(base + '/#/pistes');
@@ -140,7 +140,7 @@ await page.evaluate(async () => {
   saveData();
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length === 3, null, { timeout: 10000 });
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 3, { timeout: 10000 });
 await page.goto(base + '/#/aujourdhui');
 await page.waitForTimeout(600);
 const campState = await page.evaluate(async () => {

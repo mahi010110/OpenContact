@@ -1,7 +1,7 @@
 /* E2E P6 : brouillon IA dans le composeur — proposition interceptée,
    texte dans le champ éditable (relecture par construction), erreurs
    quota/clé explicites, gabarit jamais perdu. */
-import { chromium, chromiumPath, ROOT, SHOTS } from './outils.mjs';
+import { chromium, chromiumPath, ROOT, SHOTS, attendre } from './outils.mjs';
 import http from 'http';
 import { readFile } from 'fs/promises';
 import path from 'path';
@@ -56,7 +56,7 @@ await page.evaluate(async () => {
   await st.kvSet(st.AI_KEY, JSON.stringify({ provider: 'anthropic', key: 'sk-test', model: 'claude-haiku-9-test' }));
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length > 0, null, { timeout: 10000 });
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length > 0, { timeout: 10000 });
 
 /* la découverte des modèles rend la liste RÉELLE du fournisseur —
    aucun modèle codé en dur ne subsiste dans le moteur */

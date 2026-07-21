@@ -8,7 +8,7 @@
    rapport et reprend la main.
    Prérequis : `cargo build -p oc-compagnon` fait (tous.mjs le saute
    proprement si le binaire manque). */
-import { chromium, chromiumPath, SHOTS, serveRepo, ROOT } from './outils.mjs';
+import { chromium, chromiumPath, SHOTS, serveRepo, ROOT, attendre as attendrePage } from './outils.mjs';
 import { spawn } from 'child_process';
 import { existsSync, mkdtempSync } from 'fs';
 import net from 'net';
@@ -190,11 +190,11 @@ await page.waitForFunction(() => !!document.querySelector('#sbVer')?.textContent
 await page.evaluate(async () => {
   await (await import('./ui/campagnes.js')).reconcileCompanion();
 });
-await page.waitForFunction(async () => {
+await attendrePage(page, async () => {
   const st = await import('./engine/storage.js');
   const cs = JSON.parse(await st.kvGet(st.CAMPAIGNS_KEY) || '[]');
   return cs.length === 1 && (cs[0].log || []).length === 2;
-}, null, { timeout: 20000 });
+}, { timeout: 20000 });
 await page.goto(base + '/#/aujourdhui');
 await page.waitForSelector('.camp-line');
 await page.waitForFunction(() => /2 envoyés/.test(
@@ -214,11 +214,11 @@ await page.waitForSelector('.modal-f button:has-text("Reprendre")');
 await page.click('.modal-f button:has-text("Reprendre")');
 await page.waitForSelector('#rqPad .pad-k');
 await tapIn('#rqPad', '280941');
-await page.waitForFunction(async () => {
+await attendrePage(page, async () => {
   const { loadCampaigns } = await import('./ui/campagnes.js');
   const cs = await loadCampaigns();
   return cs[0] && !cs[0].auto;
-}, null, { timeout: 10000 });
+}, { timeout: 10000 });
 console.log('reprise en main : la campagne redevient manuelle ✓');
 
 console.log(errors.length ? 'Erreurs console : ' + errors.join(' | ') : 'Zéro erreur console.');

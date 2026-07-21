@@ -2,7 +2,7 @@
    la feuille Filtrer (statut + domaine, grammaire du tri : tap = applique,
    re-tap du bouton actif = tout montrer), et le tableau desktop où déposer
    une carte dans une autre colonne change le statut avec une trace propre. */
-import { chromium, chromiumPath, SHOTS, serveRepo } from './outils.mjs';
+import { chromium, chromiumPath, SHOTS, serveRepo, attendre } from './outils.mjs';
 
 const { server, base } = await serveRepo();
 const browser = await chromium.launch({ executablePath: chromiumPath() });
@@ -27,7 +27,7 @@ const seed = async page => {
   });
   await page.goto(base + '/#/pistes');
   await page.reload({ waitUntil: 'load' });      /* l'état ne se relit qu'au démarrage */
-  await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length === 4);
+  await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 4);
   await page.waitForSelector('#piFilt');
 };
 const names = page => page.evaluate(() =>
@@ -130,13 +130,13 @@ console.log('tableau : glisser change le statut, trace propre, dépôt sur place
 
 /* le rechargement relit ce qui a été écrit (saveData réel, pas un état d’écran) —
    on attend d'abord que l'écriture ait vraiment atteint le stockage */
-await dPage.waitForFunction(async () => {
+await attendre(dPage, async () => {
   const st = await import('./engine/storage.js');
   const data = JSON.parse(await st.kvGet(st.DATA_KEY) || '[]');
   return data.find(x => x.id === 'pi-a')?.status === 'active';
 });
 await dPage.reload({ waitUntil: 'load' });
-await dPage.waitForFunction(async () => {
+await attendre(dPage, async () => {
   const { S } = await import('./ui/state.js');
   return S.companies.find(x => x.id === 'pi-a')?.status === 'active';
 });

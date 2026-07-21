@@ -1,7 +1,7 @@
 /* E2E corrections prioritaires de l'audit UX : aucune action primaire morte,
    parcours Compagnon mobile honnête, relais avancés accessibles, cibles au
    pouce, contact sans doublon et fournisseurs IA non livrés non activables. */
-import { chromium, chromiumPath, SHOTS, serveRepo } from './outils.mjs';
+import { chromium, chromiumPath, SHOTS, serveRepo, attendre } from './outils.mjs';
 
 const { server, base } = await serveRepo();
 const browser = await chromium.launch({ executablePath: chromiumPath() });
@@ -40,7 +40,7 @@ await page.evaluate(async () => {
   await st.kvSet(st.RELAYS_KEY, '[]');
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length === 2);
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 2);
 
 /* F1 : connecté ne signifie pas « envoyable » si la piste n'a pas d'adresse. */
 await page.evaluate(async () => {
@@ -89,7 +89,7 @@ await page.evaluate(async () => {
   await st.kvSet(st.MAIL_KEY, '');
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length === 2);
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 2);
 await page.evaluate(async () => {
   const { openCampaignWizard } = await import('./ui/campagnes.js');
   const { S } = await import('./ui/state.js');
@@ -132,7 +132,7 @@ await page.click('#sySaveRelays');
 await page.waitForFunction(() => /wss:\/\//.test(document.querySelector('#toast')?.textContent || ''));
 await page.fill('#syRelays', 'wss://relay-one.example\nwss://relay-two.example\nwss://relay-one.example');
 await page.click('#sySaveRelays');
-await page.waitForFunction(async () => {
+await attendre(page, async () => {
   const st = await import('./engine/storage.js');
   return JSON.parse(await st.kvGet(st.RELAYS_KEY) || '[]').length === 2;
 });
@@ -141,7 +141,23 @@ const relays = await page.evaluate(async () => {
   return JSON.parse(await st.kvGet(st.RELAYS_KEY));
 });
 if (!relays.every(x => x.startsWith('wss://'))) fail('relais non sûrs enregistrés : ' + relays.join(', '));
-console.log('Compagnon mobile honnête + relais avancés validés ✓');
+/* le serveur TURN se règle au même endroit : mauvaise adresse refusée,
+   bonne adresse rangée (urls/username/credential) sous oc_turn_v1.
+   (l'enregistrement des relais a re-rendu la feuille : le volet
+   « Connexion avancée » se rouvre) */
+await page.click('.sy-relays summary');
+await page.fill('#syTurn', 'wss://pas-un-turn.example');
+await page.click('#sySaveRelays');
+await page.waitForFunction(() => /TURN attendu/.test(document.querySelector('#toast')?.textContent || ''));
+await page.fill('#syTurn', 'turns:turn.exemple.org:443 etudiant secret');
+await page.click('#sySaveRelays');
+await attendre(page, async () => {
+  const st = await import('./engine/storage.js');
+  const t = JSON.parse(await st.kvGet(st.TURN_KEY) || '[]');
+  return t.length === 1 && t[0].urls === 'turns:turn.exemple.org:443' &&
+    t[0].username === 'etudiant' && t[0].credential === 'secret';
+});
+console.log('Compagnon mobile honnête + relais avancés + TURN validés ✓');
 await page.screenshot({ path: SHOTS + '/81-ux-appareils-mobile.png' });
 await closeSheet();
 await browser.close();

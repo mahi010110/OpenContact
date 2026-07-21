@@ -3,7 +3,7 @@
    répond → le Compagnon arrête ses relances tout seul et la PWA
    marque la fiche « réponse » au repli du rapport.
    Sauté proprement si le binaire n'est pas construit. */
-import { chromium, chromiumPath, SHOTS, serveRepo, ROOT } from './outils.mjs';
+import { chromium, chromiumPath, SHOTS, serveRepo, ROOT, attendre as attendrePage } from './outils.mjs';
 import { spawn } from 'child_process';
 import { existsSync, mkdtempSync } from 'fs';
 import net from 'net';
@@ -184,12 +184,12 @@ await page.reload({ waitUntil: 'load' });
 await page.waitForSelector('.lock .pad-k');
 await tapIn('.lock', '280941');
 await page.waitForFunction(() => !document.querySelector('.lock'), null, { timeout: 10000 });
-await page.waitForFunction(async () => {
+await attendrePage(page, async () => {
   const { loadCampaigns } = await import('./ui/campagnes.js');
   const cs = await loadCampaigns();
   const t = cs[0] && cs[0].targets.find(x => x.cid === 'p1');
   return t && t.state === 'replied';
-}, null, { timeout: 20000 });
+}, { timeout: 20000 });
 const rapBrut = await page.evaluate(async () => {
   const { loadCompanion } = await import('./ui/compagnon.js');
   const { probeCompanion, companionCall } = await import('./engine/companion.js');
@@ -200,13 +200,13 @@ const rapBrut = await page.evaluate(async () => {
 if (!Array.isArray(rapBrut.reponses) || !rapBrut.reponses.includes('p1'))
   fail('rapport sans la réponse détectée : ' + JSON.stringify(rapBrut));
 /* chaque sonde relance la réconciliation : convergence garantie */
-await page.waitForFunction(async () => {
+await attendrePage(page, async () => {
   await (await import('./ui/campagnes.js')).reconcileCompanion();
   const st = await import('./engine/storage.js');
   const data = JSON.parse(await st.kvGet(st.DATA_KEY));
   const p = data.find(x => x.id === 'p1');
   return p && p.status === 'reply' && (p.history || []).some(h => /ton ordinateur/.test(h.t || ''));
-}, null, { timeout: 20000, polling: 1200 });
+}, { timeout: 20000, pas: 1200 });
 const fiche = await page.evaluate(async () => {
   const st = await import('./engine/storage.js');
   const data = JSON.parse(await st.kvGet(st.DATA_KEY));

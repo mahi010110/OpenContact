@@ -2,7 +2,7 @@
    adresse visible), envoi intercepté au niveau réseau (jamais de vrai
    Gmail), boucle « Envoyé ✓ — et ensuite ? », jeton expiré → feuille
    Reconnecter SANS perte du brouillon, ligne Connexions dans Moi. */
-import { chromium, chromiumPath, ROOT, SHOTS } from './outils.mjs';
+import { chromium, chromiumPath, ROOT, SHOTS, attendre } from './outils.mjs';
 import http from 'http';
 import { readFile } from 'fs/promises';
 import path from 'path';
@@ -59,7 +59,7 @@ if (!/Gmail — mahe@gmail.com/.test(cxLabel)) fail('ligne Connexions : ' + cxLa
 /* Écrire depuis la fiche : Envoyer primaire + « Depuis » visible */
 await page.goto(base + '/#/pistes');
 await page.waitForSelector('.pi-item, .pl-item, [data-cid], .card', { timeout: 8000 }).catch(() => {});
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length > 0, null, { timeout: 10000 });
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length > 0, { timeout: 10000 });
 await page.evaluate(async () => {
   const { openMail } = await import('./ui/mail.js');
   const { S } = await import('./ui/state.js');
@@ -101,7 +101,7 @@ await page.evaluate(async () => {
   await st.kvSet(st.MAIL_KEY, JSON.stringify(m));
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length > 0, null, { timeout: 10000 });
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length > 0, { timeout: 10000 });
 await page.evaluate(async () => {
   const { openMail } = await import('./ui/mail.js');
   const { S } = await import('./ui/state.js');
@@ -124,7 +124,7 @@ await page.evaluate(async () => {
   await st.kvSet(st.MAIL_KEY, '');
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(async () => (await import('./ui/state.js')).S.companies.length > 0, null, { timeout: 10000 });
+await attendre(page, async () => (await import('./ui/state.js')).S.companies.length > 0, { timeout: 10000 });
 await page.evaluate(async () => {
   const { openMail } = await import('./ui/mail.js');
   const { S } = await import('./ui/state.js');
