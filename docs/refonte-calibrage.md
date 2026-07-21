@@ -111,8 +111,64 @@ c'est le **design** qui a raté : on **redessine**, on n'**annote** pas.
 
 ---
 
+## Décision 5 — IA & campagnes : les orphelins trouvent leur place (fork #3)
+
+**L'IA n'est pas un lieu — elle se dissout.** Personne ne pense « je veux
+utiliser l'IA » ; on pense « ajouter des pistes depuis ma boîte mail ». Donc
+pas de zone « IA » (une case « IA » est une abstraction à décoder — contraire à
+la Décision 3).
+
+- **Actions IA → là où le résultat apparaît.** « Importer mes e-mails → pistes »
+  est **une source de la capture** (« Ajouter une piste → depuis mes e-mails »),
+  pas une entrée de « Recevoir ». Du coup **« Recevoir » redevient net** : ce
+  qu'un *camarade* m'envoie, pas ce que je fouille chez moi. Les propositions de
+  l'assistant = des pistes **à trier** qui remontent dans Aujourd'hui.
+- **Tuyauterie IA → Réglages.** Fournisseurs, clés, autorisation du Compagnon =
+  réglage ponctuel, sous « Moi ».
+
+**Les campagnes = une facette de « Mes pistes ».** Même famille que « où j'en
+suis avec mes pistes ».
+
+- **Lancées** par Prospecter, **gérées** dans un espace « Campagnes » de Mes
+  pistes (desktop-forward : liste des campagnes vivantes, état, pause/arrêt),
+  minimal sur mobile.
+- Les **envois du jour** remontent dans Aujourd'hui comme des actions, **sous**
+  le travail du jour (pas au-dessus), non tronqués.
+- Une campagne a désormais une **maison trouvable**, même quand rien n'est dû.
+  Corrige **N4** (pas de home) et **N5** (rappel qui vole la vedette).
+
+Bénéfice transverse : « Moi » se vide de deux mondes, et le desktop gagne
+enfin de la largeur (colonnes campagnes / Ia-réglages).
+
+---
+
+## Décision 6 — Loi de disponibilité : indisponible = absent
+
+**La règle.** On n'affiche **pas** un contrôle dont la condition n'est pas
+remplie. Ni grisé, ni désactivé, ni « on clique → non » : **absent.** Moins de
+bruit, aucun cul-de-sac. Corrige **C3** et **N9**.
+
+**Le garde-fou (clarté sans trou de découvrabilité) :** on montre **l'action
+disponible la plus proche, jamais l'issue indisponible.**
+
+- Une capacité derrière un pré-requis apparaît **comme son pré-requis** (qui,
+  lui, est disponible), pas comme une version cassée d'elle-même. Ex. : pas de
+  « Connecter » qui refuse → « **Protéger pour connecter ta messagerie** », une
+  étape faisable qui mène à la capacité.
+- **Actions** (Envoyer, Reprendre, commandes d'appareil…) : absentes quand elles
+  ne peuvent pas agir ; c'est l'**état** qui dit ce qui se passe (« prêts —
+  partiront lundi »), de l'*information*, pas de l'*explication* (Décision 3).
+- Pré-requis = **un autre appareil** (Compagnon) : légitimement non proposé sur
+  mobile — exception plateforme de la Décision 1, pas une amputation.
+
+**Trois lois de visibilité** qui se tiennent : **#3** (pas d'explication) ·
+**#6** (indisponible = absent) · **fork #4** à venir (avancé replié). Ensemble :
+*ce qu'on voit est exactement ce qu'on peut faire, maintenant.*
+
+---
+
 ## Prochains forks
 
-3. **Où atterrissent l'IA et les campagnes** — les orphelins. *(en cours)*
-4. **Doctrine de l'avancé** — progressive disclosure (prolonge la Décision 3).
+4. **Doctrine de l'avancé** — progressive disclosure : que replie-t-on, où,
+   comment (prolonge les Décisions 3 & 6).
 5. **Le fil du nouvel arrivant** — les 4 premiers gestes.
