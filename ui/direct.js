@@ -434,18 +434,9 @@ export function openPromo(){
                 <div class="pk-m"><b>${esc(c.name)}</b>${c.city ? `<span>${esc(c.city)}</span>` : ''}</div>
               </button>`).join('')}
          </div>` : ''}`;
-      q('#prSend').addEventListener('click', async () => {
+      q('#prSend').addEventListener('click', () => {
         const list = chosen();
         if (!list.length) return;
-        /* rien ne part sans un OUI explicite : un envoi au groupe est
-           irréversible (impossible de le retirer des autres appareils) et
-           un simple effleurement du bouton ne doit jamais suffire */
-        const ok = await confirmSheet({
-          title: 'Envoyer au groupe ?', okLabel: 'Envoyer', icon: 'share',
-          msg: `<b>${list.length} piste${list.length > 1 ? 's' : ''}</b> ${list.length > 1 ? 'partiront' : 'partira'} vers <b>${peers}</b> camarade${peers > 1 ? 's' : ''}. Seules les fiches partent — jamais ton suivi privé.`
-        });
-        if (!ok) return;
-        if (!room) return;     /* la feuille a pu être quittée pendant la confirmation */
         share.send(sharePayload(list));
         logJ('Donné (partage en groupe) : ' + list.length + ' piste(s)');
         toast('Parti vers ' + peers + ' camarade' + (peers > 1 ? 's' : '') + ' ✓');

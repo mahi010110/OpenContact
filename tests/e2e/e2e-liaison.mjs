@@ -163,19 +163,9 @@ await C.waitForTimeout(5000);
 if (await D.$('.rc-big')) fail('AUTO-ENVOI : D a reçu un aperçu sans que C ait cliqué « Envoyer »');
 console.log('groupe : rien ne part sans clic « Envoyer », même après édition (invariant tenu) ✓');
 
-/* « Envoyer » ne transmet plus sur un simple clic : il DEMANDE confirmation.
-   On annule d'abord — rien ne doit partir. */
+/* clic « Envoyer » → l'envoi part (pas de confirmation : geste direct) */
 await C.waitForSelector('#prSend');
 await C.click('#prSend');
-await C.waitForSelector('.modal-confirm', { timeout: 8000 });
-await C.click('.modal-confirm .btn-ghost');   /* Annuler */
-await C.waitForTimeout(3000);
-if (await D.$('.rc-big')) fail('ENVOI NON CONSENTI : confirmation annulée mais D a reçu');
-console.log('groupe : « Envoyer » demande confirmation ; annulé = rien ne part ✓');
-/* puis on confirme réellement */
-await C.click('#prSend');
-await C.waitForSelector('.modal-confirm', { timeout: 8000 });
-await C.click('.modal-confirm .btn-primary');   /* Envoyer */
 await D.waitForSelector('.rc-big', { timeout: 20000 });
 const recap = (await D.textContent('.rc-big')).trim();
 if (!/25 pistes/.test(recap)) fail('aperçu groupe : ' + recap);
