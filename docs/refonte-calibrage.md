@@ -208,11 +208,36 @@ comme entreprise en un tap. Résout la plupart des cas seuls.
 
 ---
 
+## Décision 8 — L'avancé se replie ; la barre « Affiner » (fork #4)
+
+**Règle (doctrine de l'avancé).** L'essentiel est visible ; l'avancé se replie
+derrière un geste qui se comprend d'un regard (un « Affiner », un « Avancé », un
+chevron) — jamais une phrase. Ce qu'on replie est *rare*, *pour peu de gens*, et
+*non bloquant*. C'est la 3ᵉ loi de visibilité, avec #3 et #6.
+
+**Son cas d'école — la barre de « Mes pistes »** (recherche + filtre + tri +
+ordre, un seul groupe) :
+
+```
+[ 🔍 Chercher…            ] [ Affiner ]
+  À contacter ✕   Complétude ✕            ← seulement quand c'est actif
+```
+
+- **Recherche = le héros visible** du groupe.
+- **Un seul bouton « Affiner »** remplace les 3 icônes muettes → une feuille :
+  filtres (statut, domaine) + tri (liste courte), **même grammaire**. Le tri
+  multi-niveaux « puis par » est **replié** (avancé).
+- **État actif = puces sous la recherche** (`À contacter ✕`, `Complétude ✕`) :
+  un regard suffit ; la croix enlève.
+- **Le sens du tri vit dans la puce** (taper la puce l'inverse ↑/↓) → plus de
+  bouton de sens séparé, plus de réglage en double.
+- Desktop : le tableau segmente déjà le statut → « Affiner » = domaine + tri,
+  mêmes puces.
+- Corrige **N1, N2, N3**.
+
+---
+
 ## Prochains forks
 
-- **La barre « Affiner »** (recherche + filtre + tri + ordre en un groupe) :
-  proposée, **à confirmer** — une recherche visible + un bouton « Affiner » +
-  des puces d'état sous la recherche (le sens du tri vit dans la puce).
-4. **Doctrine de l'avancé** — progressive disclosure : que replie-t-on, où,
-   comment (prolonge les Décisions 3 & 6).
-5. **Le fil du nouvel arrivant** — les 4 premiers gestes.
+5. **Le fil du nouvel arrivant** — les tout premiers pas, sans un seul écran
+   d'explication. *(en cours)*
