@@ -39,7 +39,22 @@ export function chromiumPath(){
   return undefined;               /* Playwright choisit alors son navigateur */
 }
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+/* Attendre qu'une condition évaluée DANS la page devienne vraie.
+   Piège avéré : `page.waitForFunction(async () => …)` ne déballe pas la
+   promesse du prédicat — une promesse en attente est « truthy », l'attente
+   « réussit » donc immédiatement sans rien vérifier. Ce helper évalue
+   réellement (evaluate attend les fonctions async) et ré-essaie. */
+export async function attendre(page, fn, { timeout = 15000, pas = 250, message = '' } = {}){
+  const fin = Date.now() + timeout;
+  for (;;){
+    if (await page.evaluate(fn)) return;
+    if (Date.now() > fin)
+      throw new Error('attendre() : délai dépassé (' + timeout + ' ms)' + (message ? ' — ' + message : ''));
+    await new Promise(r => setTimeout(r, pas));
+  }
+}
+
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.txt': 'text/plain' };
 export async function serveRepo(){

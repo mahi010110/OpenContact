@@ -23,6 +23,7 @@ doit être repensée, pas forcée.
 | `oc_tombs_v1` | Suppressions (tombstones, 500 max) — font voyager les suppressions entre MES appareils | JSON : tableau `{id, t}` |
 | `oc_sync_v1` | Phrase de liaison de mes appareils | chaîne |
 | `oc_relays_v1` | Relais P2P personnalisés (optionnel — vide = relais publics) | JSON : tableau d'URLs |
+| `oc_turn_v1` | Serveurs TURN personnalisés (optionnel — pour les réseaux qui bloquent le pair-à-pair ; identifiants obligatoires — RTCPeerConnection refuse `turn:` sans eux — et scellés comme les relais) | JSON : tableau `{urls, username, credential}` |
 | `oc_device_v1` | Cet appareil — identité annoncée à la sync | JSON : `{id, name}` |
 | `oc_devices_v1` | Appareils reliés déjà vus (12 max, consultables et élagables) | JSON : tableau `{id, name, seen}` |
 | `oc_promo_v1` | Dernier mot de passe de partage en groupe (confort de saisie) | chaîne |
@@ -225,6 +226,11 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    change rien, et deux appareils arrivent au même état quel que soit l'ordre.
 5. La phrase de liaison ne transite jamais en clair : la salle P2P porte un
    hash, les données sont chiffrées de bout en bout.
+5 bis. **L'état affiché est prouvé** (incident #14) : créer la salle ne vaut
+   pas connexion. L'interface distingue relais joints (`getRelaySockets`),
+   pair annoncé mais liaison directe en échec (`onJoinError`), pair
+   connecté, et n'annonce « à jour » qu'après un échange réellement reçu
+   (`engine/transport.js::liaisonStage`, vérifié par `?test`).
 6. Le **partage en groupe** (ex-« salle de promo » — le préfixe technique
    `promo-` et la clé `oc_promo_v1` ne changent pas), lui, passe exclusivement par `sharePayload`
    (vue communautaire, §3) et l'aperçu avant fusion (§4) — mêmes règles que
@@ -240,7 +246,7 @@ appartiennent à la même personne (`engine/sync.js`, transport P2P chiffré).
    exige une génération strictement supérieure, et se vérifie hors ligne.
    La commande **effacer** (`wipe`) emporte TOUT ce qui est à
    l'utilisateur sur l'appareil visé : données, profil, journal, bac,
-   tombstones, phrase de liaison, relais, identité d'appareil, appareils
+   tombstones, phrase de liaison, relais, serveurs TURN, identité d'appareil, appareils
    vus, anneau, coffre, campagnes, jetons de messagerie, clés d'IA,
    missions, propositions de l'assistant (`oc_proposals_v1`), et les
    documents (`cv`, `lettre`) de `oc_docs_v1`.

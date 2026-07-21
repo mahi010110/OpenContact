@@ -14,7 +14,7 @@ import { encryptOC2 } from '../engine/crypto.js';
 import { S, isClosed, logJ } from './state.js';
 import { openSheet, toast, btn, ic } from './dom.js';
 import { sortState, sortArgs, sortBarHTML, bindSortBar } from './sort.js';
-import { openRoom } from './synclive.js';
+import { openRoom, watchLiaison } from './synclive.js';
 import { makeQrSvg } from './qr.js';
 
 const QR_HARD_MAX = 1800;     /* caractères par QR : au-delà, rendez-vous P2P ou QR animé */
@@ -29,8 +29,12 @@ export function openDonner(){
   const chosen = () => alive().filter(c => !unsel.has(c.id));
   /* salle de rendez-vous éventuelle : fermée à chaque changement d'écran */
   let room = null;
+  let rdvWatch = null;     /* honnêteté de la liaison du rendez-vous */
   let gen = 0;
-  const leaveRdv = () => { if (room){ try { room.leave(); } catch (e) {} room = null; } };
+  const leaveRdv = () => {
+    if (rdvWatch){ rdvWatch.stop(); rdvWatch = null; }
+    if (room){ try { room.leave(); } catch (e) {} room = null; }
+  };
   const enter = () => { gen++; leaveRdv(); return gen; };
   const sh = openSheet({ title: 'Donner', icon: 'share', onClose: () => { gen++; leaveRdv(); } });
   const q = s => sh.body.querySelector(s);
@@ -116,7 +120,17 @@ export function openDonner(){
   const stepQRData = async (compact, n) => {
     const my = enter();
     const parts = compact.length > QR_HARD_MAX ? splitOCQ(compact) : [compact];
-    const svgs = await Promise.all(parts.map(makeQrSvg));
+    let svgs;
+    try {
+      svgs = await Promise.all(parts.map(makeQrSvg));
+    } catch (e) {
+      /* générateur indisponible : un écran bloqué sans un mot n'est
+         pas une réponse — le fichier marche toujours */
+      if (my !== gen) return;
+      toast('Le QR n’est pas disponible ici — passe par le fichier.');
+      stepFile();
+      return;
+    }
     if (my !== gen) return;
     sh.setTitle(`QR — ${n} piste${n > 1 ? 's' : ''}`);
     sh.body.innerHTML =
@@ -151,24 +165,42 @@ export function openDonner(){
     sh.setFoot([btn('← Retour', 'btn-ghost', stepHow)]);
     const code = makeRdvCode();
     let r, svg;
+    let sent = 0;
+    /* l'attente dit l'étape prouvée — relais morts ou liaison directe
+       en échec basculent d'eux-mêmes vers le repli affiché */
+    const w = watchLiaison(() => sent, stage => {
+      if (my !== gen || sent) return;
+      const el = q('#dnRdvSt');
+      if (!el) return;
+      if (stage === 'norelay')
+        el.innerHTML = `${ic('square-alert', 'ic-14')} Aucun relais joignable — passe par le QR hors ligne ci-dessous.`;
+      else if (stage === 'rtcfail')
+        el.innerHTML = `${ic('square-alert', 'ic-14')} L’autre appareil est en vue, mais la liaison échoue — QR hors ligne ci-dessous.`;
+      else if (stage === 'wait')
+        el.innerHTML = `${ic('clock', 'ic-14')} En attente de l’autre appareil…`;
+      else
+        el.innerHTML = `${ic('clock', 'ic-14')} Connexion aux relais…`;
+    });
     try {
-      [r, svg] = await Promise.all([openRoom('give', rdvNorm(code)), makeQrSvg(rdvWrap(code))]);
+      [r, svg] = await Promise.all([openRoom('give', rdvNorm(code), { onJoinError: () => w.fail() }),
+        makeQrSvg(rdvWrap(code))]);
     } catch (e) {
+      w.stop();
       if (my === gen) fallback();
       return;
     }
-    if (my !== gen){ try { r.leave(); } catch (e) {} return; }
+    if (my !== gen){ w.stop(); try { r.leave(); } catch (e) {} return; }
     room = r;
+    rdvWatch = w;
     sh.body.innerHTML =
       `<div class="qr-wrap" role="img" aria-label="QR de rendez-vous">${svg}</div>
        <div class="sy-phrase"><span>${esc(code)}</span></div>
-       <div class="qr-prog" id="dnRdvSt">${ic('clock', 'ic-14')} En attente de l’autre appareil…</div>
+       <div class="qr-prog" id="dnRdvSt">${ic('clock', 'ic-14')} Connexion aux relais…</div>
        <p class="hint" style="text-align:center">L’autre personne : <b>Recevoir → Scanner</b> — ou tape ce code.</p>
        <button class="linklike" id="dnOffline" style="display:flex;margin:6px auto 0">Sans réseau ? QR hors ligne</button>`;
     q('#dnOffline').addEventListener('click', fallback);
     const give = room.makeAction('give');
     const payload = sharePayload(chosen());
-    let sent = 0;
     room.onPeerJoin = () => {
       give.send(payload);
       sent++;

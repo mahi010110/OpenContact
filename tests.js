@@ -19,9 +19,10 @@ import { syncMerge, mergeTombs, TOMBS_MAX } from './engine/sync.js';
 import { filterCompanies, NATURAL_DIR } from './engine/filter.js';
 import { scoreOf } from './engine/score.js';
 import { DATA_KEY, PROFILE_KEY, JOURNAL_KEY, ORPHANS_KEY, TOMBS_KEY, SYNC_KEY,
-         RELAYS_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, VAULT_KEY,
+         RELAYS_KEY, TURN_KEY, DEVICE_KEY, DEVICES_KEY, PROMO_KEY, VAULT_KEY,
          ANALYSIS_KEY, SEALABLE, THEME_KEY, VIEW_KEY, OLD_V2, OLD_V1,
          kvGet, kvSet, kvDel, vaultActive, vaultDetach, vaultReseal } from './engine/storage.js';
+import { relayTally, liaisonStage, parseTurn, turnText, TURN_MAX } from './engine/transport.js';
 import { VAULT_WORDS, PHRASE_LEN, makeVaultPhrase, normVaultPhrase, phraseUnknownWords,
          createVault, unlockWithPin, unlockWithPhrase, unlockWithPrf,
          setPin, addPrfWrap, rotateVault,
@@ -225,6 +226,47 @@ export async function runSelfTests(){
       eq(r.companies[0].name, 'Y');
     },
 
+    /* — l'état honnête d'une liaison P2P (incident #14) — */
+    'transport : relayTally compte les sockets par état': () => {
+      eq(relayTally(null), { total: 0, open: 0, pending: 0 });
+      eq(relayTally({}), { total: 0, open: 0, pending: 0 });
+      eq(relayTally({
+        a: { readyState: 1 }, b: { readyState: 0 }, c: { readyState: 3 }, d: null
+      }), { total: 3, open: 1, pending: 1 });
+    },
+    'transport : la salle seule ne vaut jamais « à jour »': () => {
+      const base = { relays: { total: 5, open: 0 }, peers: 0, exchanged: false, rtcFail: false, graceOver: false };
+      /* démarrage : relais pas encore ouverts = connexion, pas une promesse */
+      eq(liaisonStage(base), 'connecting');
+      /* aucun relais passé le délai de grâce = panne DITE */
+      eq(liaisonStage({ ...base, graceOver: true }), 'norelay');
+      /* relais joints, personne en face = attente honnête */
+      eq(liaisonStage({ ...base, relays: { total: 5, open: 2 } }), 'wait');
+      /* pair annoncé mais WebRTC en échec = dit aussi */
+      eq(liaisonStage({ ...base, relays: { total: 5, open: 2 }, rtcFail: true }), 'rtcfail');
+      /* …sauf si les relais sont morts : la panne amont prime */
+      eq(liaisonStage({ ...base, rtcFail: true, graceOver: true }), 'norelay');
+      /* pair connecté SANS échange reçu = liaison, pas « à jour » */
+      eq(liaisonStage({ ...base, relays: { total: 5, open: 2 }, peers: 1 }), 'link');
+      /* « à jour » exige pair + échange réellement reçu */
+      eq(liaisonStage({ ...base, relays: { total: 5, open: 2 }, peers: 1, exchanged: true }), 'on');
+    },
+    'transport : parseTurn accepte le bon, refuse le reste': () => {
+      eq(parseTurn(''), []);
+      eq(parseTurn('turns:r.exemple.org:443 moi secret'),
+        [{ urls: 'turns:r.exemple.org:443', username: 'moi', credential: 'secret' }]);
+      eq(turnText(parseTurn('turns:a.fr:443 u p\nturn:b.fr:3478 v q')), 'turns:a.fr:443 u p\nturn:b.fr:3478 v q');
+      let e1 = ''; try { parseTurn('wss://pas-turn.fr u p'); } catch (e) { e1 = e.message; }
+      eq(e1, 'adresse');
+      /* RTCPeerConnection refuse turn: sans identifiants — parseTurn aussi */
+      let e2 = ''; try { parseTurn('turn:a.fr:3478'); } catch (e) { e2 = e.message; }
+      eq(e2, 'adresse');
+      let e3 = ''; try { parseTurn('turn:a.fr un deux trois'); } catch (e) { e3 = e.message; }
+      eq(e3, 'adresse');
+      let e4 = ''; try { parseTurn(Array.from({ length: TURN_MAX + 1 }, (x, i) => 'turn:h' + i + '.fr u p').join('\n')); } catch (e) { e4 = e.message; }
+      eq(e4, 'quatre');
+    },
+
     /* — tests de contrat (CONTRAT.md) : ce qui ne doit JAMAIS casser — */
     'contrat : clés de stockage inchangées': () => {
       eq(DATA_KEY, 'oc_data_v3');
@@ -234,6 +276,8 @@ export async function runSelfTests(){
       eq(TOMBS_KEY, 'oc_tombs_v1');
       eq(SYNC_KEY, 'oc_sync_v1');
       eq(RELAYS_KEY, 'oc_relays_v1');
+      eq(TURN_KEY, 'oc_turn_v1');
+      ok(SEALABLE.has(TURN_KEY));   /* des identifiants TURN se scellent comme les relais */
       eq(DEVICE_KEY, 'oc_device_v1');
       eq(DEVICES_KEY, 'oc_devices_v1');
       eq(PROMO_KEY, 'oc_promo_v1');

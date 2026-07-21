@@ -8,7 +8,17 @@ jour volontaire = fichier modifié → à investiguer.
 
 jsQR.js                    MIT   sha256 bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859
 qrcode-generator.mjs       MIT   sha256 e4e021710660c0426e4bad9436a96dafa688b50ec7e0c4dbd773ba18108de5b8
-trystero-nostr.min.js      MIT   sha256 4994d99a2da1ffd5e41ed9d39035d7b8bb77e01da272ba61116d500776213013
+trystero-nostr.min.js      MIT   sha256 1df45817ad892a529b37b012be2b2bbfbceec3284f8e2c6f8ea636dc4622d15a
+
+trystero-nostr.min.js : construit depuis trystero 0.25.3 (npm, alias
+@trystero-p2p/nostr) avec esbuild —
+  entrée : export { joinRoom, selfId, getRelaySockets, defaultRelayUrls }
+           from '@trystero-p2p/nostr';
+  esbuild entree.mjs --bundle --minify --format=esm --target=es2020
+          --legal-comments=eof --outfile=trystero-nostr.min.js
+Les exports getRelaySockets / defaultRelayUrls servent l'état honnête de
+la liaison (incident #14) : l'app sonde les WebSockets des relais au lieu
+de croire la salle sur parole.
 
 À la prochaine mise à jour d'une lib : remplacer le fichier, sa licence
 si besoin, et l'empreinte ci-dessus dans le même commit.

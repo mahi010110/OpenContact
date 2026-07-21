@@ -47,8 +47,18 @@ if (!/OpenContact/.test(await page.title()) || (await page.title()) === 'OpenCon
   fail('navigation normale : l’app n’est plus servie — titre : ' + await page.title());
 console.log('navigation normale : l’app répond ✓');
 
+/* 5. hors ligne POUR DE VRAI : le serveur meurt, l'app doit revivre du
+   cache au rechargement — pas une émulation que le SW contournerait */
+await new Promise(r => { server.close(() => r()); server.closeAllConnections?.(); setTimeout(r, 1500); });
+await page.reload({ waitUntil: 'load' }).catch(() => fail('rechargement hors ligne : la page n’a pas chargé'));
+/* #sbVer existe vide dans le HTML : attendre que l'amorçage l'ait rempli */
+await page.waitForFunction(() => /^\d+\.\d+/.test(document.querySelector('#sbVer')?.textContent.trim() || ''),
+  null, { timeout: 15000 }).catch(() => fail('app hors ligne incomplète — amorçage inachevé'));
+const vers = (await page.textContent('#sbVer')).trim();
+if (!await page.$('.bottomnav')) fail('app hors ligne : navigation absente');
+console.log('serveur coupé → rechargement : l’app revit du cache (v' + vers.trim() + ') ✓');
+
 console.log(errors.length ? 'Erreurs console : ' + errors.join(' | ') : 'Zéro erreur console.');
 if (errors.length) process.exitCode = 1;
 await browser.close();
-server.close();
 console.log(process.exitCode ? 'E2E oauth-sw : ÉCHEC' : 'E2E oauth-sw : OK');

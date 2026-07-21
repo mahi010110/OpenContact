@@ -1,11 +1,16 @@
 # OpenContact — intégration continue.
-# Trois signaux séparés, du plus rapide au plus complet :
+# Quatre signaux séparés, du plus rapide au plus complet :
 #  · pwa        : les auto-tests unitaires (?test) dans un vrai Chromium ;
+#  · transport  : la sonde des relais Nostr publics réellement choisis par
+#                 l'app — la CI rougit si le transport public est mort (#14) ;
 #  · compagnon  : cargo test --locked + build release du binaire natif ;
 #  · scenarios  : la suite de bout en bout entière (tests/e2e/tous.mjs),
 #                 scénarios natifs compris — elle reconstruit le binaire
-#                 et le pilote sous xvfb, comme en développement.
-# Aucun secret requis : tout tourne contre des doubles locaux.
+#                 et le pilote sous xvfb, comme en développement ; la
+#                 liaison P2P y est jouée avec deux vrais navigateurs et
+#                 un relais Nostr local (e2e-liaison.mjs).
+# Aucun secret requis : tout tourne contre des doubles locaux, sauf la
+# sonde transport qui parle volontairement au monde réel.
 name: CI
 
 on:
@@ -13,8 +18,22 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1,4'   # lundi & jeudi : le transport public se surveille même sans commit
 
 jobs:
+  transport:
+    name: Transport public — relais joignables
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Sonde des relais réellement choisis par l'app
+        run: OC_SONDE_RELAIS=1 node tests/e2e/sonde-relais-publics.mjs
+
   pwa:
     name: PWA — auto-tests unitaires
     runs-on: ubuntu-latest
