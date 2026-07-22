@@ -78,13 +78,13 @@ format bouge · commit français focalisé.
 
 ### Phase 2 — les écrans « faire », mobile d'abord
 
-- [ ] **2.1 Aujourd'hui (#10)** — ordre : ✓ N faites · EN RETARD ·
+- [x] **2.1 Aujourd'hui (#10)** *(livré)* — ordre : ✓ N faites · EN RETARD ·
   AUJOURD'HUI · campagnes du jour (sous, jamais tronquées) · ⌄ Bientôt ·
   **« À trier (N) »** (une ligne calme qui regroupe reçu promo +
   propositions + analyse + contacts à rattacher). Desktop : liste + fiche
   en **panneau latéral** (mécanisme partagé, `ui/dom.js`).
   Fichiers : `ui/today.js`, `ui/dom.js` (panneau), `styles/app.css`.
-- [ ] **2.2 Mes pistes (#13) + « Affiner » (#8)** — statut une seule fois
+- [x] **2.2 Mes pistes (#13) + « Affiner » (#8)** *(livré — e2e pistes vert)* — statut une seule fois
   (pastille texte+couleur) ; recherche héros + **un bouton « Affiner »**
   (feuille filtres + tri, même grammaire, multi-niveaux replié) ; état
   actif = **puces retirables** sous la recherche, le sens du tri vit dans

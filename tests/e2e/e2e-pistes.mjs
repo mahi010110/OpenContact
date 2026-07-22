@@ -1,7 +1,8 @@
-/* E2E « Mes pistes » — filtres exposés et statut au glisser (plan v7 §2) :
-   la feuille Filtrer (statut + domaine, grammaire du tri : tap = applique,
-   re-tap du bouton actif = tout montrer), et le tableau desktop où déposer
-   une carte dans une autre colonne change le statut avec une trace propre. */
+/* E2E « Mes pistes » — la barre « Affiner » (#8) et le statut au glisser :
+   une seule feuille (filtres + tri, même grammaire : tap = applique),
+   l'état actif en puces retirables sous la recherche (le sens du tri vit
+   dans la puce), et le tableau desktop où déposer une carte dans une
+   autre colonne change le statut avec une trace propre. */
 import { chromium, chromiumPath, SHOTS, serveRepo, attendre } from './outils.mjs';
 
 const { server, base } = await serveRepo();
@@ -28,7 +29,7 @@ const seed = async page => {
   await page.goto(base + '/#/pistes');
   await page.reload({ waitUntil: 'load' });      /* l'état ne se relit qu'au démarrage */
   await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 4);
-  await page.waitForSelector('#piFilt');
+  await page.waitForSelector('#piAffiner');
 };
 const names = page => page.evaluate(() =>
   [...document.querySelectorAll('#piBody .row-item h3, #piBody .bcard b')].map(n => n.textContent).sort());
@@ -39,7 +40,7 @@ const mPage = await mCtx.newPage();
 watchErrors(mPage);
 await seed(mPage);
 
-await mPage.click('#piFilt');
+await mPage.click('#piAffiner');
 await mPage.waitForSelector('.fl-chip');
 const chipH = await mPage.evaluate(() =>
   document.querySelector('.fl-chip').getBoundingClientRect().height);
@@ -51,21 +52,30 @@ if (String(await names(mPage)) !== 'CyberVille,Cyberdef') fail('filtre domaine f
 await mPage.click('[data-st="active"]');
 await mPage.waitForFunction(() => document.querySelectorAll('#piBody .row-item').length === 1);
 if (String(await names(mPage)) !== 'CyberVille') fail('filtre statut + domaine faux : ' + await names(mPage));
+/* le tri vit dans la même feuille — le choisir pose la puce, re-taper
+   le critère actif inverse son sens */
+await mPage.click('[data-sort-set="az"]');
 await mPage.screenshot({ path: SHOTS + '/85-pistes-filtre-mobile.png' });
 await mPage.evaluate(async () => (await import('./ui/dom.js')).topSheet()?.close());
 
-const filtBtn = await mPage.evaluate(() => {
-  const b = document.querySelector('#piFilt');
-  return { on: b.classList.contains('sort-on'), title: b.title };
-});
-if (!filtBtn.on || !/retaper/.test(filtBtn.title)) fail('bouton filtre muet : ' + JSON.stringify(filtBtn));
-await mPage.click('#piFilt');       /* re-tap sur l'actif = tout montrer, sans feuille */
+/* l'état actif = des puces sous la recherche, la croix enlève */
+const chips = await mPage.evaluate(() =>
+  [...document.querySelectorAll('#piChips .st-chip-b')].map(b => b.textContent.trim()));
+if (chips.length !== 3) fail('3 puces attendues (statut, domaine, tri) : ' + JSON.stringify(chips));
+if (!/A → Z ↑/.test(chips[2])) fail('la puce de tri porte son sens : ' + chips[2]);
+await mPage.click('#piChips [data-sort-flip]');
+await mPage.waitForFunction(() =>
+  /↓/.test(document.querySelector('#piChips [data-sort-flip]')?.textContent || ''));
+await mPage.click('#piChips [data-sort-clear]');
+await mPage.waitForFunction(() =>
+  document.querySelectorAll('#piChips .st-chip').length === 2);
+await mPage.evaluate(() => document.querySelectorAll('#piChips .st-chip-x').forEach(x => x.click()));
 await mPage.waitForFunction(() => document.querySelectorAll('#piBody .row-item').length === 4);
-if (await mPage.$('#piFilt.sort-on')) fail('le re-tap doit éteindre le filtre');
-console.log('filtres mobiles : domaine + statut combinés, re-tap remontre tout ✓');
+if (await mPage.$('#piChips .st-chip')) fail('les croix doivent tout enlever');
+console.log('Affiner mobile : filtres + tri combinés, puces retirables, sens dans la puce ✓');
 
 /* filtre sans résultat : l'écran explique et offre le retour en un tap */
-await mPage.click('#piFilt');
+await mPage.click('#piAffiner');
 await mPage.waitForSelector('[data-dom="sante"]');
 await mPage.click('[data-dom="sante"]');
 await mPage.evaluate(async () => (await import('./ui/dom.js')).topSheet()?.close());
@@ -85,15 +95,15 @@ await seed(dPage);
 await dPage.waitForSelector('.board');
 
 /* la feuille desktop ne repropose pas le statut : les colonnes le font déjà */
-await dPage.click('#piFilt');
+await dPage.click('#piAffiner');
 await dPage.waitForSelector('.fl-chip');
 if (await dPage.$('.fl-chip[data-st="todo"]')) fail('le statut ne se filtre pas sur le tableau (colonnes)');
 await dPage.click('[data-dom="cyber"]');
 await dPage.waitForFunction(() => document.querySelectorAll('#piBody .bcard').length === 2);
 await dPage.evaluate(async () => (await import('./ui/dom.js')).topSheet()?.close());
-await dPage.click('#piFilt');
+await dPage.click('#piChips .st-chip-x');
 await dPage.waitForFunction(() => document.querySelectorAll('#piBody .bcard').length === 4);
-console.log('filtre desktop : domaine seul, appliqué au tableau ✓');
+console.log('Affiner desktop : domaine seul, appliqué au tableau, puce retirable ✓');
 
 /* déposer « Cyberdef » (À contacter) dans « En cours » : la colonne
    s'allume au survol, le statut change, une entrée d'historique propre */
@@ -145,7 +155,7 @@ console.log('statut déposé relu après rechargement ✓');
 /* thème sombre : mêmes écrans, rien ne disparaît */
 await dPage.emulateMedia({ colorScheme: 'dark' });
 await dPage.evaluate(() => { document.documentElement.dataset.theme = 'dark'; });
-await dPage.click('#piFilt');
+await dPage.click('#piAffiner');
 await dPage.waitForSelector('.fl-chip');
 await dPage.waitForTimeout(350);     /* fin du fondu d'entrée de la feuille */
 await dPage.screenshot({ path: SHOTS + '/87-pistes-filtre-sombre.png' });

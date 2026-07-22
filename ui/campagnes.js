@@ -18,7 +18,7 @@ import { CAMPAIGNS_KEY, MISSIONS_KEY, kvGet, kvSet } from '../engine/storage.js'
 import { makeMission, signMission } from '../engine/mission.js';
 import { probeCompanion, companionCall } from '../engine/companion.js';
 import { S, bus, saveData, logJ, isClosed } from './state.js';
-import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
+import { openSheet, openPanel, confirmSheet, toast, btn, ic } from './dom.js';
 import { mailAccount, freshToken, openConnexions } from './connexions.js';
 import { requireCode } from './verrou.js';
 import { loadCompanion } from './compagnon.js';
@@ -268,6 +268,39 @@ export function campaignLines(){
 export function openCampaignById(id){
   const c = all().find(x => x.id === id);
   if (c) openCampaignDay(c);
+}
+
+/* ---------- la maison des campagnes (#13) ----------
+   « Prospecter = lancer, Campagnes = gérer » : la liste des campagnes
+   vivantes avec leur état, même quand rien n'est dû aujourd'hui (N4).
+   L'accès n'existe que s'il y en a (loi #6). */
+export const liveCampaignsCount = () => live().length;
+export function openCampaignsHome(){
+  const wide = matchMedia('(min-width:901px)').matches;
+  const sh = (wide ? openPanel : openSheet)({ title: 'Campagnes', icon: 'flag' });
+  if (!sh) return;
+  const stateTxt = c => c.state === 'paused' ? 'en pause'
+    : c.auto ? 'ton ordinateur s’en occupe' : 'en cours';
+  const render = () => {
+    const list = live();
+    if (!list.length){ sh.close(); return; }
+    sh.body.innerHTML =
+      `<div class="pick-list">${list.map(c => {
+         const st = campaignStats(c);
+         return `<button class="pick" data-cid="${esc(c.id)}">
+                   <b>${ic('flag', 'ic-14')} ${esc(c.name)}</b>
+                   <span>${stateTxt(c)} · ${st.sent} envoyé${st.sent > 1 ? 's' : ''} · ${st.replied} réponse${st.replied > 1 ? 's' : ''} · ${st.targets} piste${st.targets > 1 ? 's' : ''}</span>
+                 </button>`;
+       }).join('')}</div>`;
+    sh.body.querySelectorAll('[data-cid]').forEach(b =>
+      b.addEventListener('click', () => {
+        const c = all().find(x => x.id === b.dataset.cid);
+        if (!c) return;
+        if (!wide) sh.close();
+        openCampaignDay(c);
+      }));
+  };
+  render();
 }
 
 /* ---------- l'assistant : Prospecter → « En campagne » ---------- */

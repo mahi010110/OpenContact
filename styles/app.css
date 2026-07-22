@@ -211,6 +211,33 @@ html[data-theme="dark"] .field select{
 .listbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .listbar .linklike,.listbar>span{flex:1;min-width:0}
 /* feuille « Trier » : la pile des niveaux (principal + départages) */
+/* puces d'état sous la recherche (#8) — la croix enlève, la puce de tri
+   s'inverse au tap ; le sens vit dans la puce */
+.chips-row{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 12px}
+.st-chip{
+  display:inline-flex;align-items:stretch;
+  background:var(--surface-chrome);border:1px solid var(--border-strong);
+  border-radius:var(--radius-1);box-shadow:var(--bevel-up);
+}
+.st-chip-b,.st-chip-x{
+  display:inline-flex;align-items:center;gap:6px;padding:4px 9px;min-height:32px;
+  font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-body);cursor:pointer;
+}
+.st-chip-b .dotc{width:8px;height:8px;border:1px solid var(--border-strong);flex:none}
+.st-chip-x{border-left:1px solid var(--border-soft);color:var(--text-muted);padding:4px 8px}
+.st-chip-x:active,.st-chip-b:active{box-shadow:var(--bevel-down)}
+/* le « puis par » (avancé) se replie dans la section Trier */
+.srt-adv{margin:2px 0 14px}
+.srt-adv>summary{
+  cursor:pointer;user-select:none;list-style:none;
+  font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted);
+  min-height:28px;display:flex;align-items:center;gap:6px;
+}
+.srt-adv>summary::-webkit-details-marker{display:none}
+.srt-adv>summary::before{content:'▸';font-size:9px}
+.srt-adv[open]>summary::before{content:'▾'}
+.srt-adv[open]>summary{margin-bottom:8px}
+.srt-dir{font-family:var(--font-mono)}
 .srt-stack{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .srt-lv{
   display:flex;align-items:center;gap:8px;min-height:var(--ctl);
