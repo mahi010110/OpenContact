@@ -81,26 +81,34 @@ export function openAddCompanion(onDone){
   const q = s => sh.body.querySelector(s);
 
   const stepIntro = async () => {
-    if (!isProtected()){
-      sh.body.innerHTML =
-        `<p class="hint" style="margin:0 0 12px">Le Compagnon garde des accès sensibles :
-           protège d’abord tes données — un code, une phrase, deux minutes.</p>`;
-      sh.setFoot([btn('Protéger mes données', 'btn-primary', () => { sh.close(); openProtectFlow(); })]);
-      return;
-    }
-    if (!(await amMain())){
-      sh.body.innerHTML =
-        `<p class="hint" style="margin:0 0 12px">Seul ton appareil principal peut associer le Compagnon.</p>`;
-      sh.setFoot([btn('Fermer', '', () => sh.close())]);
-      return;
-    }
-    /* déjà là ? on saute l'installation ; sinon, on la guide */
+    /* déjà là ? on saute l'installation ; sinon, on la guide.
+       Télécharger ne demande rien : le verrou n'est exigé qu'au
+       moment où il sert — l'association (N9, #22). */
     sh.body.innerHTML = `${whyHTML()}
       <p class="hint" style="margin-top:10px">${ic('clock', 'ic-14')} Recherche sur cet ordinateur…</p>`;
     sh.setFoot(null);
     const found = await probeCompanion();
     if (found) stepFound(found);
     else stepInstall();
+  };
+
+  /* l'association écrit des clés : protégé, et depuis le principal */
+  const gateAssoc = async () => {
+    if (!isProtected()){
+      sh.setTitle('Protéger pour associer');
+      sh.body.innerHTML =
+        `<p class="hint" style="margin:0 0 12px">Le Compagnon est là ✓ — l’associer lui confie
+           des accès sensibles : protège d’abord tes données. Un code, une phrase, deux minutes.</p>`;
+      sh.setFoot([btn('Protéger mes données', 'btn-primary', () => { sh.close(); openProtectFlow(); })]);
+      return false;
+    }
+    if (!(await amMain())){
+      sh.body.innerHTML =
+        `<p class="hint" style="margin:0 0 12px">Seul ton appareil principal peut associer le Compagnon.</p>`;
+      sh.setFoot([btn('Fermer', '', () => sh.close())]);
+      return false;
+    }
+    return true;
   };
 
   /* installer : le bon fichier pour CE système, sans fouiller nulle part */
@@ -148,7 +156,8 @@ export function openAddCompanion(onDone){
     stepFound(found);
   };
 
-  const stepFound = found => {
+  const stepFound = async found => {
+    if (!await gateAssoc()) return;
     if (!found.info.appairage){
       sh.body.innerHTML =
         `<p class="hint" style="margin:0 0 12px"><b>${esc(found.info.nom || 'Compagnon')}</b> est là ✓ —

@@ -126,17 +126,25 @@ format bouge · commit français focalisé.
 
 ### Phase 3 — Réglages en détail (#21)
 
-- [ ] **3.1 Cinq lignes claires** — Protection · Mes appareils · Ma
-  messagerie · Mon assistant IA · Le Compagnon (ligne visible + bouton
-  Télécharger sur ordinateur / « Copier le lien » sur téléphone).
-  Explication **sur le 2ᵉ écran** seulement ; voix humaine.
-  Fichiers : `ui/reglages.js`, `ui/connexions.js` (éclaté messagerie/IA),
-  `ui/compagnon.js`, `engine/distribution.js`.
-- [ ] **3.2 Ranger l'expert** — TURN + commandes d'appareils repliés
-  (N10) ; **phrase de liaison masquée** par défaut (N11) ; fini
-  « Connecter → non » : « Protéger pour connecter ta messagerie » (N9),
-  protection intégrée au flux.
-  Fichiers : `ui/direct.js`, `ui/connexions.js`, `ui/verrou.js`.
+- [x] **3.1 Cinq lignes claires** *(livré — sonde 390/1280, clair/sombre,
+  e2e compagnon + compagnon-ia + ux-audit verts)* — Protection · Mes
+  appareils · Ma messagerie · Mon assistant IA · Le Compagnon. La ligne
+  Compagnon a un **vrai bouton** : « Télécharger » sur ordinateur (mène au
+  téléchargement réel, sans verrou — la garde n'arrive qu'à l'association),
+  « Copier le lien » sur téléphone (copie immédiate + toast). « Connexions »
+  éclaté : `openConnexions` = Ma messagerie seule, `openAssistantIA` = sa
+  propre porte (`#moiAi` recâblé). Explication **sur le 2ᵉ écran** seulement.
+  Fichiers : `ui/moi.js` (lignes de Réglages), `ui/connexions.js`,
+  `ui/compagnon.js`, `sw.js` (oc-v47).
+- [x] **3.2 Ranger l'expert** *(livré)* — TURN + commandes d'appareils
+  repliées sous « Sécurité avancée » (N10) ; **phrase de liaison masquée**
+  par défaut dès qu'un appareil est relié, révélée d'un tap (N11) ; fini
+  « Connecter → non » (N9) : sans protection, les lignes messagerie/IA
+  disent le vrai premier geste — boutons « Protéger pour connecter » /
+  « Protéger pour brancher » qui mènent tout droit au flux de protection ;
+  les chemins qui arrivent par le composeur/campagnes passent par le même
+  garde-fou actionnable (`gateProtect`).
+  Fichiers : `ui/direct.js`, `ui/connexions.js`, `ui/moi.js`.
 
 ### Phase 4 — transverses & finitions (#22, #23)
 

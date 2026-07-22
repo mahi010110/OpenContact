@@ -209,17 +209,20 @@ function askClientId(provider, rerender){
 }
 
 /* ---------- Ma messagerie (#21 — « Connexions » éclaté) ---------- */
-async function gateProtect(what){
+/* N9, pour les chemins qui arrivent ici sans passer par Réglages
+   (composeur, campagnes) : pas de mur — le pré-requis faisable,
+   qui mène tout droit à la protection */
+async function gateProtect(titre, quoi){
   if (!isProtected()){
-    const okv = await confirmSheet({ title: 'Protéger d’abord', icon: 'lock', okLabel: 'Protéger',
-      msg: what + ' garde des accès sensibles : le verrouillage est exigé. Deux minutes, une seule fois.' });
+    const okv = await confirmSheet({ title: titre, icon: 'lock', okLabel: 'Protéger',
+      msg: quoi + ' garde des accès sensibles : un code les protège d’abord. Deux minutes, une seule fois.' });
     if (okv) openProtectFlow();
     return false;
   }
   return true;
 }
 export async function openConnexions(){
-  if (!await gateProtect('Ta messagerie')) return;
+  if (!await gateProtect('Protéger pour connecter', 'Ta messagerie')) return;
   if (!await requireCode('Ton code, pour la messagerie')) return;
   const sh = openSheet({ title: 'Ma messagerie', icon: 'mail' });
   const render = () => {
@@ -257,7 +260,7 @@ export async function openConnexions(){
 
 /* ---------- Mon assistant IA (#21) — sa propre porte ---------- */
 export async function openAssistantIA(){
-  if (!await gateProtect('L’assistant IA')) return;
+  if (!await gateProtect('Protéger pour brancher', 'L’assistant IA')) return;
   if (!await requireCode('Ton code, pour l’assistant IA')) return;
   openAiSheet(null);
 }

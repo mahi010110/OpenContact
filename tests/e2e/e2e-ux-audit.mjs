@@ -42,7 +42,9 @@ await page.evaluate(async () => {
 await page.reload({ waitUntil: 'load' });
 await attendre(page, async () => (await import('./ui/state.js')).S.companies.length === 2);
 
-/* F1 : connecté ne signifie pas « envoyable » si la piste n'a pas d'adresse. */
+/* F1 : connecté ne signifie pas « envoyable » si la piste n'a pas d'adresse.
+   Depuis #16, l'indisponible est ABSENT (loi #6) : ni « Envoyer » ni
+   « Ouvrir dans Mail » — « Copier » devient LE bouton. */
 await page.evaluate(async () => {
   const { openMail } = await import('./ui/mail.js');
   const { S } = await import('./ui/state.js');
@@ -51,20 +53,24 @@ await page.evaluate(async () => {
 await page.waitForSelector('#mHint');
 const mailState = await page.evaluate(() => {
   const send = [...document.querySelectorAll('.modal-f button')].find(b => /Envoyer/.test(b.textContent));
+  const ouvre = [...document.querySelectorAll('.modal-f .btn, .modal-f button')].find(b => /Ouvrir dans Mail/.test(b.textContent));
   const copy = [...document.querySelectorAll('.modal-f button')].find(b => /Copier/.test(b.textContent));
-  return { disabled: !!send?.disabled, sendPrimary: send?.classList.contains('btn-primary'),
+  return { sendAbsent: !send, ouvreAbsent: !ouvre,
     copyPrimary: copy?.classList.contains('btn-primary'), hint: document.querySelector('#mHint').textContent };
 });
-if (!mailState.disabled || mailState.sendPrimary || !mailState.copyPrimary)
+if (!mailState.sendAbsent || !mailState.ouvreAbsent || !mailState.copyPrimary)
   fail('pied sans e-mail incohérent : ' + JSON.stringify(mailState));
 if (!/Pas d.email/.test(mailState.hint)) fail('aide sans e-mail absente : ' + mailState.hint);
-console.log('Écrire sans e-mail : Envoyer désactivé, Copier devient primaire ✓');
+console.log('Écrire sans e-mail : Envoyer absent (loi #6), Copier devient primaire ✓');
 await page.screenshot({ path: SHOTS + '/80-ux-ecrire-sans-email.png' });
 await closeSheet();
 
 /* F5 + F4 : l'adresse orpheline n'est visible qu'une fois et les petites
-   actions atteignent 44 px dans le contexte mobile. */
+   actions atteignent 44 px dans le contexte mobile. Le bac « à rattacher »
+   est replié par défaut (#13) : on l'ouvre d'abord. */
 await page.goto(base + '/#/pistes');
+await page.waitForSelector('.tr-orph summary');
+await page.click('.tr-orph summary');
 await page.waitForSelector('.orow');
 const orphan = await page.locator('.orow').innerText();
 if ((orphan.match(/recrutement@exemple\.fr/g) || []).length !== 1)
@@ -170,6 +176,7 @@ const receiveCtx = await receiveBrowser.newContext({ viewport: { width: 390, hei
 const receivePage = await receiveCtx.newPage();
 watchErrors(receivePage);
 await receivePage.goto(base, { waitUntil: 'load' });
+await attendre(receivePage, async () => !!(await import('./ui/state.js')).S.profile);
 await receivePage.evaluate(async () => (await import('./ui/recevoir.js')).openImportMails());
 await receivePage.waitForSelector('#rcMailTxt');
 const scanText = await receivePage.locator('.modal-b').innerText();
@@ -193,11 +200,9 @@ await aiPage.reload({ waitUntil: 'load' });
 await aiPage.waitForSelector('.lock .pad-k');
 await tapIn(aiPage, '.lock', '280941');
 await aiPage.waitForFunction(() => !document.querySelector('.lock'));
-await aiPage.evaluate(() => { import('./ui/connexions.js').then(m => m.openConnexions()); });
+await aiPage.evaluate(() => { import('./ui/connexions.js').then(m => m.openAssistantIA()); });
 await aiPage.waitForSelector('#rqPad .pad-k');
 await tapIn(aiPage, '#rqPad', '280941');
-await aiPage.waitForSelector('#cxAi');
-await aiPage.click('#cxAi');
 await aiPage.waitForSelector('[data-ai="gemini"]');
 /* depuis P6-3, TOUTES les familles sont réelles : chacune dit son
    chemin (« ici » ou « via ton ordinateur »), aucune n'est grisée

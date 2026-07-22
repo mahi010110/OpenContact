@@ -19,8 +19,9 @@ import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
 import { getSync } from './synclive.js';
 import { isProtected, openProtectFlow, openManageSheet, verrouLabel, requireCode } from './verrou.js';
-import { openConnexions, mailStateLabel, mailAccount, aiStateLabel, aiConnection } from './connexions.js';
+import { openConnexions, openAssistantIA, mailStateLabel, mailAccount, aiStateLabel, aiConnection } from './connexions.js';
 import { loadCompanion, openAddCompanion, openCompanionSheet } from './compagnon.js';
+import { DIST_PAGE } from '../engine/distribution.js';
 
 /* ---------- garder une copie (.oc complet) ---------- */
 export function downloadBackup(pass){
@@ -175,15 +176,19 @@ function backupState(){
   };
 }
 
-/* les lignes de Réglages — noms clairs (#21), inchangées entre la porte
-   mobile et la colonne desktop ; le détail (éclatement messagerie / IA,
-   avancé replié) vient en phase 3 */
+/* les lignes de Réglages — noms clairs (#21) : nom + état + geste,
+   aucune explication ici (elle vit sur le 2ᵉ écran). Messagerie et IA
+   exigent le code : sans protection, le bouton dit le vrai premier
+   geste — « Protéger pour… » — au lieu d'un « Connecter » qui refuse
+   ensuite (N9). Le Compagnon a un vrai bouton : Télécharger sur
+   ordinateur, Copier le lien sur téléphone (#21). */
 function reglagesRowsHTML(){
+  const prot = isProtected();
   return (
     `<div class="ec-row">
        <div class="ec-row-m"><b>${ic('lock', 'ic-14')} Protection</b>
          <span class="ec-sub">${verrouLabel()}</span></div>
-       <button class="btn" id="moiVerrou">${isProtected() ? 'Gérer' : 'Protéger'}</button>
+       <button class="btn" id="moiVerrou">${prot ? 'Gérer' : 'Protéger'}</button>
      </div>
      <div class="ec-row">
        <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
@@ -193,17 +198,17 @@ function reglagesRowsHTML(){
      <div class="ec-row">
        <div class="ec-row-m"><b>${ic('mail', 'ic-14')} Ma messagerie</b>
          <span class="ec-sub">${mailStateLabel()}</span></div>
-       <button class="btn" id="moiCx">${mailAccount() ? 'Gérer' : 'Connecter'}</button>
+       <button class="btn" id="moiCx">${!prot ? 'Protéger pour connecter' : (mailAccount() ? 'Gérer' : 'Connecter')}</button>
      </div>
      <div class="ec-row">
        <div class="ec-row-m"><b>${ic('sparkles', 'ic-14')} Mon assistant IA</b>
          <span class="ec-sub">${aiStateLabel()}</span></div>
-       <button class="btn" id="moiAi">${aiConnection() ? 'Gérer' : 'Brancher'}</button>
+       <button class="btn" id="moiAi">${!prot ? 'Protéger pour brancher' : (aiConnection() ? 'Gérer' : 'Brancher')}</button>
      </div>
      <div class="ec-row" style="border:0">
        <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Le Compagnon</b>
-         <span class="ec-sub" id="moiCompSt">sur ton ordinateur</span></div>
-       <button class="btn" id="moiComp">Ouvrir</button>
+         <span class="ec-sub" id="moiCompSt">${mqWideMoi.matches ? 'pas encore installé' : 's’installe sur ton ordinateur'}</span></div>
+       <button class="btn" id="moiComp">${mqWideMoi.matches ? 'Télécharger' : 'Copier le lien'}</button>
      </div>
      <div class="rg-foot">
        <button class="linklike" id="moiRestore">${ic('reload', 'ic-14')} Restaurer une copie</button>
@@ -228,16 +233,26 @@ function bindReglages(box){
   q('#moiVerrou').addEventListener('click', () =>
     isProtected() ? openManageSheet() : openProtectFlow());
   q('#moiSync').addEventListener('click', openAppareils);
-  q('#moiCx').addEventListener('click', openConnexions);
-  q('#moiAi').addEventListener('click', openConnexions);
+  /* N9 : le bouton a promis « Protéger pour… » — il y va tout droit */
+  q('#moiCx').addEventListener('click', () =>
+    isProtected() ? openConnexions() : openProtectFlow());
+  q('#moiAi').addEventListener('click', () =>
+    isProtected() ? openAssistantIA() : openProtectFlow());
   q('#moiComp').addEventListener('click', async () => {
     const assoc = await loadCompanion().catch(() => null);
-    if (assoc) openCompanionSheet(assoc);
-    else openAddCompanion();
+    if (assoc){ openCompanionSheet(assoc); return; }
+    if (mqWideMoi.matches){ openAddCompanion(); return; }
+    try {
+      await navigator.clipboard.writeText(DIST_PAGE);
+      toast('Lien copié — ouvre-le sur ton ordinateur.');
+    } catch (e) { toast('Copie impossible ici — le lien : ' + DIST_PAGE); }
   });
   loadCompanion().then(a => {
+    if (!a) return;
     const st = q('#moiCompSt');
-    if (st && a) st.textContent = 'associé — ' + (a.nom || 'ton ordinateur');
+    const b = q('#moiComp');
+    if (st) st.textContent = 'associé — ' + (a.nom || 'ton ordinateur');
+    if (b) b.textContent = 'Gérer';
   }).catch(() => {});
   const rf = q('#moiRestoreFile');
   /* restaurer = rare et sensible (#4) : rangé ici, le code d'abord */
