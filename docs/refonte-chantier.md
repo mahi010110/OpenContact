@@ -112,7 +112,7 @@ format bouge · commit français focalisé.
   pas d'email → « Envoyer » absent, « Copier » principal.
   Fichiers : `engine/mailer.js`, `engine/storage.js` (docs nommés),
   `ui/mail.js`, `ui/moi.js`, `CONTRAT.md` (docs), `tests.js` (MIME).
-- [ ] **2.6 Prospecter & campagnes (#17)** — chaque envoi vers **une
+- [x] **2.6 Prospecter & campagnes (#17)** *(livré — e2e campagne vert)* — chaque envoi vers **une
   personne visible et choisie** ; piste sans contact → « ＋ ajoute
   quelqu'un » (N6) ; **zéro `{{}}`** : aperçu rempli, bouts dynamiques
   surlignés (composeur, wizard, modèles) ; Compagnon hors wizard.

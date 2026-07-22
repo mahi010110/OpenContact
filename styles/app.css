@@ -544,6 +544,40 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   .x{min-width:28px;min-height:28px;width:28px;height:28px}
 }
 
+/* champ de gabarit sans code (#17) : texte réel, jetons surlignés en
+   douceur — jamais de {{...}} à l'écran */
+.tpl-field{
+  display:block;width:100%;min-height:130px;padding:9px 11px;
+  background:var(--surface-field);border:1px solid var(--border-strong);
+  border-radius:var(--radius-1);box-shadow:var(--bevel-field);
+  font-family:var(--font-ui);font-size:var(--text-14);line-height:1.55;color:var(--text-body);
+  white-space:pre-wrap;overflow-wrap:break-word;
+}
+.tpl-field:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.tpl-field.tpl-single{min-height:var(--ctl);white-space:nowrap;overflow-x:auto;padding-top:10px}
+.tvar{
+  display:inline;background:var(--teal-wash);color:var(--accent);
+  border-bottom:1px dashed var(--accent);border-radius:var(--radius-1);
+  padding:0 2px;white-space:nowrap;
+}
+
+.tpl-insert{
+  margin-top:2px;font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted);
+  display:flex;flex-wrap:wrap;gap:2px 6px;align-items:center;
+}
+.tpl-insert .linklike{min-height:28px;padding:2px 2px}
+/* Prospecter (#17) : la piste cochable + sa personne, côte à côte */
+.pk-duo{display:flex;flex-direction:column;gap:0}
+.pk-duo .pick{margin:0}
+.pk-who{
+  display:flex;align-items:center;gap:6px;min-height:32px;padding:3px 12px 6px 40px;
+  font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-link);
+  text-align:left;cursor:pointer;background:var(--surface-window);
+  border:1px solid var(--border-strong);border-top:0;
+}
+.pk-who[disabled]{color:var(--text-muted);cursor:default}
+.pk-who.pk-add{color:var(--accent)}
+
 /* la ligne « joindre CV / LM » du composeur (#16) — discrète, au-dessus
    de l'envoi ; absente sans messagerie connectée */
 .attach-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px}

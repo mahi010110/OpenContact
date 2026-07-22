@@ -22,6 +22,7 @@ import { openSheet, openPanel, confirmSheet, toast, btn, ic } from './dom.js';
 import { mailAccount, freshToken, openConnexions } from './connexions.js';
 import { requireCode } from './verrou.js';
 import { loadCompanion } from './compagnon.js';
+import { tplField, tplSample } from './tplfield.js';
 import { deviceSelf, ensureKeys, getRing, ringCompanion } from './synclive.js';
 
 let campaigns = null;
@@ -310,11 +311,13 @@ const monthName = () => new Date().toLocaleDateString('fr-FR', { month: 'long' }
 export function openCampaignWizard(list){
   const sh = openSheet({ title: 'En campagne', icon: 'flag' });
   const q = s => sh.body.querySelector(s);
-  /* une cible par piste : le premier contact avec email */
+  /* une cible par piste : la personne CHOISIE dans Prospecter (#17) —
+     paires {c, ct} — sinon le premier contact joignable (repli) */
+  const pairs = (list || []).map(x => (x && x.c) ? x : { c: x, ct: null });
   const targets = [];
   const skipped = [];
-  for (const c of list){
-    const ct = (c.contacts || []).find(t => t.email);
+  for (const { c, ct: chosen } of pairs){
+    const ct = (chosen && chosen.email) ? chosen : (c.contacts || []).find(t => t.email);
     if (ct) targets.push({ cid: c.id, name: ct.name || '', role: ct.role || '', email: ct.email, company: c.name, companyObj: c });
     else skipped.push(c);
   }
@@ -335,31 +338,37 @@ export function openCampaignWizard(list){
     const tpls = S.profile.templates;
     if (!draft.subject && tpls[0]){ draft.subject = tpls[0].subject; draft.body = tpls[0].body; }
     sh.setTitle('En campagne — le message');
+    /* jamais de {{...}} : le vrai email de la 1ʳᵉ cible, les bouts qui
+       changent selon la personne surlignés en douceur (#17) */
+    const t0 = targets[0] || {};
+    const sample = tplSample(t0.companyObj, t0);
     sh.body.innerHTML =
       `<div class="field"><label for="czName">Nom de la campagne</label>
          <input id="czName" value="${esc(draft.name)}" maxlength="80"></div>
        <div class="field"><label for="czTpl">Partir d’un modèle</label>
          <select id="czTpl">${tpls.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('')}</select></div>
-       <div class="field"><label for="czSubj">Objet</label><input id="czSubj" value="${esc(draft.subject)}"></div>
-       <div class="field"><label for="czBody">Message (J0)</label>
-         <textarea id="czBody" style="min-height:130px">${esc(draft.body)}</textarea></div>
+       <div class="field"><label>Objet</label><div id="czSubj"></div></div>
+       <div class="field"><label>Message (J0)${t0.name ? ` <span class="lbl-soft">— tel que le recevra ${esc(t0.name)}</span>` : ''}</label>
+         <div id="czBody"></div></div>
        <details class="pcard pcard-details"><summary><h3>${ic('clock', 'ic-14')} Les deux relances — J+7 et J+14, figées</h3></summary>
-         <div class="field"><label for="czR1">Relance 1 (7 jours après l’envoi)</label>
-           <textarea id="czR1" style="min-height:90px">${esc(draft.r1)}</textarea></div>
-         <div class="field"><label for="czR2">Relance 2 (7 jours après la relance 1)</label>
-           <textarea id="czR2" style="min-height:90px">${esc(draft.r2)}</textarea></div>
+         <div class="field"><label>Relance 1 (7 jours après l’envoi)</label><div id="czR1"></div></div>
+         <div class="field"><label>Relance 2 (7 jours après la relance 1)</label><div id="czR2"></div></div>
        </details>
        <p class="hint">${ic('lock', 'ic-14')} La mention d’opposition est ajoutée à chaque message — obligatoire, elle ne se retire pas.</p>`;
+    const fSubj = tplField(q('#czSubj'), { value: draft.subject, sample, multiline: false });
+    const fBody = tplField(q('#czBody'), { value: draft.body, sample });
+    const fR1 = tplField(q('#czR1'), { value: draft.r1, sample });
+    const fR2 = tplField(q('#czR2'), { value: draft.r2, sample });
     q('#czTpl').addEventListener('change', () => {
       const t = tpls[+q('#czTpl').value];
-      if (t){ q('#czSubj').value = t.subject; q('#czBody').value = t.body; }
+      if (t){ fSubj.set(t.subject); fBody.set(t.body); }
     });
     sh.setFoot([btn('Vérifier la campagne', 'btn-primary', async () => {
       draft.name = q('#czName').value.trim() || draft.name;
-      draft.subject = q('#czSubj').value;
-      draft.body = q('#czBody').value;
-      draft.r1 = q('#czR1').value;
-      draft.r2 = q('#czR2').value;
+      draft.subject = fSubj.get();
+      draft.body = fBody.get();
+      draft.r1 = fR1.get();
+      draft.r2 = fR2.get();
       if (!draft.subject.trim() || !draft.body.trim()){ toast('Un objet et un message — il manque l’un des deux.'); return; }
       await companionReady;
       stepControl();
@@ -400,14 +409,8 @@ export function openCampaignWizard(list){
        </details>
        ${skipped.length ? `<p class="hint warn">${skipped.length} piste${skipped.length > 1 ? 's' : ''} sans email — écartée${skipped.length > 1 ? 's' : ''} : ${esc(skipped.map(c => c.name).join(', ').slice(0, 120))}</p>` : ''}
        ${acct || compAvailable ? '' : `<p class="hint warn" id="czCxHint">Connecte ta messagerie pour envoyer depuis l’app. <button class="linklike" id="czCx" style="min-height:0;padding:0 4px">Connecter</button></p>`}
-       ${draft.auto ? '' : `<p class="hint">Rien ne part tout seul : chaque jour, tes envois prêts t’attendent dans « Aujourd’hui ».</p>`}
-       ${compAvailable ? '' : `<p class="hint">${ic('lightbulb', 'ic-14')} Ton ordinateur peut envoyer même app fermée — <button class="linklike" id="czVoirComp" style="min-height:0;padding:0 4px">voir comment</button></p>`}`;
+       ${draft.auto ? '' : `<p class="hint">Rien ne part tout seul : chaque jour, tes envois prêts t’attendent dans « Aujourd’hui ».</p>`}`;
     q('#czCx')?.addEventListener('click', () => openConnexions());
-    q('#czVoirComp')?.addEventListener('click', async () => {
-      const { openAddCompanion } = await import('./compagnon.js');
-      openAddCompanion(() => { Promise.all([loadCompanion(), ringCompanion()])
-        .then(([a, r]) => { compAssoc = a; compRing = r; stepControl(); }); });
-    });
     q('#czManu')?.addEventListener('click', () => { draft.auto = false; stepControl(); });
     q('#czAutoOpt')?.addEventListener('click', () => { draft.auto = true; stepControl(); });
     /* honnêteté : l'ordinateur est-il là, sa messagerie est-elle réglée ? */
