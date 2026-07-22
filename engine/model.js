@@ -41,10 +41,11 @@ export const POSITIONS = { stage:'Stage', alternance:'Alternance', cdi:'CDI', cd
 /* ---------- 5. modèle v3 : plusieurs contacts par piste ----------
    D3 : les champs inconnus (versions futures) sont conservés dans `extra`
    au lieu d'être perdus silencieusement. */
-const KNOWN_CT = ['id','name','role','email','phone','link','note','conf','extra'];
+const KNOWN_CT = ['id','name','role','email','phone','link','note','conf','extra',
+  'activatedAt','src'];         /* champs d'action privés (#14) — jamais dans un partage */
 const KNOWN_C  = ['id','name','city','domain','desc','address','website','techs','positions',
   'process','tips','contacts','lat','lng','status','notes','appliedAt','nextAction',
-  'nextActionText','closedAt','closedReason',
+  'nextActionText','closedAt','closedReason','nextActionCt',
   'history','verifiedAt','confirmations','demo','createdAt','updatedAt','extra',
   'contact','email','phone'];   /* les 3 derniers : héritage v1, absorbés dans contacts */
 /* un lien ne sort d'ici qu'en http(s) : « javascript: » et consorts, posés
@@ -87,10 +88,26 @@ export function normalizeContact(x){
     note: String(x.note || '').trim(),
     conf: (x.conf === 'ok' || x.conf === 'doubt') ? x.conf : ''
   };
+  /* champs d'action privés (#14) — optionnels, absents quand vides.
+     Migration en lecture : un appareil ancien les a rangés dans extra
+     (champs inconnus pour lui), on les remonte et on nettoie le doublon. */
+  const xe = (x.extra && typeof x.extra === 'object' && !Array.isArray(x.extra)) ? x.extra : {};
+  const act = isoDay(x.activatedAt || xe.activatedAt);
+  if (act) out.activatedAt = act;
+  if (x.src === 'promo' || xe.src === 'promo') out.src = 'promo';
   const extra = keepExtra(x, KNOWN_CT);
-  if (extra) out.extra = extra;
+  if (extra){
+    delete extra.activatedAt;
+    delete extra.src;
+    if (Object.keys(extra).length) out.extra = extra;
+  }
   return out;
 }
+/* #14 — le contact « activé » (on lui a écrit / posé une action) vs le
+   simple nom connu ; et la personne que vise la prochaine action */
+export const isActiveCt = ct => !!(ct && ct.activatedAt);
+export const nextActionContact = c =>
+  (c && c.nextActionCt && (c.contacts || []).find(t => t.id === c.nextActionCt)) || null;
 export function contactHasData(ct){ return !!(ct.name || ct.role || ct.email || ct.phone || ct.link || ct.note); }
 export function normalizeCompany(x){
   let contacts = Array.isArray(x.contacts) ? x.contacts.map(normalizeContact) : [];
@@ -132,8 +149,18 @@ export function normalizeCompany(x){
     demo: !!x.demo,
     createdAt: x.createdAt || Date.now(), updatedAt: x.updatedAt || Date.now()
   };
+  /* #14 — la personne visée par la prochaine action (privé, optionnel,
+     absent quand vide) : un jeton d'id seulement, avec la même migration
+     en lecture depuis extra que les champs d'action du contact */
+  const xe = (x.extra && typeof x.extra === 'object' && !Array.isArray(x.extra)) ? x.extra : {};
+  const nact = [x.nextActionCt, xe.nextActionCt]
+    .find(v => typeof v === 'string' && ID_RE.test(v));
+  if (nact) out.nextActionCt = nact;
   const extra = keepExtra(x, KNOWN_C);
-  if (extra) out.extra = extra;
+  if (extra){
+    delete extra.nextActionCt;
+    if (Object.keys(extra).length) out.extra = extra;
+  }
   return out;
 }
 export function defaultTemplates(){

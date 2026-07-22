@@ -10,6 +10,7 @@ import { KDF_ITER, encryptOC2, decryptOC2, deriveKey, bytesToB64,
          fnv, ocKeystream, unsealOC1 } from './engine/crypto.js';
 import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
          pushHist, fillTpl, safeUrl, summarizeChanges,
+         isActiveCt, nextActionContact,
          PROMPTS_MAX, PROMPT_MAX_LEN } from './engine/model.js';
 import { communityView, parseInput, sharePayload, fullPayload,
          encodeOCQ, splitOCQ, makeOCQJoiner, OCQP_CHUNK,
@@ -111,6 +112,55 @@ export async function runSelfTests(){
       }));
       for (const k of ['status', 'notes', 'appliedAt', 'nextAction', 'nextActionText',
                        'closedAt', 'closedReason', 'history', 'id', 'demo']) ok(!(k in v));
+    },
+    '#14 : champs d’action optionnels — absents quand vides, gardés quand posés': () => {
+      const nu = normalizeContact({ name: 'A' });
+      ok(!('activatedAt' in nu)); ok(!('src' in nu));
+      const on = normalizeContact({ name: 'A', activatedAt: '2026-07-01T10:00:00Z', src: 'promo' });
+      eq(on.activatedAt, '2026-07-01');                  /* horodatage → tronqué au jour */
+      eq(on.src, 'promo');
+      ok(!('activatedAt' in normalizeContact({ name: 'A', activatedAt: 'zzz' })));
+      ok(!('src' in normalizeContact({ name: 'A', src: 'autre' })));
+      const c = normalizeCompany({ name: 'X', nextActionCt: 'ct_1', contacts: [{ id: 'ct_1', name: 'A' }] });
+      eq(c.nextActionCt, 'ct_1');
+      ok(!('nextActionCt' in normalizeCompany({ name: 'X' })));
+      ok(!('nextActionCt' in normalizeCompany({ name: 'X', nextActionCt: '"><b>' })));
+      ok(isActiveCt(on) && !isActiveCt(nu));
+      ok(nextActionContact(c) === c.contacts[0]);
+      eq(nextActionContact(normalizeCompany({ name: 'X', nextActionCt: 'ct_9' })), null);
+    },
+    '#14 : migration en lecture — les champs remontent d’extra (vieil appareil)': () => {
+      const ct = normalizeContact({ name: 'A', extra: { activatedAt: '2026-06-01', src: 'promo', garde: 1 } });
+      eq(ct.activatedAt, '2026-06-01'); eq(ct.src, 'promo'); eq(ct.extra, { garde: 1 });
+      const c = normalizeCompany({ name: 'X', extra: { nextActionCt: 'ct_9', garde: 2 } });
+      eq(c.nextActionCt, 'ct_9'); eq(c.extra, { garde: 2 });
+      ok(!('extra' in normalizeContact({ name: 'A', extra: { src: 'promo' } })));
+    },
+    '#14 : communityView ne fuit rien — champs et doublons d’extra purgés': () => {
+      const v = communityView({ name: 'X', nextActionCt: 'ct_1',
+        extra: { nextActionCt: 'ct_1', garde: 1 },
+        contacts: [{ name: 'Ana', activatedAt: '2026-06-01', src: 'promo',
+                     extra: { activatedAt: '2026-06-01', src: 'promo', garde: 2 } }] });
+      ok(!('nextActionCt' in v)); eq(v.extra, { garde: 1 });
+      ok(!('activatedAt' in v.contacts[0])); ok(!('src' in v.contacts[0]));
+      eq(v.contacts[0].extra, { garde: 2 });
+    },
+    '#14 : fusion — activation entrante vidée, contact reçu marqué « promo »': () => {
+      const comps = [normalizeCompany({ name: 'Alpha', city: 'Lille',
+        contacts: [{ name: 'Ana', email: 'ana@x.fr', activatedAt: '2026-05-01' }] })];
+      mergeIncoming([
+        { name: 'Alpha', city: 'Lille', contacts: [
+          { name: 'Ana', email: 'ana@x.fr', activatedAt: '2026-06-15' },
+          { name: 'Rémi', email: 'remi@x.fr', activatedAt: '2026-06-15' }] },
+        { name: 'Beta', nextActionCt: 'ct_1', contacts: [{ name: 'Zoé', email: 'z@x.fr', activatedAt: '2026-01-01' }] }
+      ], comps);
+      const a = comps[0], b = comps[1];
+      eq(a.contacts[0].activatedAt, '2026-05-01');       /* mon suivi reste le mien */
+      ok(!('src' in a.contacts[0]));                     /* pas re-marqué */
+      ok(!a.contacts[1].activatedAt);                    /* l’entrant est vidé */
+      eq(a.contacts[1].src, 'promo');
+      ok(!b.nextActionCt);
+      ok(!b.contacts[0].activatedAt); eq(b.contacts[0].src, 'promo');
     },
     'statuts : migration v5 → 3 crans + clôture': () => {
       eq(normalizeCompany({ name: 'X', status: 'sent' }).status, 'active');

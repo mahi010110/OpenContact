@@ -159,11 +159,23 @@ Une piste normalisée a exactement ces champs :
 
 **Privé** — ne part **jamais** dans un partage :
 `status`, `notes`, `appliedAt`, `nextAction`, `nextActionText`, `closedAt`,
-`closedReason`, `history[]` (40 entrées max).
+`closedReason`, `nextActionCt`, `history[]` (40 entrées max).
 Ni `id`, ni `demo`, ni `createdAt` ne circulent non plus.
 
 **Un contact** : `id`, `name`, `role`, `email`, `phone`, `link`, `note`,
 `conf` (`""` | `"ok"` | `"doubt"`) (+ `extra` si présent).
+
+**Champs d'action (v7, décision #14) — optionnels, absents quand vides,
+privés.** Au contact : `activatedAt` (jour `AAAA-MM-JJ` — le contact est
+« activé » : on lui a écrit ou posé une action ; absent = simple nom
+connu) et `src` (`"promo"` = arrivé par un partage). À la piste :
+`nextActionCt` (id — jeton `[A-Za-z0-9._-]{1,64}` — du contact que vise
+la prochaine action). Un lecteur ancien les range dans `extra` sans
+casse ; une version récente les en remonte (migration en lecture, doublon
+purgé). Ils ne sortent **jamais** dans un partage : `communityView` ne les
+émet pas et les purge aussi d'`extra` ; la fusion communautaire vide
+`activatedAt`/`nextActionCt` entrants et pose `src:"promo"` sur tout
+contact ajouté par partage.
 `link` est toujours en `http(s)` après normalisation : tout autre schéma
 (`javascript:` et consorts) est neutralisé — un lien piégé dans un fichier
 reçu ne doit jamais devenir cliquable.
