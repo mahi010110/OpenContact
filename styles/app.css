@@ -249,6 +249,16 @@ html[data-theme="dark"] .field select{
 }
 .td-chip:active{box-shadow:var(--bevel-down);transform:translate(1px,1px)}
 .td-foot{margin-top:16px;display:flex}
+/* « À trier (N) » — la ligne calme qui regroupe les entrants (#10) */
+.td-triage{
+  display:flex;align-items:center;gap:8px;width:100%;margin-top:16px;
+  padding:10px 12px;min-height:var(--ctl);cursor:pointer;
+  background:var(--surface-chrome);border:1px dashed var(--border-strong);
+  border-radius:var(--radius-0);
+  font:inherit;font-size:var(--text-13);color:var(--text-muted);text-align:left;
+}
+.td-triage .tr-n{margin-left:auto}
+.td-triage:active{box-shadow:var(--bevel-down)}
 
 /* ============ TRANCHES ============ */
 .tranche{margin-top:18px}
@@ -505,6 +515,13 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   .modal-f{padding-bottom:12px}
   .modal-f .btn{flex:0 0 auto}
   .x{min-width:28px;min-height:28px;width:28px;height:28px}
+}
+
+/* ============ PANNEAU LATÉRAL (desktop, #10) ============ */
+.spanel{position:absolute;top:0;right:0;bottom:0;width:min(480px,46vw);z-index:1200}
+.spanel .modal{
+  width:100%;height:100%;max-width:none;max-height:none;border-radius:0;
+  border:0;border-left:1px solid var(--border-strong);box-shadow:var(--shadow-modal);
 }
 
 /* ============ FEUILLES D'ACTION ============ */
@@ -931,7 +948,7 @@ body:has(.overlay) .toast{bottom:auto;top:calc(env(safe-area-inset-top) + 62px)}
 }
 .camp-line:active{box-shadow:var(--bevel-down);transform:translate(1px,1px)}
 .camp-line .ic{color:var(--accent)}
-.camp-line span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.camp-line span{flex:1;min-width:0;text-align:left}   /* jamais tronquée (#10) */
 .camp-line em{font-style:normal;font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-link)}
 .camp-send{border:1px solid var(--border-soft);background:var(--surface-raised);margin-bottom:7px}
 .camp-send summary{

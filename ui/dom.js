@@ -186,8 +186,78 @@ export function openSheet(o){
 }
 export function topSheet(){ return stack[stack.length - 1] || null; }
 
+/* ---------- panneau latéral (desktop) ----------
+   « on ouvre une piste à droite, la liste reste » (#10). Même structure
+   interne qu'une feuille (modal-h/b/f) : un écran s'y rend tel quel.
+   Un seul panneau à la fois — en ouvrir un autre remplace le premier,
+   après son garde-fou (null rendu tant qu'il retient). Non modal :
+   Échap le ferme quand aucune feuille n'est ouverte. */
+let panelRec = null;
+export function openPanel(o){
+  o = o || {};
+  if (panelRec && !panelRec.tryClose()) return null;
+  const aside = el(
+    `<aside class="spanel" role="complementary" aria-label="${esc(o.title || '')}">
+       <div class="modal ${o.className || ''}">
+         <div class="modal-h"><h2>${o.icon ? ic(o.icon, 'ic-14') : ''}<span>${esc(o.title || '')}</span></h2>
+           <button class="x" aria-label="Fermer">✕</button></div>
+         <div class="modal-b"></div>
+         <div class="modal-f" hidden></div>
+       </div>
+     </aside>`);
+  const body = aside.querySelector('.modal-b');
+  const foot = aside.querySelector('.modal-f');
+  if (typeof o.body === 'string') body.innerHTML = o.body;
+  else if (o.body) body.append(o.body);
+  let closed = false;
+  function close(result, force){
+    if (closed) return;
+    if (!force && o.guard){
+      const g = o.guard();
+      if (g === false) return;
+      if (g && typeof g.then === 'function'){ g.then(ok => { if (ok) close(result, true); }); return; }
+    }
+    closed = true;
+    if (panelRec === rec) panelRec = null;
+    aside.remove();
+    if (o.onClose) o.onClose(result);
+  }
+  const rec = {
+    close,
+    /* vrai = la place est libre ; faux = garde-fou en cours (asynchrone) */
+    tryClose(){
+      if (closed) return true;
+      if (o.guard){
+        const g = o.guard();
+        if (g === false) return false;
+        if (g && typeof g.then === 'function'){ g.then(ok => { if (ok) close(undefined, true); }); return false; }
+      }
+      close(undefined, true);
+      return true;
+    }
+  };
+  panelRec = rec;
+  aside.querySelector('.x').addEventListener('click', () => close());
+  (document.querySelector('.main') || document.body).append(aside);
+  return {
+    ov: aside, body, close,
+    setTitle(t){ aside.querySelector('.modal-h h2 span').textContent = t; },
+    setFoot(content){
+      foot.innerHTML = '';
+      foot.hidden = content == null;
+      if (content == null) return;
+      if (typeof content === 'string') foot.innerHTML = content;
+      else foot.append(...[].concat(content));
+    }
+  };
+}
+export function closePanel(){ if (panelRec) panelRec.close(); }
+
 document.addEventListener('keydown', e => {
-  if (!stack.length) return;
+  if (!stack.length){
+    if (e.key === 'Escape' && panelRec){ e.preventDefault(); panelRec.close(); }
+    return;
+  }
   const top = stack[stack.length - 1];
   if (e.key === 'Escape'){ e.preventDefault(); if (top.dismissible) top.close(); return; }
   if (e.key !== 'Tab') return;

@@ -9,7 +9,7 @@ import { APP_VERSION } from './engine/model.js';
 import { THEME_KEY, kvInit, kvGet, kvSet } from './engine/storage.js';
 import { initVerrou } from './ui/verrou.js';
 import { S, bus, loadAll, reloadFromStorage } from './ui/state.js';
-import { $, $$, toast } from './ui/dom.js';
+import { $, $$, toast, closePanel } from './ui/dom.js';
 import { renderToday } from './ui/today.js';
 import { renderPistes } from './ui/pistes.js';
 import { renderEchanger } from './ui/echanger.js';
@@ -32,7 +32,7 @@ function routeFromHash(){
 function render(){
   /* un autre onglet a écrit pendant qu'une feuille était ouverte :
      on recharge maintenant que la voie est libre */
-  if (S.stale && !document.querySelector('.overlay')){ reloadFromStorage(); return; }
+  if (S.stale && !document.querySelector('.overlay, .spanel')){ reloadFromStorage(); return; }
   for (const k in VIEWS) $('#view-' + k).hidden = (k !== S.route);
   VIEWS[S.route]();
   $$('[data-r]').forEach(a => {
@@ -42,6 +42,7 @@ function render(){
   });
 }
 function applyRoute(){
+  closePanel();               /* le panneau latéral appartient à sa vue */
   S.route = routeFromHash();
   render();
   $('#view-' + S.route).scrollTop = 0;
