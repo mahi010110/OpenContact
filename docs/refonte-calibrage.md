@@ -436,6 +436,36 @@ ordinateur envoie tout seul » n'apparaît que s'il est déjà associé — loi 
 
 ---
 
+## Décision 18 — Échanger : rangé, sans explications
+
+- **Recevoir simplifié** (Décision 5) : **Scanner · Ouvrir un fichier · Coller**.
+  Plus de « Depuis mes e-mails » (parti dans la capture). « Recevoir » = ce
+  qu'un **camarade** t'envoie.
+- **Donner** (bon, conservé) : **QR** (en personne) / **Fichier** (à distance,
+  chiffrable) ; l'app choisit le bon QR selon le réseau. Mobile = QR d'abord ;
+  desktop = fichier d'abord + **pont QR** (l'ordi affiche, le téléphone scanne).
+- **Partage en groupe : discret, assumé.** On **retire le « bêta »** ; 3ᵉ option
+  calme sous Donner/Recevoir.
+- **Explications supprimées** (loi #3, vu en capture) :
+  - Mot de passe : le pavé « Un mot de passe pour le groupe… jamais ton suivi
+    privé » → **retiré**. Reste : le champ « Mot de passe du groupe » + « Entrer ».
+  - Écran connecté : « Chacun garde la feuille ouverte ; chaque envoi montre un
+    aperçu avant fusion » → **retiré** (évident quand l'aperçu apparaît).
+- **Le rappel « jamais ton suivi privé »** : au **moment d'envoyer** (court),
+  pas en permanence.
+
+**Comportement confirmé (pour mémoire) :** pas de limite codée de participants
+— pair-à-pair en maille, fait pour une promo/classe (dizaines max) ; envois
+simultanés → **file d'aperçus un par un**, doublons filtrés, rien d'écrasé ; le
+**code EST la clé** (un code banal laisse entrer des inconnus — mais fiches
+publiques seulement, jamais le privé, et tout passe par l'aperçu).
+
+**À trancher — code fort par défaut ?** offrir « en générer un fort » à côté de
+« taper le tien » (plus sûr contre les codes banals ; à distribuer au lieu de
+dire à voix haute). *(pending)*
+
+---
+
 # Fondations calibrées ✓ — et ce qui reste
 
 Les **décisions ci-dessus = le squelette, les lois, et le 1ᵉʳ écran conçu
@@ -454,9 +484,7 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
 - **La fiche** — ✅ **calibré (Décisions 14 & 15).**
 - **Écrire un email** — ✅ **calibré (Décision 16).**
 - **Prospecter + Campagnes** — ✅ **calibré (Décision 17).**
-- **Échanger** — Donner (QR / fichier), Recevoir (**= camarade seulement**,
-  l'import IA est parti dans la capture), Partage en groupe (assumé ou
-  avancé ?), pont QR desktop→mobile.
+- **Échanger** — ✅ **calibré (Décision 18).** *(reste : code fort par défaut ?)*
 
 **Régler (« Moi ») :**
 - **Profil & données** — mise en écran (profil, modèles, CV/LM, « garder une
