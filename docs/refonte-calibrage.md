@@ -411,6 +411,31 @@ personne] »** ; mode série (Prospecter).
 
 ---
 
+## Décision 17 — Prospecter & campagnes : vers une personne, sans aucun code
+
+**Prospecter → une personne choisie.** On coche ses pistes, mais chaque envoi
+part vers **une personne visible et choisie** (plus de « premier email »
+deviné). Une boîte **sans contact** propose **« ＋ ajoute quelqu'un »** au lieu
+d'être écartée en silence → **N6 réglé**. Puis « Une par une » ou « En
+campagne » (inchangé). Simple et ergonomique.
+
+**Jamais de code `{{...}}` — nulle part.** L'utilisateur voit **toujours un
+vrai email rempli** ; les bouts qui changent selon la personne (prénom,
+entreprise) sont **remplis automatiquement et surlignés en douceur**, le reste
+s'écrit en texte normal. **Vaut partout** : composeur (#16), wizard de
+campagne, **et les modèles d'emails** (à appliquer quand on fera « Profil &
+données »).
+
+**Wizard de campagne resserré :** le **Compagnon quitte le wizard** (« mon
+ordinateur envoie tout seul » n'apparaît que s'il est déjà associé — loi #6) ;
+**aperçu du vrai email d'abord**. Le cœur reste : 1 message + 2 relances figées,
+15/jour, s'arrête sur réponse, mention d'opposition.
+
+**Maison :** « Campagnes (N) » dans Mes pistes (#13) ; envois du jour dans
+« Aujourd'hui » sous le travail (#10).
+
+---
+
 # Fondations calibrées ✓ — et ce qui reste
 
 Les **décisions ci-dessus = le squelette, les lois, et le 1ᵉʳ écran conçu
@@ -428,9 +453,7 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
   équivalent clavier, C9)*
 - **La fiche** — ✅ **calibré (Décisions 14 & 15).**
 - **Écrire un email** — ✅ **calibré (Décision 16).**
-- **Prospecter + Campagnes** — sélection, pistes sans email (N6), la **maison
-  campagnes** dans Mes pistes (Décision 5), feuille du jour, assistant
-  (variables + Compagnon, N7), auto vs manuel.
+- **Prospecter + Campagnes** — ✅ **calibré (Décision 17).**
 - **Échanger** — Donner (QR / fichier), Recevoir (**= camarade seulement**,
   l'import IA est parti dans la capture), Partage en groupe (assumé ou
   avancé ?), pont QR desktop→mobile.
