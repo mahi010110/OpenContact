@@ -314,6 +314,23 @@ Rien d'autre ne bouge.
 
 ---
 
+## Décision 13 — « Mes pistes » : la base, épurée
+
+- **Statut affiché une seule fois.** Liste mobile : une **pastille claire**
+  (texte + couleur) par ligne — fini le doublon pastille/étiquette (C8). Tableau
+  desktop : **rien sur la carte**, c'est la colonne qui dit le statut.
+- **Bac « à rattacher » = une ligne calme repliée** en haut (présente,
+  trouvable, mais elle ne vole plus la place aux vraies pistes).
+- **Les campagnes ont leur maison ici** : un accès **« Campagnes (N) »** à côté
+  de **« Prospecter »** — *Prospecter = lancer*, *Campagnes = gérer*. N'apparaît
+  que s'il y en a (loi #6). Résout **N4** (home des campagnes) et **N7**
+  (découvrabilité de Prospecter).
+- **Clôturées** repliées en bas (inchangé).
+- **Desktop** : tableau 3 colonnes inchangé ; ouvrir une piste = **panneau
+  latéral** (Décision 10) ; « Campagnes » s'ouvre en panneau, pas un onglet.
+
+---
+
 # Fondations calibrées ✓ — et ce qui reste
 
 Les **décisions ci-dessus = le squelette, les lois, et le 1ᵉʳ écran conçu
@@ -327,8 +344,8 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
 
 **Faire :**
 - **Aujourd'hui** — ✅ **calibré (Décision 10).**
-- **Mes pistes** — ligne (mobile) / carte du tableau (desktop), redondance du
-  statut, bac « à rattacher », clôturées, glisser + équivalent clavier (C9).
+- **Mes pistes** — ✅ **calibré (Décision 13).** *(reste au build : glisser +
+  équivalent clavier, C9)*
 - **La fiche** — contacts, « Compléter », « À savoir », clôture, itinéraire,
   historique ; c'est là qu'atterrit « Ajouter et compléter » (Décision 7).
 - **Écrire un email** — modèles, variables, **sélecteur CV/LM** (Décision 4),
