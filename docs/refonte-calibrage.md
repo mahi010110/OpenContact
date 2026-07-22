@@ -548,6 +548,27 @@ connecter ») ; plus de **double-modal** (N8).
 
 ---
 
+## Décision 22 — Finitions transverses
+
+- **Montrer au lieu d'expliquer — mais léger** (pas d'alourdissement) : **aucun**
+  écran « voici ce qui part ». On s'appuie sur un **langage visuel** déjà là —
+  le **cadenas** marque le privé partout (les notes l'ont déjà), l'**aperçu
+  avant fusion** existe, la **phrase masquée** dit sa sensibilité. Trois phrases
+  remplacées par trois signes, zéro étape en plus.
+- **Une seule surface modale à la fois** (fin de N8) : une feuille qui en ouvre
+  une autre **remplace / enchaîne** dans la même surface (desktop surtout),
+  jamais une 2ᵉ fenêtre empilée. Vaut partout (fiche→écrire, appareils→Compagnon,
+  connexions→IA, aperçus).
+- **Le verrou au bon moment** : la protection se propose **quand elle sert**
+  (1ᵉʳ email, 1ʳᵉ connexion — « Protéger pour… »), pas comme un réglage isolé (N9).
+- **Site séparé** : guide / présentation / page de téléchargement du Compagnon
+  **hors app** (Décisions 3 & 4) — chantier à part.
+- **Passe finale au build** : accessibilité clavier (équivalents aux gestes —
+  glisser du tableau… ; focus visible), **thème sombre** sur chaque nouvel
+  élément, cibles ≥ 44 px mobile.
+
+---
+
 # Fondations calibrées ✓ — et ce qui reste
 
 Les **décisions ci-dessus = le squelette, les lois, et le 1ᵉʳ écran conçu
@@ -575,16 +596,79 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
 - **Réglages** — ✅ **calibré (#21)** : noms clairs, voix humaine, explication à
   la demande (« ? »), avancé replié, Compagnon visible avec bouton.
 
-**Transverse :**
-- **Fin du double-modal** sur desktop (N8).
-- **Montrer au lieu d'expliquer** les concepts à conséquence : privé vs partagé
-  (distinction visuelle), aperçu avant fusion, phrase de liaison.
-- **Verrou déclenché au bon moment** (1ᵉʳ email / 1ʳᵉ connexion), pas en réglage
-  isolé.
-- **Le site séparé** (guide / marketing) — livrable à part (Décisions 3 & 4).
-- **Passe accessibilité clavier** (C9) + **thème sombre** vérifié partout.
+**Transverse :** ✅ **calibré (Décision 22)** — montrer plutôt qu'expliquer
+(léger), une seule modale à la fois, verrou au bon moment, site séparé, passe
+accessibilité + thème sombre.
+
+**➡️ Tous les écrans sont calibrés. La suite = construire — voir le Handoff
+ci-dessous.**
 
 **Méthode :** écran par écran, mobile d'abord, vérifié en lançant l'app
 (390 + 1280, clair + sombre, `?test` vert). **On regarde les références**
 (Huntr/Lemlist, Material Design…) avant d'inventer. On peut basculer de
 *décider* à *construire* quand tu veux.
+
+---
+
+# Handoff — plan d'action pour construire (Fable 5)
+
+**Sources de vérité :** ce journal (les 22 décisions ci-dessus) +
+`docs/audit-ux-2026.md` + `docs/audit-ux-2026-nouveautes.md`.
+
+**Invariants à ne JAMAIS casser :** local-first, identité « 98 », **privé jamais
+partagé**, fusion sans écrasement + Annuler ~30 s, **moteur qu'on agrandit sans
+casser** (rétrocompatible, `?test` vert), pas de framework / build / CDN, mobile
+< 901 px ⇆ desktop ≥ 901 px.
+
+**Méthode à chaque livraison :** mobile d'abord ; petite et focalisée ; vérifiée
+en lançant l'app (390 + 1280, clair + sombre, **`?test` vert + nouveaux tests**) ;
+`CONTRAT.md` et `sw.js` (bump `oc-vN` + PRECACHE) suivis si un fichier précaché
+ou un format bouge. Les lois s'appliquent à **chaque** écran : pas d'explication
+pour agir, indisponible = absent, avancé replié, chiffres qui poussent à agir,
+voix humaine, boîte à réflexes UX (#19).
+
+## Phase 0 — Le socle (débloque tout le reste)
+1. **Modèle contact/action (#14)** — ajouter des champs d'action **optionnels**
+   au contact dans `engine/model.js` + migration en lecture + `CONTRAT.md` +
+   `tests.js`. **Additif, rétrocompatible.** Débloque fiche, écrire, prospecter,
+   Aujourd'hui.
+2. **Dissoudre l'IA (#5)** — import e-mails = source de la capture ; config IA →
+   Réglages. Retirer la bibliothèque de prompts (garder l'import unique, #4/#17).
+
+## Phase 1 — Navigation & « Moi » (#2, #20, #21)
+3. Garder **4 entrées** ; **éclater « Moi »** en *Profil & données* (visible) +
+   *Réglages* (porte à part mobile / colonnes desktop). Chaque fonction dans son
+   slot (#12).
+
+## Phase 2 — Écrans « Faire », un par un, mobile d'abord
+4. **Aujourd'hui (#10)** — travail en héros ; 5 bandeaux → une ligne « À trier » ;
+   campagnes sous le travail ; panneau latéral desktop.
+5. **Mes pistes (#13) + barre « Affiner » (#8)** — statut une seule fois ;
+   « à rattacher » en ligne calme ; « Campagnes (N) » ; puces d'état, sens dans
+   la puce.
+6. **La fiche (#15)** — héros statut + prochaine action ; contacts compacts
+   (actifs en haut / dormants repliés) ; sections vides masquées ; panneau
+   latéral desktop.
+7. **Écrire (#16)** — joindre CV/LM discret (masqué si aucun doc) ; profil vide →
+   action « Compléter » ; « Copier » principal si pas d'email ; ouverture dans le
+   panneau de la fiche.
+8. **Prospecter & campagnes (#17)** — cible = **une personne** ; « ＋ ajoute
+   quelqu'un » (fixe N6) ; **zéro code `{{}}`** (aperçu rempli, bouts dynamiques
+   surlignés) ; wizard resserré (Compagnon hors wizard).
+9. **Échanger (#18)** — Recevoir = Scanner / Fichier / Coller ; groupe discret,
+   **explications retirées**, **code fort généré** (petit bouton dans le champ).
+
+## Phase 3 — Réglages en détail (#21)
+10. 5 lignes (**Protection · Mes appareils · Ma messagerie · Mon assistant IA ·
+    Le Compagnon**) ; noms qui se suffisent ; **explication sur le 2ᵉ écran**
+    (pas de « ? », pas de bulle) ; avancé replié (TURN N10, commandes, clés) ;
+    **phrase masquée** (N11) ; **Compagnon visible + bouton Télécharger** ;
+    protection intégrée au flux (N9).
+
+## Phase 4 — Transverses & finitions (#22)
+11. Langage visuel (**cadenas** privé) ; **une seule modale à la fois** (N8) ;
+    verrou au bon moment ; passe **accessibilité clavier + thème sombre**.
+12. **Site séparé** (guide + téléchargement Compagnon) — chantier hors app.
+
+**Ordre de valeur si tu veux prioriser :** Phase 0 (obligatoire) → Aujourd'hui →
+Mes pistes → fiche → écrire → le reste. Chaque écran est livrable seul.
