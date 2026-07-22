@@ -99,7 +99,7 @@ format bouge · commit français focalisé.
   « Écrire » remplace le contenu du panneau (fin du double-modal N8 ici).
   Fichiers : `ui/fiche.js`, `ui/state.js` (activation d'un contact),
   `ui/contact.js`, `styles/app.css`.
-- [ ] **2.4 Capture (#7)** — deux blocs (ENTREPRISE / CONTACT), deux
+- [x] **2.4 Capture (#7)** *(livré — e2e parcours neuf vert)* — deux blocs (ENTREPRISE / CONTACT), deux
   boutons (« Ajouter » rafale · « Ajouter et compléter ») ; personne sans
   entreprise → bac, jamais bloqué ; email `nadia@ovh.com` → propose
   « OVHcloud » ; source « depuis mes e-mails » (posée en 0.2).

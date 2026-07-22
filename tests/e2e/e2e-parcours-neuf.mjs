@@ -41,18 +41,21 @@ if (!/Aucune piste|Ajoute une piste|première piste/i.test(piEmpty))
   fail('Mes pistes vide n’enseigne pas : ' + JSON.stringify(piEmpty));
 else console.log('Mes pistes vide : état enseignant ✓');
 
-/* première capture — à la main, comme un vrai premier geste */
+/* première capture — deux blocs (#7) : l'entreprise + le contact, ensemble */
 await M.click('#bnAdd');
 await M.waitForSelector('#cpName');
 await M.fill('#cpName', 'Boulangerie Cyber SARL');
-await M.fill('#cpCity', 'Lille');
-await M.click('.overlay .btn-primary');           /* Enregistrer la piste */
+await M.fill('#cpCtName', 'Sam Roubaix');
+await M.fill('#cpCtCoord', 'sam@boulangeriecyber.fr');
+await M.click('.overlay .btn-primary');           /* Ajouter (rafale : reste ouvert) */
 await attendre(M, async () => (await import('./ui/state.js')).S.companies.length === 1,
   { timeout: 8000, message: 'première capture' });
-/* la capture enchaîne « prochaine action ? » : on referme */
+const withCt = await M.evaluate(async () =>
+  (await import('./ui/state.js')).S.companies[0].contacts.map(t => t.email));
+if (String(withCt) !== 'sam@boulangeriecyber.fr') fail('le contact saisi doit suivre la piste : ' + withCt);
 await closeSheets(M);
 await M.waitForSelector('.overlay', { state: 'detached', timeout: 5000 }).catch(() => {});
-console.log('Première capture : une piste créée depuis un profil neuf ✓');
+console.log('Première capture : piste + contact créés d’un seul geste ✓');
 
 /* elle s'affiche dans la liste */
 await M.click('.bottomnav a[data-r="pistes"]');
