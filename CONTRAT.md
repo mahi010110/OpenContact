@@ -44,9 +44,13 @@ Depuis la v6.1, ces clés vivent dans **IndexedDB** (base `oc_kv_v1`, magasin
 automatiquement les données existantes sans les toucher. L'ordre des backends :
 `window.storage` → IndexedDB → localStorage → mémoire.
 
-Les PDF (CV, lettre) vivent dans **IndexedDB** : base `oc_docs_v1`, magasin
-`docs`, clés `cv` et `lettre` — séparés exprès des pistes pour qu'un document
-lourd ne puisse jamais les bloquer ni les faire perdre.
+Les PDF (CV, lettres) vivent dans **IndexedDB** : base `oc_docs_v1`,
+magasin `docs` — séparés exprès des pistes pour qu'un document lourd ne
+puisse jamais les bloquer ni les faire perdre. Depuis la v7 (décision #4),
+le magasin range **des variantes nommées** sous les clés `cv_<id>` et
+`lm_<id>` ; les clés héritées `cv` et `lettre` restent lues comme des
+variantes ordinaires (rien à migrer, rien ne se renomme). La commande
+`wipe` (§5.7) vide tout le magasin.
 
 Renommer une clé = perte de données pour tous les utilisateurs existants.
 On ne renomme jamais ; si le format d'une clé doit évoluer, on crée une

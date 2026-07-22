@@ -10,10 +10,14 @@
 import { esc, todayISO } from '../engine/utils.js';
 import { fillTpl, pushHist } from '../engine/model.js';
 import { sendMail } from '../engine/mailer.js';
+import { bytesToB64 } from '../engine/crypto.js';
+import { docGet } from '../engine/storage.js';
 import { aiComplete, draftPrompt } from '../engine/ai.js';
 import { S, bus, saveData, logJ, activateContact } from './state.js';
-import { openSheet, toast, btn, el, ic } from './dom.js';
+import { openSheet, openPanel, toast, btn, el, ic } from './dom.js';
 import { askNextAction } from './actions.js';
+import { openProfil } from './profil.js';
+import { listDocs, docKind, docTitle, pickPdf } from './docs.js';
 import { mailAccount, freshToken, openConnexions, aiConnection, aiCompleteViaCompanion } from './connexions.js';
 
 export function openMail(c, opts){
@@ -26,11 +30,15 @@ export function openMail(c, opts){
      suivante ; la croix (ou Échap) arrête TOUTE la série immédiatement */
   let done = false;
   const advance = () => { if (opts.onDone){ const f = opts.onDone; opts.onDone = null; f(); } };
-  const sh = openSheet({
+  /* desktop : le composeur prend la place de la fiche dans le panneau
+     (#16, fin du double-modal N8) ; mobile : feuille comme avant */
+  const wide = matchMedia('(min-width:901px)').matches;
+  const sh = (wide ? openPanel : openSheet)({
     title: 'Écrire — ' + c.name + (opts.progress ? '  ·  ' + opts.progress : ''),
     icon: 'mail', focus: cts.length ? '#mSubj' : '#mBody',
     onClose: () => { if (done) return; done = true; if (opts.onQuit) opts.onQuit(); }
   });
+  if (!sh) return;
   const acct = mailAccount();       /* messagerie connectée ? */
   /* la personne choisie arrive pré-sélectionnée (#14) — jamais devinée */
   const initIdx = Math.max(0, cts.findIndex(t => t.id === opts.ctId));
@@ -46,8 +54,9 @@ export function openMail(c, opts){
      <div class="field"><label for="mSubj">Objet</label><input id="mSubj"></div>
      <div class="field"><label for="mBody">Message</label><textarea id="mBody" style="min-height:170px"></textarea>
        ${aiConnection() ? `<button class="linklike" id="mAi" style="margin-top:2px">${ic('sparkles', 'ic-14')} Proposer un brouillon</button>` : ''}</div>
+     <div class="attach-line" id="mAttach"></div>
      <p class="hint" id="mHint"></p>
-     ${!S.profile.name ? `<p class="hint warn">Profil vide — remplis-le dans « Moi » pour signer tes emails.</p>` : ''}`;
+     ${!S.profile.name ? `<div class="pc-actions"><button class="btn btn-sm" id="mProfil">${ic('pencil', 'ic-14')} Compléter mon profil</button></div>` : ''}`;
 
   const q = s => sh.body.querySelector(s);
   const currentCt = () => cts[+q('#mTo').value] || (c.contacts || [])[0] || null;
@@ -64,6 +73,27 @@ export function openMail(c, opts){
     q('#mBody').value = fillTpl(t.body, c, ct, S.profile);
     sync();
   }
+  /* indisponible = absent (loi #6) : sans adresse, ni « Envoyer » ni
+     « Ouvrir dans Mail » — « Copier » devient LE bouton. Le pied se
+     recompose au changement de destinataire. */
+  let manual = false;               /* passé par Mail : re-proposer « Envoyée ✓ » */
+  let lastEmail = null;
+  const syncFoot = () => {
+    const ct = currentCt();
+    const email = (ct && ct.email) || '';
+    if (email === lastEmail) return;
+    lastEmail = email;
+    const foot = [bCopy];
+    bCopy.classList.toggle('btn-primary', !email);
+    if (email){
+      foot.push(aMail);
+      aMail.classList.toggle('btn-primary', !acct);
+      aMail.classList.toggle('btn-ghost', !!acct && !manual);
+      foot.push(acct && !manual ? bSend : bMarked);
+    }
+    sh.setFoot(foot);
+    if (opts.onDone) sh.ov.querySelector('.modal-f').prepend(bSkip);
+  };
   function sync(){
     const ct = currentCt();
     const email = ct && ct.email;
@@ -71,26 +101,55 @@ export function openMail(c, opts){
       aMail.href = 'mailto:' + encodeURIComponent(email) +
         '?subject=' + encodeURIComponent(q('#mSubj').value) +
         '&body=' + encodeURIComponent(q('#mBody').value);
-      aMail.classList.remove('btn-off');
       q('#mHint').innerHTML = acct
         ? `Depuis <b>${esc(acct.email || 'ta messagerie')}</b> → ${esc(email)}`
         : `Destinataire : ${esc(email)} <button class="linklike" id="mDirect" style="min-height:0;padding:0 4px">Envoyer directement depuis l’app ?</button>`;
       q('#mDirect')?.addEventListener('click', () => openConnexions());
     } else {
       aMail.removeAttribute('href');
-      aMail.classList.add('btn-off');
-      q('#mHint').textContent = 'Pas d’email sur cette piste — copie le message et envoie-le via LinkedIn ou le formulaire du site.';
+      q('#mHint').textContent = 'Pas d’email — Copier, puis LinkedIn ou le site.';
     }
-    /* Une action principale doit toujours être possible. Sans adresse,
-       « Envoyer » ne promet rien : Copier prend le relais et le raccourci
-       clavier est neutralisé. Réévalué à chaque changement de destinataire. */
-    if (bSend){
-      bSend.disabled = !email || sending;
-      bSend.classList.toggle('btn-primary', !!email);
-      bSend.classList.toggle('btn-off', !email);
-      bSend.setAttribute('aria-disabled', String(!email));
-      bCopy.classList.toggle('btn-primary', !email);
+    syncFoot();
+  }
+
+  /* ---- joindre CV / LM : vraie pièce jointe PDF (#16, #4) ----
+     La ligne n'existe qu'avec l'envoi direct (un mailto ne joint rien) ;
+     sans aucun document, un « joindre un CV » discret la remplace. */
+  const picked = { cv: '', lm: '' };
+  let docs = [];
+  async function renderAttach(){
+    const box = q('#mAttach');
+    if (!box || !acct) return;
+    docs = await listDocs();
+    if (!sh.body.isConnected) return;
+    if (!docs.length){
+      box.innerHTML = `<button class="linklike" id="mAttAdd">${ic('attachment', 'ic-14')} joindre un CV</button>`;
+      box.querySelector('#mAttAdd').addEventListener('click', () =>
+        pickPdf('cv', k => { picked.cv = k; renderAttach(); }));
+      return;
     }
+    const sel = kind =>
+      `<label class="att-sel">${kind === 'cv' ? 'CV' : 'LM'}
+         <select data-att="${kind}">
+           <option value="">Aucun</option>
+           ${docs.filter(d => docKind(d.key) === kind).map(d =>
+             `<option value="${esc(d.key)}"${picked[kind] === d.key ? ' selected' : ''}>${esc(docTitle(d))}</option>`).join('')}
+         </select>
+       </label>`;
+    box.innerHTML = `${ic('attachment', 'ic-14')} ${sel('cv')} ${sel('lm')}`;
+    box.querySelectorAll('[data-att]').forEach(s =>
+      s.addEventListener('change', () => { picked[s.dataset.att] = s.value; }));
+  }
+  /* les documents choisis, prêts pour l'envoi (base64) */
+  async function pickedAttachments(){
+    const out = [];
+    for (const key of [picked.cv, picked.lm].filter(Boolean)){
+      const d = await docGet(key).catch(() => null);
+      if (!d || !d.blob) continue;
+      const buf = new Uint8Array(await new Blob([d.blob]).arrayBuffer());
+      out.push({ name: d.name || 'document.pdf', type: d.type || 'application/pdf', b64: bytesToB64(buf) });
+    }
+    return out;
   }
   /* trace « préparé » une seule fois, au premier geste concret */
   function logPrep(){
@@ -196,42 +255,43 @@ export function openMail(c, opts){
     bSend.disabled = true;
     bSend.textContent = 'Envoi…';
     try {
+      const attachments = await pickedAttachments();
       const token = await freshToken(acct.provider);
       await sendMail(acct.provider, token, {
         from: acct.email, to: ct.email,
-        subject: q('#mSubj').value, body: q('#mBody').value
+        subject: q('#mSubj').value, body: q('#mBody').value,
+        attachments
       });
       markSentAndFollow();
     } catch (e) {
       sending = false;
+      bSend.disabled = false;
       bSend.textContent = 'Envoyer';
-      sync();
       if (e.message === 'expire') askReconnect();
       else toast('Pas parti — réessaie, ou ouvre dans Mail.');
     }
   };
   const bSend = acct ? btn('Envoyer', 'btn-primary', doSend, 'mail') : null;
+  const bSkip = btn('Passer →', 'btn-ghost', () => { done = true; sh.close(); advance(); });
 
+  /* passer par Mail re-propose le marquage à la main */
+  aMail.addEventListener('click', () => {
+    if (!acct || manual) return;
+    manual = true;
+    lastEmail = null;
+    syncFoot();
+  });
   if (acct){
-    /* connecté : Envoyer est LE primaire ; passer par Mail re-propose
-       le marquage à la main (le pied redevient l'historique) */
-    sh.setFoot([bCopy, aMail, bSend]);
-    aMail.classList.add('btn-ghost');
-    aMail.addEventListener('click', () => {
-      sh.setFoot([bCopy, aMail, bMarked]);
-      aMail.classList.remove('btn-ghost');
-    });
     /* ordinateur : Ctrl/Cmd+Entrée envoie */
     sh.body.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !bSend.disabled) doSend();
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && lastEmail && !sending) doSend();
     });
-  } else {
-    aMail.classList.add('btn-primary');
-    sh.setFoot([bCopy, aMail, bMarked]);
   }
-  if (opts.onDone){
-    const skip = btn('Passer →', 'btn-ghost', () => { done = true; sh.close(); advance(); });
-    sh.ov.querySelector('.modal-f').prepend(skip);
-  }
+  q('#mProfil')?.addEventListener('click', () => openProfil(() => {
+    if (!sh.body.isConnected) return;
+    fill();
+    if (S.profile.name) q('#mProfil')?.remove();
+  }));
   fill();
+  renderAttach();
 }

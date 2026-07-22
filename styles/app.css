@@ -544,6 +544,16 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   .x{min-width:28px;min-height:28px;width:28px;height:28px}
 }
 
+/* la ligne « joindre CV / LM » du composeur (#16) — discrète, au-dessus
+   de l'envoi ; absente sans messagerie connectée */
+.attach-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 8px}
+.attach-line:empty{display:none}
+.att-sel{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted);
+}
+.att-sel select{min-height:32px;padding:2px 8px;max-width:170px}
+
 /* ============ PANNEAU LATÉRAL (desktop, #10) ============ */
 .spanel{position:absolute;top:0;right:0;bottom:0;width:min(480px,46vw);z-index:1200}
 .spanel .modal{

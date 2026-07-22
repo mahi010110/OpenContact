@@ -11,7 +11,8 @@ import { fullPayload, parseInput } from '../engine/exchange.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
 import { mergeTombs } from '../engine/sync.js';
-import { docGet, docPut, docDel } from '../engine/storage.js';
+import { docGet } from '../engine/storage.js';
+import { listDocs, docKind, docTitle, pickPdf, removeDoc } from './docs.js';
 import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ } from './state.js';
 import { $, ic, toast, btn, openSheet, confirmSheet, showUndo } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
@@ -124,49 +125,33 @@ function askRestorePass(raw){
   sh.setFoot([btn('Déverrouiller', 'btn-primary', go)]);
 }
 
-/* ---------- CV & lettre (PDF, IndexedDB — séparés des pistes) ---------- */
-const DOCS = [['cv', 'Mon CV'], ['lettre', 'Ma lettre type']];
-async function docLine(key, label){
-  let d = null;
-  try { d = await docGet(key); } catch (e) {}
-  const row = $('#doc-' + key);
-  if (!row) return;
-  row.innerHTML = d
-    ? `<span class="doc-name">${ic('attachment', 'ic-14')} <b>${esc(d.name)}</b> · ${fmtSize(d.size)}</span>
-       <button class="btn btn-sm" data-see="${key}">Voir</button>
-       <button class="abtn abtn-sm" data-del="${key}" aria-label="Retirer ${label}" title="Retirer">${ic('trash', 'ic-14')}</button>`
-    : `<span class="doc-name doc-none">${esc(label)} — aucun fichier</span>
-       <button class="btn btn-sm" data-add="${key}">${ic('upload', 'ic-14')} Ajouter</button>`;
-  row.querySelector('[data-see]')?.addEventListener('click', async () => {
-    const doc = await docGet(key);
-    if (!doc) return;
-    const url = URL.createObjectURL(new Blob([doc.blob], { type: doc.type || 'application/pdf' }));
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  });
-  row.querySelector('[data-del]')?.addEventListener('click', async () => {
-    const ok = await confirmSheet({ title: 'Retirer ce document ?', danger: true, okLabel: 'Retirer',
-      msg: 'Retiré de cet appareil seulement.' });
-    if (!ok) return;
-    await docDel(key).catch(() => {});
-    docLine(key, label);
-  });
-  row.querySelector('[data-add]')?.addEventListener('click', () => {
-    const inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = 'application/pdf';
-    inp.addEventListener('change', async () => {
-      const f = inp.files[0];
-      if (!f) return;
-      if (f.size > 8 * 1048576){ toast('Trop lourd (8 Mo max) — allège le PDF.'); return; }
-      try {
-        await docPut(key, { name: f.name, size: f.size, type: f.type, added: Date.now(), blob: f });
-        toast('Document rangé.');
-      } catch (e) { toast('Stockage indisponible sur ce navigateur.'); }
-      docLine(key, label);
-    });
-    inp.click();
-  });
+/* ---------- CV & lettres : variantes nommées (#4) ---------- */
+async function renderDocs(){
+  const box = $('#moiDocs');
+  if (!box) return;
+  const docs = await listDocs();
+  box.innerHTML = docs.map(d =>
+    `<div class="doc-row">
+       <span class="doc-name">${ic('attachment', 'ic-14')} <b>${esc(docTitle(d))}</b> · ${docKind(d.key) === 'cv' ? 'CV' : 'lettre'} · ${fmtSize(d.size)}</span>
+       <button class="btn btn-sm" data-see="${esc(d.key)}">Voir</button>
+       <button class="abtn abtn-sm" data-del="${esc(d.key)}" aria-label="Retirer ${esc(docTitle(d))}" title="Retirer">${ic('trash', 'ic-14')}</button>
+     </div>`).join('');
+  box.querySelectorAll('[data-see]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const doc = await docGet(b.dataset.see).catch(() => null);
+      if (!doc) return;
+      const url = URL.createObjectURL(new Blob([doc.blob], { type: doc.type || 'application/pdf' }));
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }));
+  box.querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const ok = await confirmSheet({ title: 'Retirer ce document ?', danger: true, okLabel: 'Retirer',
+        msg: 'Retiré de cet appareil seulement.' });
+      if (!ok) return;
+      await removeDoc(b.dataset.del).catch(() => {});
+      renderDocs();
+    }));
 }
 
 /* ---------- l'écran : Profil & données + Réglages (#20) ---------- */
@@ -313,9 +298,12 @@ export function renderMoi(){
      </div>
 
      <div class="pcard">
-       <h3>${ic('attachment', 'ic-14')} CV &amp; lettre <span class="lbl-soft">PDF, sur cet appareil</span></h3>
-       <div class="doc-row" id="doc-cv"></div>
-       <div class="doc-row" id="doc-lettre"></div>
+       <h3>${ic('attachment', 'ic-14')} Mes CV &amp; lettres <span class="lbl-soft">PDF, sur cet appareil</span></h3>
+       <div id="moiDocs"></div>
+       <div class="pc-actions">
+         <button class="btn btn-sm" id="moiDocCv">${ic('plus', 'ic-14')} CV</button>
+         <button class="btn btn-sm" id="moiDocLm">${ic('plus', 'ic-14')} Lettre</button>
+       </div>
      </div>
 
      ${showBackup ? `
@@ -359,7 +347,9 @@ export function renderMoi(){
     root.scrollTop = 0;
   });
   bindSyncLive(root);
-  DOCS.forEach(([k, l]) => docLine(k, l));
+  root.querySelector('#moiDocCv').addEventListener('click', () => pickPdf('cv', renderDocs));
+  root.querySelector('#moiDocLm').addEventListener('click', () => pickPdf('lm', renderDocs));
+  renderDocs();
   if (navigator.storage && navigator.storage.estimate){
     navigator.storage.estimate().then(({ usage, quota }) => {
       if (usage != null && quota){

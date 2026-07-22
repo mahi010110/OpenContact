@@ -162,6 +162,22 @@ export async function runSelfTests(){
       ok(!b.nextActionCt);
       ok(!b.contacts[0].activatedAt); eq(b.contacts[0].src, 'promo');
     },
+    '#16 : MIME sans pièce jointe — texte simple inchangé': () => {
+      const m = buildMime({ from: 'a@x.fr', to: 'b@y.fr', subject: 'Salut', body: 'corps' });
+      ok(m.includes('Content-Type: text/plain; charset=UTF-8'));
+      ok(!m.includes('multipart'));
+      ok(m.includes(btoa('corps')));
+    },
+    '#16 : MIME avec pièce jointe — multipart/mixed complet': () => {
+      const m = buildMime({ from: 'a@x.fr', to: 'b@y.fr', subject: 'CV', body: 'voici',
+        attachments: [{ name: 'cv "cyber".pdf', type: 'application/pdf', b64: 'QUJD' }] });
+      const bd = /boundary="([^"]+)"/.exec(m);
+      ok(!!bd && m.includes('multipart/mixed'));
+      ok(m.split('--' + bd[1]).length === 4);            /* texte + pièce + fermeture */
+      ok(m.includes('Content-Disposition: attachment; filename="cv cyber.pdf"'));
+      ok(m.includes('QUJD'));
+      ok(m.trim().endsWith('--' + bd[1] + '--'));
+    },
     'statuts : migration v5 → 3 crans + clôture': () => {
       eq(normalizeCompany({ name: 'X', status: 'sent' }).status, 'active');
       eq(normalizeCompany({ name: 'X', status: 'followup' }).status, 'active');

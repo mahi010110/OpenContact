@@ -104,7 +104,7 @@ format bouge · commit français focalisé.
   entreprise → bac, jamais bloqué ; email `nadia@ovh.com` → propose
   « OVHcloud » ; source « depuis mes e-mails » (posée en 0.2).
   Fichiers : `ui/capture.js`, `ui/state.js`, `styles/app.css`.
-- [ ] **2.5 Écrire (#16)** — destinataire = la personne (pré-choisie par
+- [x] **2.5 Écrire (#16)** *(livré — ?test 97/97, e2e envoi + campagne verts)* — destinataire = la personne (pré-choisie par
   `nextActionCt`/activation) ; **pièce jointe réelle CV/LM** : variantes
   nommées dans `oc_docs_v1` (additif : `cv`/`lettre` hérités = premières
   variantes) + `buildMime` multipart & Graph `attachments` ; ligne 📎
