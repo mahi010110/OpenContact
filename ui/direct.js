@@ -114,15 +114,22 @@ const agoLabel = t => {
    est honnête sur cette limite. */
 function openDeviceSheet(d, onDone){
   const sh = openSheet({ title: d.name, icon: 'switch' });
+  /* le quotidien visible ; l'administration de flotte repliée (N10) —
+     de la sécurité, rare, non bloquante (loi #8) */
   sh.body.innerHTML =
     `<p class="hint" style="margin:0 0 10px">Vu ${agoLabel(d.seen || 0)}. Une commande s’applique quand il se reconnecte.</p>
      <div class="pick-list">
-       <button class="pick" id="dvLock"><b>Verrouiller cet appareil</b><span>il se verrouillera dès qu’il se reconnectera</span></button>
-       <button class="pick" id="dvMain"><b>En faire l’appareil principal</b><span>celui-ci redevient un appareil ordinaire</span></button>
        <button class="pick" id="dvRemove"><b>Retirer de mes appareils</b><span>il ne se synchronisera plus</span></button>
-       <button class="pick" id="dvBan"><b>Retirer et changer les clés</b><span>appareil perdu ou douteux</span></button>
-       <button class="pick pick-danger" id="dvWipe"><b>Effacer ses données</b><span>de bonne foi — à sa prochaine connexion</span></button>
-     </div>`;
+     </div>
+     <details class="srt-adv" style="margin-top:10px">
+       <summary>Sécurité avancée</summary>
+       <div class="pick-list">
+         <button class="pick" id="dvLock"><b>Verrouiller cet appareil</b><span>il se verrouillera dès qu’il se reconnectera</span></button>
+         <button class="pick" id="dvMain"><b>En faire l’appareil principal</b><span>celui-ci redevient un appareil ordinaire</span></button>
+         <button class="pick" id="dvBan"><b>Retirer et changer les clés</b><span>appareil perdu ou douteux</span></button>
+         <button class="pick pick-danger" id="dvWipe"><b>Effacer ses données</b><span>de bonne foi — à sa prochaine connexion</span></button>
+       </div>
+     </details>`;
   const q = s => sh.body.querySelector(s);
   const doCmd = async (cmd, confirmOpts, doneMsg) => {
     if (confirmOpts && !await confirmSheet(confirmOpts)) return;
@@ -156,6 +163,10 @@ function openDeviceSheet(d, onDone){
 /* ============ Mes appareils : gestion du lien persistant ============ */
 export function openAppareils(){
   let onSync = null;
+  /* N11 : la phrase donne accès à tout le privé — masquée par défaut
+     dès qu'un appareil est relié, révélée d'un tap ; visible tant
+     qu'on est en train de relier (il faut pouvoir la recopier) */
+  let revealPhrase = null;
   const sh = openSheet({
     title: 'Mes appareils', icon: 'switch', clearToast: true,
     onClose: () => { if (onSync){ document.removeEventListener('oc:sync', onSync); onSync = null; } }
@@ -205,9 +216,12 @@ export function openAppareils(){
     const comp = await loadCompanion();
     const relays = await relayList();
     const turn = await turnList();
+    const phraseShown = revealPhrase === null ? !devs.length : revealPhrase;
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
-      `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
+      `<div class="sy-phrase"><span>${phraseShown ? esc(sy.phrase) : '••••• – •••••'}</span>
+         <button class="abtn abtn-sm" id="syEye" aria-label="${phraseShown ? 'Masquer' : 'Afficher'} la phrase"
+                 title="${phraseShown ? 'Masquer' : 'Afficher'}">${ic(phraseShown ? 'eye-off' : 'eye', 'ic-14')}</button></div>
        <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils → Entrer une phrase</b>.</p>
        <div class="sy-status" id="syStatus">${statusHTML()}</div>
        <div class="sy-log">${st ? `
@@ -242,6 +256,7 @@ export function openAppareils(){
        ${relaySettingsHTML(relays, turn)}
        <button class="linklike" id="syNewPhrase" style="margin-top:12px">Changer la phrase de liaison</button>`;
 
+    q('#syEye')?.addEventListener('click', () => { revealPhrase = !phraseShown; renderLinked(); });
     q('#syRetry')?.addEventListener('click', () => startSync(sy.phrase));
     q('#syKeepProf')?.addEventListener('click', keepMyProfile);
     q('#syNewPhrase')?.addEventListener('click', async () => {
