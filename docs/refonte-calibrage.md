@@ -253,10 +253,72 @@ invite au bon moment **sont** l'accueil (cohérent avec la Décision 3).
 
 ---
 
+## Décision 10 — « Aujourd'hui » : le travail du jour est le héros
+
+**Dégraissage.** Les 5 bandeaux actuels (contacts à rattacher, reçu de la promo,
+propositions IA, assistant, campagnes — `today.js:104-109`, empilés **au-dessus**
+du travail) sont rangés :
+- Les **actions du jour d'abord** (En retard · Aujourd'hui).
+- Les reçus/proposés → **une seule ligne « À trier (N) »**, calme.
+- Les **campagnes → une ligne SOUS le travail**, jamais tronquée (la maison des
+  campagnes reste « Mes pistes », Décision 5).
+
+**Ordre mobile :** titre + « ✓ N faites » · EN RETARD · AUJOURD'HUI · campagnes du
+jour · ⌄ Bientôt (replié) · À trier.
+
+**Desktop (poste de commandement) :** la liste **+ un panneau latéral pour la
+fiche** — on ouvre une piste à droite, la liste reste (le standard prouvé
+Huntr/Lemlist), pas deux colonnes ni une fenêtre qui recouvre. Corrige **N5**,
+**C2**, et le **double-modal (N8)** sur cet écran.
+
+Conforté par la veille : Lemlist « Required / Coming soon » = nos tranches ;
+Huntr/Lemlist/Teal séparent tous la to-do du reste.
+
+---
+
+## Décision 11 — Les chiffres : pousser à agir, jamais à contempler
+
+**Règle.** Un chiffre a sa place s'il donne de l'**élan** OU s'il **mène à une
+action**. Sinon, non. **Remplace** le « pas d'analytics » du brief d'origine.
+
+- ✅ « 3 faites aujourd'hui », « 6 relances cette semaine » (élan) · « 5 sans
+  réponse depuis 15 j », « 8 sans prochaine action » (tape → la liste) · « 12
+  actives · 4 en attente ».
+- ❌ graphes par jour/semaine/mois, entonnoirs de conversion, tout chiffre qu'on
+  ne fait que regarder ou qui culpabilise.
+- **Tissés là où ils servent** (des portes vers une action), surtout desktop ;
+  mobile garde juste « N faites aujourd'hui ». **Jamais d'onglet « Stats ».**
+
+---
+
+## Décision 12 — Évolutivité : le haut niveau est fermé, la croissance se fait dedans
+
+Une nouvelle feature ne doit **jamais** ajouter un onglet ni bousculer le reste.
+La nav (4 entrées, *faire / régler*) est **figée**. Toute nouveauté trouve sa
+place dans un **slot existant**, en répondant à *« c'est quoi ? »* :
+
+| Une nouvelle… | …atterrit dans |
+|---|---|
+| **source** de pistes | « Ajouter une piste » (comme l'import e-mails) |
+| **action** sur une piste | la fiche → remonte dans Aujourd'hui |
+| **canal** d'échange | Échanger (Donner / Recevoir) |
+| **réglage / intégration** | Réglages, replié (Décision 8) |
+| **chiffre** | une porte vers une action (Décision 11), pas un écran |
+| **item reçu à trier** | la ligne « À trier » (Décision 10), pas un bandeau |
+
+Et elle **obéit aux lois** (3, 6, 8, 11) → elle ne peut ni encombrer ni
+expliquer. Exemples : *scanner une carte de visite* = nouvelle **source** ;
+*rappel d'entretien* = nouvelle **action** ; *un autre fournisseur d'IA* =
+**réglage** replié ; *un nouveau type de contenu reçu* = rejoint **« À trier »**.
+Rien d'autre ne bouge.
+
+---
+
 # Fondations calibrées ✓ — et ce qui reste
 
-Les **9 décisions ci-dessus = le squelette + les lois.** C'est le plus dur, et
-c'est fait. Elles ne se re-discutent plus ; tout le reste s'y **applique**.
+Les **décisions ci-dessus = le squelette, les lois, et le 1ᵉʳ écran conçu
+(« Aujourd'hui »).** C'est le plus dur, et c'est fait. Elles ne se re-discutent
+plus ; tout le reste s'y **applique**.
 
 **Ce qui reste = concevoir chaque écran, un par un, mobile d'abord**, en passant
 chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
@@ -264,8 +326,7 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
 ## Ce qui reste à concevoir
 
 **Faire :**
-- **Aujourd'hui** — les tranches, la ligne d'action, le dégraissage des rappels
-  (N5), la version desktop (semaine visible + fiche en panneau latéral, C2).
+- **Aujourd'hui** — ✅ **calibré (Décision 10).**
 - **Mes pistes** — ligne (mobile) / carte du tableau (desktop), redondance du
   statut, bac « à rattacher », clôturées, glisser + équivalent clavier (C9).
 - **La fiche** — contacts, « Compléter », « À savoir », clôture, itinéraire,
