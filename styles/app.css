@@ -694,6 +694,44 @@ details.pcard-details[open]>summary{margin-bottom:10px}
 .ct .ct-acts .btn{flex:1 1 auto;padding:5px 10px;font-size:var(--text-12)}
 @media (min-width:901px){ .ct .ct-acts .btn{flex:0 0 auto} }
 .ct .ct-note{font-size:var(--text-12);color:var(--text-muted);margin-top:6px;font-style:italic}
+/* contacts compacts (#15) : une ligne par personne, dépliable — les
+   règles .ct-* (meta, acts, note) servent aussi dans .ctc-body */
+.ctc-list{display:flex;flex-direction:column;gap:6px}
+.ctc{background:var(--surface-chrome);border:1px solid var(--border-soft);border-radius:var(--radius-1)}
+.ctc>summary{
+  list-style:none;cursor:pointer;user-select:none;
+  display:flex;align-items:center;gap:8px;min-height:var(--ctl);padding:5px 10px;
+}
+.ctc>summary::-webkit-details-marker{display:none}
+.ctc>summary::before{content:'▸';font-size:9px;color:var(--text-muted);flex:none}
+.ctc[open]>summary::before{content:'▾'}
+.ctc>summary b{
+  flex:none;max-width:62%;
+  font-size:var(--text-13);font-weight:var(--weight-semibold);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ctc-sub{
+  font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted);
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.ctc-body{padding:2px 10px 10px;border-top:1px dashed var(--border-soft)}
+.ctc-body .ct-acts{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.ctc-body .ct-acts .btn{flex:1 1 auto;padding:5px 10px;font-size:var(--text-12)}
+@media (min-width:901px){ .ctc-body .ct-acts .btn{flex:0 0 auto} }
+.ctc-body .ct-meta{font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted);margin-top:6px;word-break:break-all}
+.ctc-body .ct-note{font-size:var(--text-12);color:var(--text-muted);margin-top:6px;font-style:italic}
+.ctc-body .linklike{margin-top:8px}
+/* « + N personnes connues » : les reçues dormantes, repliées (#14) */
+.ctc-known{margin-top:8px}
+.ctc-known>summary{
+  list-style:none;cursor:pointer;user-select:none;min-height:28px;
+  display:flex;align-items:center;gap:6px;
+  font-family:var(--font-mono);font-size:var(--text-11);color:var(--text-muted);
+}
+.ctc-known>summary::-webkit-details-marker{display:none}
+.ctc-known>summary::before{content:'▸';font-size:9px}
+.ctc-known[open]>summary::before{content:'▾'}
+.ctc-known[open]>summary{margin-bottom:6px}
 .timeline{list-style:none;margin:4px 0 0;padding:0}
 .timeline li{font-size:var(--text-12);color:var(--text-muted);padding:4px 0;border-bottom:1px dashed var(--border-soft);display:flex;gap:9px}
 .timeline li:last-child{border-bottom:0}

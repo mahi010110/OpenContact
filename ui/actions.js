@@ -62,7 +62,7 @@ export function askNextAction(c, opts){
       sh.close();
       return;
     }
-    setNextAction(c, txt, iso);
+    setNextAction(c, txt, iso, opts.ctId);
     sh.close();
     toast('Noté : ' + txt + ' — ' + frDate(iso));
     bus.refresh();
@@ -98,7 +98,8 @@ export function reportAction(c){
          <button class="btn btn-primary" id="rpOk" hidden>OK</button>
        </div></div>`;
   const pick = iso => {
-    setNextAction(c, c.nextActionText, iso);
+    /* reporter ne change ni le verbe ni la personne visée (#14) */
+    setNextAction(c, c.nextActionText, iso, c.nextActionCt);
     sh.close();
     toast('Reporté à ' + frDate(iso) + '.');
     bus.refresh();

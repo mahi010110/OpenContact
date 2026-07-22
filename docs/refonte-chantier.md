@@ -92,7 +92,7 @@ format bouge · commit français focalisé.
   à côté de Prospecter (loi #6 : absent si aucune).
   Fichiers : `ui/pistes.js`, `ui/sort.js`, `ui/campagnes.js` (liste
   gestion), `styles/app.css`.
-- [ ] **2.3 La fiche (#15)** — héros : statut + prochaine action ;
+- [x] **2.3 La fiche (#15)** *(livré)* — héros : statut + prochaine action ;
   contacts en **liste compacte** (actifs en haut, dormants repliés « + N
   personnes connues », repère « reçu de la promo ») ; sections vides
   masquées (« Compléter » = la porte) ; desktop : panneau latéral ;

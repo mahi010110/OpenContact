@@ -186,7 +186,8 @@ export function renderToday(){
     row.querySelector('.act-main').addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openFiche(c); }
     });
-    row.querySelector('[data-a="mail"]').addEventListener('click', () => openMail(c));
+    row.querySelector('[data-a="mail"]').addEventListener('click', () =>
+      openMail(c, { ctId: c.nextActionCt }));      /* l'action vise sa personne (#14) */
     row.querySelector('[data-a="report"]').addEventListener('click', () => reportAction(c));
     row.querySelector('[data-a="done"]').addEventListener('click', () => finishRow(row, c));
     bindSwipe(row, c);

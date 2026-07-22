@@ -11,7 +11,7 @@ import { esc, todayISO } from '../engine/utils.js';
 import { fillTpl, pushHist } from '../engine/model.js';
 import { sendMail } from '../engine/mailer.js';
 import { aiComplete, draftPrompt } from '../engine/ai.js';
-import { S, bus, saveData, logJ } from './state.js';
+import { S, bus, saveData, logJ, activateContact } from './state.js';
 import { openSheet, toast, btn, el, ic } from './dom.js';
 import { askNextAction } from './actions.js';
 import { mailAccount, freshToken, openConnexions, aiConnection, aiCompleteViaCompanion } from './connexions.js';
@@ -32,11 +32,13 @@ export function openMail(c, opts){
     onClose: () => { if (done) return; done = true; if (opts.onQuit) opts.onQuit(); }
   });
   const acct = mailAccount();       /* messagerie connectée ? */
+  /* la personne choisie arrive pré-sélectionnée (#14) — jamais devinée */
+  const initIdx = Math.max(0, cts.findIndex(t => t.id === opts.ctId));
   sh.body.innerHTML =
     `<div class="grid2">
        <div class="field"><label for="mTo">Destinataire</label>
          <select id="mTo">${cts.length
-           ? cts.map((t, i) => `<option value="${i}">${esc(t.name || t.email)}${t.role ? ' — ' + esc(t.role) : ''}</option>`).join('')
+           ? cts.map((t, i) => `<option value="${i}"${i === initIdx ? ' selected' : ''}>${esc(t.name || t.email)}${t.role ? ' — ' + esc(t.role) : ''}</option>`).join('')
            : '<option value="">Aucun email sur cette piste</option>'}</select></div>
        <div class="field"><label for="mTpl">Modèle</label>
          <select id="mTpl">${tpls.map((t, i) => `<option value="${i}">${esc(t.name)}</option>`).join('')}</select></div>
@@ -96,6 +98,7 @@ export function openMail(c, opts){
     logged = true;
     const ct = currentCt();
     const who = ct ? (ct.name || ct.email) : '';
+    if (ct) activateContact(c, ct);                     /* #14 : écrit = activé */
     pushHist(c, 'Email préparé' + (who ? ' — ' + who : ''));
     logJ('Email préparé : ' + c.name + (who ? ' (' + who + ')' : ''), c.id);
     saveData();
@@ -104,6 +107,7 @@ export function openMail(c, opts){
   function markSentAndFollow(){
     const ct = currentCt();
     const who = ct ? (ct.name || ct.email) : '';
+    if (ct) activateContact(c, ct);                     /* #14 : écrit = activé */
     pushHist(c, 'Email envoyé' + (who ? ' — ' + who : ''));
     logJ('Email envoyé : ' + c.name + (who ? ' (' + who + ')' : ''), c.id);
     if (c.status === 'todo') c.status = 'active';
@@ -116,6 +120,7 @@ export function openMail(c, opts){
     askNextAction(c, {
       title: 'Envoyé ✓ — et ensuite ?',
       preset: 'Relancer' + (who ? ' ' + who : ''),
+      ctId: ct && ct.id,                                /* la relance vise la personne */
       onDone: advance
     });
   }
