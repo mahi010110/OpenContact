@@ -64,7 +64,8 @@ format bouge · commit français focalisé.
 
 ### Phase 1 — navigation & « Moi » (#2, #20)
 
-- [ ] **1.1 « Moi » éclaté** — en haut *Profil & données* (Mon profil ·
+- [x] **1.1 « Moi » éclaté** *(livré — porte = 2ᵉ écran de « Moi » sur
+  mobile, colonnes desktop ; e2e verrou/envoi/liaison verts)* — en haut *Profil & données* (Mon profil ·
   Modèles d'emails · CV & lettres · **Garder une copie** promue, état
   « N pistes depuis ta dernière copie », calmée si appareils reliés) ;
   en dessous **une porte « Réglages »** (mobile) / colonnes (desktop).

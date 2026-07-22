@@ -8,7 +8,7 @@
    · pannes DITES : aucun relais joignable → l'écran le dit, sur la sync
      ET sur le groupe — plus jamais « en liaison » dans le vide. */
 import net from 'net';
-import { chromium, chromiumPath, SHOTS, serveRepo, attendre } from './outils.mjs';
+import { chromium, chromiumPath, SHOTS, serveRepo, attendre, ouvrirReglages } from './outils.mjs';
 import { startLocalRelay } from './relais-local.mjs';
 
 const { server, base } = await serveRepo();
@@ -71,7 +71,7 @@ await A.reload({ waitUntil: 'load' });
 await attendre(A, async () => (await import('./ui/state.js')).S.companies.length === 25);
 
 await A.click('.topnav a[data-r="moi"]');
-await A.waitForSelector('#moiSync');
+await ouvrirReglages(A);
 await A.click('#moiSync');
 await A.waitForSelector('#syNew');
 await A.click('#syNew');
@@ -80,7 +80,7 @@ const phrase = (await A.textContent('.sy-phrase span')).trim();
 if (!/^[a-z2-9]{5}-[a-z2-9]{5}$/.test(phrase)) fail('phrase inattendue : ' + phrase);
 
 await B.click('.bottomnav a[data-r="moi"]');
-await B.waitForSelector('#moiSync');
+await ouvrirReglages(B);
 await B.click('#moiSync');
 await B.waitForSelector('#syJoin');
 await B.click('#syJoin');
@@ -230,7 +230,7 @@ await E.evaluate(async port => {
   await st.kvSet(st.RELAYS_KEY, JSON.stringify(['wss://127.0.0.1:' + port + '/']));
 }, portMort);
 await E.click('.bottomnav a[data-r="moi"]');
-await E.waitForSelector('#moiSync');
+await ouvrirReglages(E);
 await E.click('#moiSync');
 await E.waitForSelector('#syNew');
 await E.click('#syNew');

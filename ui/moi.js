@@ -12,15 +12,16 @@ import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
 import { mergeTombs } from '../engine/sync.js';
 import { docGet, docPut, docDel } from '../engine/storage.js';
-import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ, isClosed } from './state.js';
+import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ } from './state.js';
 import { $, ic, toast, btn, openSheet, confirmSheet, showUndo } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
 import { getSync } from './synclive.js';
 import { isProtected, openProtectFlow, openManageSheet, verrouLabel, requireCode } from './verrou.js';
-import { openConnexions, mailStateLabel, mailAccount } from './connexions.js';
+import { openConnexions, mailStateLabel, mailAccount, aiStateLabel, aiConnection } from './connexions.js';
+import { loadCompanion, openAddCompanion, openCompanionSheet } from './compagnon.js';
 
-/* ---------- sauvegarde (.oc complet) ---------- */
+/* ---------- garder une copie (.oc complet) ---------- */
 export function downloadBackup(pass){
   const doIt = async () => {
     const payload = fullPayload(S.companies, S.profile, S.orphans, S.tombs);
@@ -32,21 +33,24 @@ export function downloadBackup(pass){
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    logJ('Sauvegarde téléchargée' + (pass ? ' (chiffrée)' : ''));
-    toast('Sauvegarde téléchargée.');
+    /* l'état « N pistes depuis ta dernière copie » repart d'ici (#4) */
+    S.profile.flags.lastBackupAt = Date.now();
+    saveProfile();
+    logJ('Copie téléchargée' + (pass ? ' (chiffrée)' : ''));
+    toast('Copie gardée ✓');
+    bus.refresh();
   };
   return doIt();
 }
 
 function openBackupSheet(){
-  const sh = openSheet({ title: 'Ma sauvegarde', icon: 'save' });
+  const sh = openSheet({ title: 'Copie avec mot de passe', icon: 'save' });
   sh.body.innerHTML =
-    `<p class="hint" style="margin:0 0 12px"><span class="tag-priv">privé inclus</span> Tout, dans un fichier — pour toi seul.</p>
-     <div class="field"><label for="bkPass">Mot de passe <span class="lbl-soft">— optionnel</span></label>
-       <input id="bkPass" type="password" placeholder="Vide = lisible par tous" autocomplete="new-password">
-       <p class="hint">Chiffré si tu en mets un — perdu = irrécupérable.</p></div>`;
+    `<div class="field"><label for="bkPass">Mot de passe</label>
+       <input id="bkPass" type="password" autocomplete="new-password">
+       <p class="hint">Perdu = copie irrécupérable.</p></div>`;
   sh.setFoot([
-    btn('Télécharger', 'btn-primary', async () => {
+    btn('Garder la copie', 'btn-primary', async () => {
       await downloadBackup(sh.body.querySelector('#bkPass').value || '');
       sh.close();
     }, 'download')
@@ -165,7 +169,7 @@ async function docLine(key, label){
   });
 }
 
-/* ---------- l'écran ---------- */
+/* ---------- l'écran : Profil & données + Réglages (#20) ---------- */
 function syncLabel(){
   const sy = getSync();
   if (!sy.phrase) return 'non relié';
@@ -175,72 +179,54 @@ function syncLabel(){
   if (sy.state === 'rtcfail') return 'relié — liaison directe en échec';
   return 'relié — en attente';
 }
-export function renderMoi(){
-  const root = $('#view-moi');
-  const p = S.profile;
-  const pReady = p.name && p.email;
-  const alive = S.companies.filter(c => !isClosed(c)).length;
-  root.innerHTML =
-    `<div class="page-inner">
-       <div class="td-head"><h2>Moi</h2><div class="td-date">privé — jamais partagé</div></div>
+/* « N pistes depuis ta dernière copie » — l'état qui pousse au geste (#4) ;
+   se calme quand les appareils reliés dupliquent déjà les données */
+function backupState(){
+  const last = Number((S.profile.flags || {}).lastBackupAt) || 0;
+  return {
+    last,
+    linked: !!getSync().phrase,
+    n: S.companies.filter(c => (c.updatedAt || 0) > last).length
+  };
+}
 
-       <div class="pcard">
-         <h3>${ic('user', 'ic-14')} Mon profil</h3>
-         <p class="pd">${pReady
-            ? `<b>${esc(p.name)}</b>${p.formation ? ' · ' + esc(p.formation) : ''} — tes emails se signent tout seuls.`
-            : 'Nom, formation, contact : une fois remplis, chaque email part signé et complet.'}</p>
-         <div class="pc-actions">
-           <button class="btn ${pReady ? '' : 'btn-primary'}" id="moiProfil">${ic('pencil', 'ic-14')} ${pReady ? 'Modifier' : 'Remplir mon profil'}</button>
-           <button class="btn" id="moiTpl">${ic('mail', 'ic-14')} Modèles d’emails (${p.templates.length})</button>
-         </div>
-       </div>
-
-       <div class="pcard">
-         <h3>${ic('attachment', 'ic-14')} CV &amp; lettre <span class="lbl-soft">PDF, sur cet appareil</span></h3>
-         <div class="doc-row" id="doc-cv"></div>
-         <div class="doc-row" id="doc-lettre"></div>
-       </div>
-
-       <div class="pcard">
-         <h3>${ic('save', 'ic-14')} Ma sauvegarde <span class="tag-priv">privé inclus</span></h3>
-         <p class="pd">${S.companies.length} piste${S.companies.length > 1 ? 's' : ''} (${alive} vivante${alive > 1 ? 's' : ''}), suivi et profil dans un fichier <b>.oc</b> — à refaire régulièrement.</p>
-         <div class="pc-actions">
-           <button class="btn ${pReady ? 'btn-primary' : ''}" id="moiBackup">${ic('download', 'ic-14')} Télécharger</button>
-           <button class="btn" id="moiRestore">${ic('reload', 'ic-14')} Restaurer</button>
-           <input type="file" id="moiRestoreFile" accept=".oc,.txt,.json,application/octet-stream,application/json,text/plain" hidden>
-         </div>
-         <div class="stor-line" id="moiStor"></div>
-       </div>
-
-       <div class="pcard">
-         <div class="ec-row" style="padding:6px 0 8px">
-           <div class="ec-row-m"><b>${ic('lock', 'ic-14')} Verrouillage</b>
-             <span class="ec-sub">${verrouLabel()}</span></div>
-           <button class="btn" id="moiVerrou">${isProtected() ? 'Gérer' : 'Protéger'}</button>
-         </div>
-         <div class="ec-row" style="padding:8px 0">
-           <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
-             <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
-           <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
-         </div>
-         <div class="ec-row" style="border:0;padding:8px 0 2px">
-           <div class="ec-row-m"><b>${ic('zap', 'ic-14')} Connexions</b>
-             <span class="ec-sub">${mailStateLabel()}</span></div>
-           <button class="btn" id="moiCx">${mailAccount() ? 'Gérer' : 'Connecter'}</button>
-         </div>
-       </div>
-
-       <div class="moi-ver">OpenContact ${APP_VERSION} · local-first, sans compte · fichier .oc</div>
-     </div>`;
-
-  root.querySelector('#moiProfil').addEventListener('click', () => openProfil());
-  root.querySelector('#moiTpl').addEventListener('click', openTemplates);
-  root.querySelector('#moiBackup').addEventListener('click', openBackupSheet);
-  root.querySelector('#moiVerrou').addEventListener('click', () =>
-    isProtected() ? openManageSheet() : openProtectFlow());
-  root.querySelector('#moiSync').addEventListener('click', openAppareils);
-  root.querySelector('#moiCx').addEventListener('click', openConnexions);
-  /* l'état du lien vit : peers, liaison, rupture */
+/* les lignes de Réglages — noms clairs (#21), inchangées entre la porte
+   mobile et la colonne desktop ; le détail (éclatement messagerie / IA,
+   avancé replié) vient en phase 3 */
+function reglagesRowsHTML(){
+  return (
+    `<div class="ec-row">
+       <div class="ec-row-m"><b>${ic('lock', 'ic-14')} Protection</b>
+         <span class="ec-sub">${verrouLabel()}</span></div>
+       <button class="btn" id="moiVerrou">${isProtected() ? 'Gérer' : 'Protéger'}</button>
+     </div>
+     <div class="ec-row">
+       <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
+         <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
+       <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
+     </div>
+     <div class="ec-row">
+       <div class="ec-row-m"><b>${ic('mail', 'ic-14')} Ma messagerie</b>
+         <span class="ec-sub">${mailStateLabel()}</span></div>
+       <button class="btn" id="moiCx">${mailAccount() ? 'Gérer' : 'Connecter'}</button>
+     </div>
+     <div class="ec-row">
+       <div class="ec-row-m"><b>${ic('sparkles', 'ic-14')} Mon assistant IA</b>
+         <span class="ec-sub">${aiStateLabel()}</span></div>
+       <button class="btn" id="moiAi">${aiConnection() ? 'Gérer' : 'Brancher'}</button>
+     </div>
+     <div class="ec-row" style="border:0">
+       <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Le Compagnon</b>
+         <span class="ec-sub" id="moiCompSt">sur ton ordinateur</span></div>
+       <button class="btn" id="moiComp">Ouvrir</button>
+     </div>
+     <div class="rg-foot">
+       <button class="linklike" id="moiRestore">${ic('reload', 'ic-14')} Restaurer une copie</button>
+       <input type="file" id="moiRestoreFile" accept=".oc,.txt,.json,application/octet-stream,application/json,text/plain" hidden>
+     </div>`);
+}
+/* l'état du lien vit : peers, liaison, rupture */
+function bindSyncLive(root){
   if (root.__onSync) document.removeEventListener('oc:sync', root.__onSync);
   root.__onSync = () => {
     if (root.hidden){ document.removeEventListener('oc:sync', root.__onSync); root.__onSync = null; return; }
@@ -250,17 +236,135 @@ export function renderMoi(){
     if (b) b.textContent = getSync().phrase ? 'Gérer' : 'Relier';
   };
   document.addEventListener('oc:sync', root.__onSync);
-  const rf = root.querySelector('#moiRestoreFile');
-  /* restaurer = geste sensible : le code d'abord, si les données sont protégées */
-  root.querySelector('#moiRestore').addEventListener('click', async () => {
+}
+
+function bindReglages(box){
+  const q = s => box.querySelector(s);
+  q('#moiVerrou').addEventListener('click', () =>
+    isProtected() ? openManageSheet() : openProtectFlow());
+  q('#moiSync').addEventListener('click', openAppareils);
+  q('#moiCx').addEventListener('click', openConnexions);
+  q('#moiAi').addEventListener('click', openConnexions);
+  q('#moiComp').addEventListener('click', async () => {
+    const assoc = await loadCompanion().catch(() => null);
+    if (assoc) openCompanionSheet(assoc);
+    else openAddCompanion();
+  });
+  loadCompanion().then(a => {
+    const st = q('#moiCompSt');
+    if (st && a) st.textContent = 'associé — ' + (a.nom || 'ton ordinateur');
+  }).catch(() => {});
+  const rf = q('#moiRestoreFile');
+  /* restaurer = rare et sensible (#4) : rangé ici, le code d'abord */
+  q('#moiRestore').addEventListener('click', async () => {
     if (await requireCode('Ton code, pour restaurer')) rf.click();
   });
   rf.addEventListener('change', () => { if (rf.files[0]) restoreFile(rf.files[0]); });
+}
+
+/* mobile : Réglages est le 2ᵉ écran de « Moi » (la porte #20) — un vrai
+   écran re-rendu par bus.refresh, jamais une feuille qui gèlerait ses états */
+let reglagesOpen = false;
+const mqWideMoi = matchMedia('(min-width:901px)');
+mqWideMoi.addEventListener('change', () => { if (S.route === 'moi') renderMoi(); });
+
+export function renderMoi(){
+  const root = $('#view-moi');
+  const wide = mqWideMoi.matches;
+
+  if (!wide && reglagesOpen){
+    root.innerHTML =
+      `<div class="page-inner">
+         <div class="td-head">
+           <button class="btn icon-btn" id="moiBack" aria-label="Retour à Moi">${ic('arrow-left', 'ic-14')}</button>
+           <h2>Réglages</h2>
+         </div>
+         <div class="pcard">${reglagesRowsHTML()}</div>
+       </div>`;
+    root.querySelector('#moiBack').addEventListener('click', () => { reglagesOpen = false; renderMoi(); });
+    bindReglages(root);
+    bindSyncLive(root);
+    return;
+  }
+
+  const p = S.profile;
+  const pReady = p.name && p.email;
+  const bk = backupState();
+  const showBackup = !!(S.companies.length || p.name);   /* rien à copier = carte absente */
+  const bkPromote = showBackup && !bk.linked && (!bk.last || bk.n > 0);
+  const bkState = bk.linked
+    ? 'Tes appareils reliés la gardent déjà en double.'
+    : !bk.last
+      ? 'Aucune copie encore.'
+      : bk.n
+        ? `<b>${bk.n} piste${bk.n > 1 ? 's' : ''}</b> depuis ta dernière copie.`
+        : 'À jour.';
+
+  const cards =
+    `<div class="pcard">
+       <h3>${ic('user', 'ic-14')} Mon profil</h3>
+       <p class="pd">${pReady
+          ? `<b>${esc(p.name)}</b>${p.formation ? ' · ' + esc(p.formation) : ''} — tes emails se signent tout seuls.`
+          : 'Nom, formation, contact : une fois remplis, chaque email part signé et complet.'}</p>
+       <div class="pc-actions">
+         <button class="btn ${pReady ? '' : 'btn-primary'}" id="moiProfil">${ic('pencil', 'ic-14')} ${pReady ? 'Modifier' : 'Remplir mon profil'}</button>
+         <button class="btn" id="moiTpl">${ic('mail', 'ic-14')} Modèles d’emails (${p.templates.length})</button>
+       </div>
+     </div>
+
+     <div class="pcard">
+       <h3>${ic('attachment', 'ic-14')} CV &amp; lettre <span class="lbl-soft">PDF, sur cet appareil</span></h3>
+       <div class="doc-row" id="doc-cv"></div>
+       <div class="doc-row" id="doc-lettre"></div>
+     </div>
+
+     ${showBackup ? `
+     <div class="pcard">
+       <h3>${ic('save', 'ic-14')} Garder une copie <span class="tag-priv">privé inclus</span></h3>
+       <p class="pd">${bkState}</p>
+       <div class="pc-actions">
+         <button class="btn ${bkPromote ? 'btn-primary' : ''}" id="moiBackup">${ic('download', 'ic-14')} Garder une copie</button>
+         <button class="linklike" id="moiBackupPass">avec un mot de passe</button>
+       </div>
+       <div class="stor-line" id="moiStor"></div>
+     </div>` : ''}`;
+
+  const reglages = `<div class="pcard">
+       ${wide ? `<h3>${ic('settings-2', 'ic-14')} Réglages</h3>` : ''}
+       ${reglagesRowsHTML()}
+     </div>`;
+
+  root.innerHTML =
+    `<div class="page-inner${wide ? ' page-wide' : ''}">
+       <div class="td-head"><h2>Moi</h2><div class="td-date">privé — jamais partagé</div></div>
+       ${wide
+         ? `<div class="moi-cols"><div>${cards}</div><div>${reglages}</div></div>`
+         : cards +
+           `<button class="pcard moi-door" id="moiReglages">
+              <span class="md-m"><b>${ic('settings-2', 'ic-14')} Réglages</b>
+                <span class="ec-sub">protection · appareils · messagerie · IA · Compagnon</span></span>
+              ${ic('chevron-right', 'ic-14')}
+            </button>`}
+       <div class="moi-ver">OpenContact ${APP_VERSION} · local-first, sans compte · fichier .oc</div>
+     </div>`;
+
+  root.querySelector('#moiProfil').addEventListener('click', () => openProfil());
+  root.querySelector('#moiTpl').addEventListener('click', openTemplates);
+  root.querySelector('#moiBackup')?.addEventListener('click', () => downloadBackup(''));
+  root.querySelector('#moiBackupPass')?.addEventListener('click', openBackupSheet);
+  if (wide) bindReglages(root);
+  else root.querySelector('#moiReglages').addEventListener('click', () => {
+    reglagesOpen = true;
+    renderMoi();
+    root.scrollTop = 0;
+  });
+  bindSyncLive(root);
   DOCS.forEach(([k, l]) => docLine(k, l));
   if (navigator.storage && navigator.storage.estimate){
     navigator.storage.estimate().then(({ usage, quota }) => {
       if (usage != null && quota){
-        $('#moiStor').textContent = 'Espace local utilisé : ' + fmtSize(usage) + ' sur ' + fmtSize(quota) + '.';
+        const el = $('#moiStor');
+        if (el) el.textContent = 'Espace local utilisé : ' + fmtSize(usage) + ' sur ' + fmtSize(quota) + '.';
       }
     }).catch(() => {});
   }
