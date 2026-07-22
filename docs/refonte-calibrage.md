@@ -522,10 +522,16 @@ Concrétise #2 & #4 — « Moi » devient **deux mondes** :
   enfoui dans « Mes appareils ») ; sur téléphone « s'installe sur ton
   ordinateur » + « Copier le lien ».
 
-**Explication humaine, mais à la demande.** La ligne reste propre (aucun texte
-d'explication). Un petit **« ? » discret** au bout de la ligne révèle, **seulement
-si on tape**, une **vraie explication en clair** — qui sait n'a rien à lire, qui
-bloque a l'aide, jamais imposée.
+**Explication : le nom d'abord, l'écran ensuite** (pattern Material Design,
+confirmé par la veille).
+- **Si le nom se suffit → aucune explication** (Protection, Ma messagerie, Mes
+  appareils). La liste reste sans texte.
+- **Pour les rares réglages obscurs** (Le Compagnon, éventuellement Mon
+  assistant IA) → l'explication vit **sur l'écran du réglage lui-même** (le 2ᵉ
+  écran, quand on entre pour l'installer / le brancher), en clair et humaine,
+  surtout dans son état « pas encore configuré » ; elle s'efface une fois branché.
+- **Pas de « ? », pas de bulle** : entrer dans le réglage amène déjà à
+  l'explication. Charge mentale minimale.
 
 **Ranger l'expert** (déjà décidé) : avancé replié dans chaque réglage — TURN
 (N10), commandes à distance, changement de clés ; **phrase de liaison masquée**
@@ -534,7 +540,8 @@ connecter ») ; plus de **double-modal** (N8).
 
 **Raffinement de la loi #3 — voix & explication :**
 - **Agir → zéro explication** (le design suffit). **Régler → une vraie
-  explication est permise, mais cachée derrière un « ? », montrée à la demande.**
+  explication est permise, mais sur l'écran du réglage (2ᵉ écran), jamais sur la
+  liste et jamais une bulle** (pattern Material Design).
 - **Voix humaine partout** : on écrit comme on parle à un ami — phrases
   entières, simples. **Jamais le style « pub IA »** : pas de slogan, pas de
   fragment coupé pour faire stylé, pas de « & ».
@@ -578,5 +585,6 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
 - **Passe accessibilité clavier** (C9) + **thème sombre** vérifié partout.
 
 **Méthode :** écran par écran, mobile d'abord, vérifié en lançant l'app
-(390 + 1280, clair + sombre, `?test` vert). On peut basculer de *décider* à
-*construire* quand tu veux.
+(390 + 1280, clair + sombre, `?test` vert). **On regarde les références**
+(Huntr/Lemlist, Material Design…) avant d'inventer. On peut basculer de
+*décider* à *construire* quand tu veux.
