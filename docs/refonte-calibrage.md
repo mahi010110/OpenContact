@@ -509,6 +509,38 @@ Concrétise #2 & #4 — « Moi » devient **deux mondes** :
 
 ---
 
+## Décision 21 — Réglages : noms clairs, voix humaine, explication à la demande
+
+**Des lignes claires**, chacune = **nom + état (un mot) + geste** :
+- **Protection** — mettre un code pour ouvrir l'app.
+- **Mes appareils** — relier téléphone + ordinateur (Compagnon inclus).
+- **Ma messagerie** — connecter Gmail / Outlook. *(« Connexions » éclaté — le
+  nom ne disait rien.)*
+- **Mon assistant IA** — brancher une IA (brouillons, import d'e-mails).
+- **Le Compagnon** — **ligne visible avec un vrai bouton** : sur ordinateur
+  « Télécharger pour Windows / Mac / Linux » (le mécanisme existe déjà, il était
+  enfoui dans « Mes appareils ») ; sur téléphone « s'installe sur ton
+  ordinateur » + « Copier le lien ».
+
+**Explication humaine, mais à la demande.** La ligne reste propre (aucun texte
+d'explication). Un petit **« ? » discret** au bout de la ligne révèle, **seulement
+si on tape**, une **vraie explication en clair** — qui sait n'a rien à lire, qui
+bloque a l'aide, jamais imposée.
+
+**Ranger l'expert** (déjà décidé) : avancé replié dans chaque réglage — TURN
+(N10), commandes à distance, changement de clés ; **phrase de liaison masquée**
+par défaut (N11) ; plus de **« Connecter » qui refuse** (N9 → « Protéger pour
+connecter ») ; plus de **double-modal** (N8).
+
+**Raffinement de la loi #3 — voix & explication :**
+- **Agir → zéro explication** (le design suffit). **Régler → une vraie
+  explication est permise, mais cachée derrière un « ? », montrée à la demande.**
+- **Voix humaine partout** : on écrit comme on parle à un ami — phrases
+  entières, simples. **Jamais le style « pub IA »** : pas de slogan, pas de
+  fragment coupé pour faire stylé, pas de « & ».
+
+---
+
 # Fondations calibrées ✓ — et ce qui reste
 
 Les **décisions ci-dessus = le squelette, les lois, et le 1ᵉʳ écran conçu
@@ -533,9 +565,8 @@ chacun au filtre des 9 décisions. Ça va plus vite maintenant qu'on a le cadre.
 - **Profil & données** — ✅ **structure calibrée (#20)** ; contenu déjà couvert
   par #4 (CV/LM, sauvegarde), #16 (profil), #17 (modèles sans code). Reste la
   mise en écran.
-- **Réglages** — structure #20 ; détail *(en cours)* : verrou · appareils
-  (avancé replié, phrase masquée N11, TURN N10) · connexions (messagerie + IA) ·
-  Compagnon.
+- **Réglages** — ✅ **calibré (#21)** : noms clairs, voix humaine, explication à
+  la demande (« ? »), avancé replié, Compagnon visible avec bouton.
 
 **Transverse :**
 - **Fin du double-modal** sur desktop (N8).
