@@ -500,6 +500,9 @@ details.pcard-details[open]>summary{margin-bottom:10px}
   background:color-mix(in srgb, var(--ink) 20%, transparent);
 }
 .overlay::before{content:'';position:absolute;inset:0;background:var(--dither-strong)}
+/* N8 : une feuille ouverte sur une autre remplace sa fenêtre (desktop) —
+   la précédente attend ici, cachée, et revient à la fermeture */
+.overlay.ov-behind{display:none}
 .modal{
   position:relative;background:var(--surface-window);border:1px solid var(--border-strong);
   width:100%;max-width:560px;border-radius:var(--radius-0);

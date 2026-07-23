@@ -148,9 +148,13 @@ format bouge · commit français focalisé.
 
 ### Phase 4 — transverses & finitions (#22, #23)
 
-- [ ] **4.1 Une seule surface modale (N8)** — une feuille qui en ouvre une
-  autre **remplace/enchaîne** sur desktop (navigation interne), jamais
-  deux fenêtres empilées. `ui/dom.js`, gain partout.
+- [x] **4.1 Une seule surface modale (N8)** *(livré — sonde desktop/mobile,
+  e2e desktop rejoués verts)* — sur desktop, une feuille ouverte sur une
+  autre **remplace sa fenêtre à l'écran** (`ov-behind`) ; la précédente
+  attend, cachée, et revient à la fermeture. Seules les confirmations
+  (`modal-confirm` — une question, un tap) se posent par-dessus. Mobile
+  inchangé (les bottom sheets se couvrent déjà). `ui/dom.js`,
+  `styles/app.css`, `sw.js` (oc-v48).
 - [ ] **4.2 Motion (#23)** — objets « 98 » nets ; déplacements doux
   (feuille, panneau, réorganisation de liste, barre Annuler) ;
   `transform`/`opacity` seulement ; `prefers-reduced-motion` respecté.

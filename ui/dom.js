@@ -82,6 +82,11 @@ bindBarSwipe(document.getElementById('toast'), hideToast);
 
 /* ---------- feuilles empilables ---------- */
 const stack = [];
+/* N8 : une seule surface modale à la fois. Sur desktop, une feuille
+   ouverte sur une autre REMPLACE sa fenêtre à l'écran — la précédente
+   attend, cachée, et revient à la fermeture. Seules les confirmations
+   (une question, un tap — modal-confirm) se posent par-dessus. */
+const wideModal = matchMedia('(min-width:901px)');
 function focusables(root){
   return Array.from(root.querySelectorAll(
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -127,10 +132,16 @@ export function openSheet(o){
     const i = stack.indexOf(rec);
     if (i >= 0) stack.splice(i, 1);
     ov.remove();
+    if (rec.behind){ rec.behind.ov.classList.remove('ov-behind'); rec.behind = null; }
     if (o.onClose) o.onClose(result);
     if (prevFocus && prevFocus.focus){ try { prevFocus.focus(); } catch (e) {} }
   }
   const rec = { ov, close, dismissible: o.dismissible !== false };
+  const below = stack[stack.length - 1] || null;
+  if (wideModal.matches && below && !(o.className || '').includes('modal-confirm')){
+    below.ov.classList.add('ov-behind');
+    rec.behind = below;
+  }
   stack.push(rec);
   ov.addEventListener('click', e => { if (e.target === ov && o.dismissible !== false) close(); });
   ov.querySelector('.x').addEventListener('click', () => close());
