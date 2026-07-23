@@ -168,9 +168,18 @@ format bouge · commit français focalisé.
   Règle motion de `CLAUDE.md` mise à jour. Fichiers :
   `styles/tokens/effects.css`, `styles/app.css`, `ui/dom.js`,
   `ui/pistes.js`, `ui/prospect.js`, `ui/donner.js`, `sw.js` (oc-v49).
-- [ ] **4.3 Passe finale** — cadenas = langage du privé partout ; verrou
-  au bon moment ; accessibilité clavier (équivalents gestes, focus
-  visible) ; thème sombre vérifié écran par écran ; cibles ≥ 44 px.
+- [x] **4.3 Passe finale** *(livré — suite complète rejouée)* —
+  **cadenas = langage du privé** : déjà porté par les notes, les feuilles
+  de partage, le profil, la messagerie ; ajouté aux deux endroits qui
+  disaient « privé » sans le signe (en-tête de « Moi », étiquette
+  « privé inclus » de la copie). **Verrou au bon moment** : couvert par
+  N9 (lignes Réglages, gateProtect, association Compagnon, restauration).
+  **Clavier** : focus visible global (`:focus-visible`, base.css),
+  suppression au geste atteignable au clavier (`.sw:focus-within` révèle
+  la poubelle), feuilles = focus-trap + Échap, statut d'une piste au
+  clavier via la fiche (chemin universel du glisser). **Thème sombre**
+  et **cibles ≥ 44 px** vérifiés en sonde sur chaque élément neuf.
+  Fichiers : `ui/moi.js`, `sw.js` (oc-v50).
 
 *(Le site séparé — guide + téléchargement du Compagnon — est un chantier
 hors app, non couvert ici.)*

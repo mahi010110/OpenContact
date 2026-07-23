@@ -323,7 +323,7 @@ export function renderMoi(){
 
      ${showBackup ? `
      <div class="pcard">
-       <h3>${ic('save', 'ic-14')} Garder une copie <span class="tag-priv">privé inclus</span></h3>
+       <h3>${ic('save', 'ic-14')} Garder une copie <span class="tag-priv">${ic('lock', 'ic-14')} privé inclus</span></h3>
        <p class="pd">${bkState}</p>
        <div class="pc-actions">
          <button class="btn ${bkPromote ? 'btn-primary' : ''}" id="moiBackup">${ic('download', 'ic-14')} Garder une copie</button>
@@ -339,7 +339,7 @@ export function renderMoi(){
 
   root.innerHTML =
     `<div class="page-inner${wide ? ' page-wide' : ''}">
-       <div class="td-head"><h2>Moi</h2><div class="td-date">privé — jamais partagé</div></div>
+       <div class="td-head"><h2>Moi</h2><div class="td-date">${ic('lock', 'ic-14')} privé — jamais partagé</div></div>
        ${wide
          ? `<div class="moi-cols"><div>${cards}</div><div>${reglages}</div></div>`
          : cards +
