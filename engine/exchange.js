@@ -8,18 +8,28 @@
 import { decryptOC2, unsealOC1, bytesToB64, b64ToBytes } from './crypto.js';
 import { APP_VERSION } from './model.js';
 
+/* même passé par extra (aller-retour avec un vieil appareil), un champ
+   d'action privé (#14) ne doit jamais sortir dans un partage */
+function extraSans(extra, prives){
+  if (!extra || typeof extra !== 'object') return null;
+  const out = {};
+  for (const k of Object.keys(extra)) if (!prives.includes(k)) out[k] = extra[k];
+  return Object.keys(out).length ? out : null;
+}
 export function communityView(c){
   const out = {
     name: c.name, city: c.city, domain: c.domain, desc: c.desc, address: c.address,
     website: c.website, techs: c.techs, positions: c.positions, process: c.process, tips: c.tips,
     contacts: (c.contacts || []).map(t => {
       const ct = { name: t.name, role: t.role, email: t.email, phone: t.phone, link: t.link, note: t.note, conf: t.conf };
-      if (t.extra) ct.extra = t.extra;
+      const ex = extraSans(t.extra, ['activatedAt', 'src']);
+      if (ex) ct.extra = ex;
       return ct;
     }),
     lat: c.lat, lng: c.lng, verifiedAt: c.verifiedAt, confirmations: c.confirmations, updatedAt: c.updatedAt
   };
-  if (c.extra) out.extra = c.extra;
+  const ex = extraSans(c.extra, ['nextActionCt']);
+  if (ex) out.extra = ex;
   return out;
 }
 /* ---------- OCQ1 : encodage compact pour QR ----------

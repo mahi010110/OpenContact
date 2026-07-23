@@ -30,12 +30,11 @@ const fail = m => { console.error('ÉCHEC :', m); process.exitCode = 1; };
 
 await page.goto(base + '/#/echanger', { waitUntil: 'load' });
 await page.waitForTimeout(800);
+/* l'import d'e-mails vit désormais dans la capture (#5) — feuille autonome */
 await page.evaluate(async () => {
-  const { openRecevoir } = await import('./ui/recevoir.js');
-  openRecevoir();
+  const { openImportMails } = await import('./ui/recevoir.js');
+  openImportMails();
 });
-await page.waitForSelector('#rcMails');
-await page.click('#rcMails');
 await page.waitForSelector('#rcMailTxt');
 await page.waitForTimeout(350);
 await page.screenshot({ path: SHOTS + '/50-depuis-mes-emails.png' });

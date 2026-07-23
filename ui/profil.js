@@ -8,6 +8,7 @@ import { esc, uid } from '../engine/utils.js';
 import { defaultTemplates } from '../engine/model.js';
 import { S, bus, saveProfile } from './state.js';
 import { openSheet, confirmSheet, toast, btn, ic } from './dom.js';
+import { tplField, tplSample, TPL_LABELS } from './tplfield.js';
 
 /* ---------- profil ---------- */
 export function openProfil(onDone){
@@ -46,15 +47,12 @@ export function openProfil(onDone){
   ]);
 }
 
-/* ---------- modèles d'emails ---------- */
-const VARS = '{{entreprise}} {{contact}} {{ville}} {{moi}} {{formation}} {{tel}} {{email}} {{cv}} {{portfolio}}';
-
+/* ---------- modèles d'emails — jamais de {{...}} à l'écran (#17) ---------- */
 export function openTemplates(){
   const sh = openSheet({ title: 'Modèles d’emails', icon: 'mail' });
   const render = () => {
     sh.body.innerHTML =
-      `<p class="hint" style="margin:0 0 10px">Les variables se remplissent toutes seules au moment d’écrire : <code class="tpl-vars">${esc(VARS)}</code></p>
-       <div class="pick-list">
+      `<div class="pick-list">
          ${S.profile.templates.map((t, i) =>
            `<button class="pick" data-i="${i}">
               <b>${esc(t.name)}</b><span>${esc(t.subject.slice(0, 40))}${t.subject.length > 40 ? '…' : ''}</span>
@@ -83,22 +81,33 @@ export function openTemplates(){
 
 function editTemplate(t, onBack, isNew){
   const sh = openSheet({ title: isNew ? 'Nouveau modèle' : t.name, icon: 'pencil', className: 'modal-fiche', focus: '#tpName' });
+  const sample = tplSample(null, null);
   sh.body.innerHTML =
     `<div class="field"><label for="tpName">Nom du modèle</label>
        <input id="tpName" value="${esc(t.name)}" placeholder="Ex : Relance après forum"></div>
-     <div class="field"><label for="tpSubject">Objet</label>
-       <input id="tpSubject" value="${esc(t.subject)}" placeholder="Ex : Candidature — {{formation}}"></div>
-     <div class="field"><label for="tpBody">Message</label>
-       <textarea id="tpBody" style="min-height:180px">${esc(t.body)}</textarea></div>
-     <p class="hint">Variables : <code class="tpl-vars">${esc(VARS)}</code></p>`;
+     <div class="field"><label>Objet</label><div id="tpSubject"></div></div>
+     <div class="field"><label>Message</label><div id="tpBody"></div></div>
+     <div class="tpl-insert">Insérer :
+       ${Object.keys(TPL_LABELS).map(k =>
+         `<button class="linklike" data-ins="${k}">${TPL_LABELS[k]}</button>`).join(' · ')}
+     </div>`;
+  const fSubj = tplField(sh.body.querySelector('#tpSubject'), { value: t.subject, sample, multiline: false });
+  const fBody = tplField(sh.body.querySelector('#tpBody'), { value: t.body, sample });
+  let lastField = fBody;
+  fSubj.el.addEventListener('focus', () => { lastField = fSubj; });
+  fBody.el.addEventListener('focus', () => { lastField = fBody; });
+  sh.body.querySelectorAll('[data-ins]').forEach(b =>
+    b.addEventListener('mousedown', e => e.preventDefault()));   /* garder le curseur dans le champ */
+  sh.body.querySelectorAll('[data-ins]').forEach(b =>
+    b.addEventListener('click', () => lastField.insert(b.dataset.ins)));
   const v = s => sh.body.querySelector(s).value;
   const foot = [
     btn('Enregistrer', 'btn-primary', () => {
       const name = v('#tpName').trim();
       if (!name){ toast('Donne un nom au modèle.'); return; }
       t.name = name;
-      t.subject = v('#tpSubject');
-      t.body = v('#tpBody');
+      t.subject = fSubj.get();
+      t.body = fBody.get();
       if (isNew) S.profile.templates.push(t);
       saveProfile();
       toast('Modèle enregistré ✓');

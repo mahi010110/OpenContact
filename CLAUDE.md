@@ -82,7 +82,12 @@ espacements, effets) et le kit `design/`.
 - **Icônes** : pixelarticons via `ic('nom', 'ic-14')` (masque CSS teinté par
   `currentColor`). Pas d'emoji dans l'UI (sauf rare ponctuation de toast),
   pas d'autre pack d'icônes.
-- **Animations** : `steps()` assumées, courtes. Rien de « smooth » long.
+- **Motion (#23)** : les **objets** restent « 98 » — nets, instantanés,
+  `steps()` pour le feedback (secousse, bascule d'état). Seul le
+  **déplacement entre états** est doux (feuille qui monte, panneau qui
+  entre, liste qui se réorganise, barre qui se pose) : court, `ease-out`,
+  senti sans être vu, jamais décoratif. `transform`/`opacity` uniquement,
+  transitions CSS, `prefers-reduced-motion` respecté (coupe tout).
 - **Thème sombre obligatoire** : tout nouvel élément se vérifie dans les
   deux thèmes (l'encre passe par `currentColor`/tokens, jamais de couleur
   fixe qui disparaît en sombre).

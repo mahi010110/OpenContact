@@ -114,15 +114,22 @@ const agoLabel = t => {
    est honnête sur cette limite. */
 function openDeviceSheet(d, onDone){
   const sh = openSheet({ title: d.name, icon: 'switch' });
+  /* le quotidien visible ; l'administration de flotte repliée (N10) —
+     de la sécurité, rare, non bloquante (loi #8) */
   sh.body.innerHTML =
     `<p class="hint" style="margin:0 0 10px">Vu ${agoLabel(d.seen || 0)}. Une commande s’applique quand il se reconnecte.</p>
      <div class="pick-list">
-       <button class="pick" id="dvLock"><b>Verrouiller cet appareil</b><span>il se verrouillera dès qu’il se reconnectera</span></button>
-       <button class="pick" id="dvMain"><b>En faire l’appareil principal</b><span>celui-ci redevient un appareil ordinaire</span></button>
        <button class="pick" id="dvRemove"><b>Retirer de mes appareils</b><span>il ne se synchronisera plus</span></button>
-       <button class="pick" id="dvBan"><b>Retirer et changer les clés</b><span>appareil perdu ou douteux</span></button>
-       <button class="pick pick-danger" id="dvWipe"><b>Effacer ses données</b><span>de bonne foi — à sa prochaine connexion</span></button>
-     </div>`;
+     </div>
+     <details class="srt-adv" style="margin-top:10px">
+       <summary>Sécurité avancée</summary>
+       <div class="pick-list">
+         <button class="pick" id="dvLock"><b>Verrouiller cet appareil</b><span>il se verrouillera dès qu’il se reconnectera</span></button>
+         <button class="pick" id="dvMain"><b>En faire l’appareil principal</b><span>celui-ci redevient un appareil ordinaire</span></button>
+         <button class="pick" id="dvBan"><b>Retirer et changer les clés</b><span>appareil perdu ou douteux</span></button>
+         <button class="pick pick-danger" id="dvWipe"><b>Effacer ses données</b><span>de bonne foi — à sa prochaine connexion</span></button>
+       </div>
+     </details>`;
   const q = s => sh.body.querySelector(s);
   const doCmd = async (cmd, confirmOpts, doneMsg) => {
     if (confirmOpts && !await confirmSheet(confirmOpts)) return;
@@ -156,6 +163,10 @@ function openDeviceSheet(d, onDone){
 /* ============ Mes appareils : gestion du lien persistant ============ */
 export function openAppareils(){
   let onSync = null;
+  /* N11 : la phrase donne accès à tout le privé — masquée par défaut
+     dès qu'un appareil est relié, révélée d'un tap ; visible tant
+     qu'on est en train de relier (il faut pouvoir la recopier) */
+  let revealPhrase = null;
   const sh = openSheet({
     title: 'Mes appareils', icon: 'switch', clearToast: true,
     onClose: () => { if (onSync){ document.removeEventListener('oc:sync', onSync); onSync = null; } }
@@ -205,9 +216,12 @@ export function openAppareils(){
     const comp = await loadCompanion();
     const relays = await relayList();
     const turn = await turnList();
+    const phraseShown = revealPhrase === null ? !devs.length : revealPhrase;
     sh.setTitle('Mes appareils');
     sh.body.innerHTML =
-      `<div class="sy-phrase"><span>${esc(sy.phrase)}</span></div>
+      `<div class="sy-phrase"><span>${phraseShown ? esc(sy.phrase) : '••••• – •••••'}</span>
+         <button class="abtn abtn-sm" id="syEye" aria-label="${phraseShown ? 'Masquer' : 'Afficher'} la phrase"
+                 title="${phraseShown ? 'Masquer' : 'Afficher'}">${ic(phraseShown ? 'eye-off' : 'eye', 'ic-14')}</button></div>
        <p class="hint" style="text-align:center">Sur l’autre appareil : <b>Moi → Mes appareils → Entrer une phrase</b>.</p>
        <div class="sy-status" id="syStatus">${statusHTML()}</div>
        <div class="sy-log">${st ? `
@@ -242,6 +256,7 @@ export function openAppareils(){
        ${relaySettingsHTML(relays, turn)}
        <button class="linklike" id="syNewPhrase" style="margin-top:12px">Changer la phrase de liaison</button>`;
 
+    q('#syEye')?.addEventListener('click', () => { revealPhrase = !phraseShown; renderLinked(); });
     q('#syRetry')?.addEventListener('click', () => startSync(sy.phrase));
     q('#syKeepProf')?.addEventListener('click', keepMyProfile);
     q('#syNewPhrase')?.addEventListener('click', async () => {
@@ -365,12 +380,27 @@ export function openPromo(){
 
   const ask = async () => {
     const last = (await kvGet(PROMO_KEY)) || '';
+    /* le code EST la clé : un bouton discret le remplit d'une phrase
+       forte (comme la liaison des appareils) ; qui veut le sien tape le
+       sien. Une fois généré, « copier » apparaît — il se partage à la
+       promo. Aucun pavé d'explication (loi #3). */
     sh.body.innerHTML =
-      `<p class="hint" style="margin:0 0 12px">Un mot de passe pour le groupe (ta promo, ta classe), et les fiches circulent en direct — <b>jamais ton suivi privé</b>.</p>
-       <div class="field"><label for="prPass">Mot de passe du groupe</label>
-         <input id="prPass" autocomplete="off" autocapitalize="off" placeholder="ex : promo-sio-2026" value="${esc(last)}"></div>`;
+      `<div class="field"><label for="prPass">Mot de passe du groupe</label>
+         <div class="date-row">
+           <input id="prPass" autocomplete="off" autocapitalize="off" placeholder="ex : promo-sio-2026" value="${esc(last)}">
+           <button class="btn icon-btn" id="prGen" aria-label="Générer un code fort" title="Générer un code fort">${ic('reload', 'ic-14')}</button>
+         </div>
+         <button class="linklike" id="prCopy" hidden>${ic('copy', 'ic-14')} copier le code</button></div>`;
     const go = () => { const v = q('#prPass').value.trim(); if (v){ kvSet(PROMO_KEY, v); enter(v); } };
     q('#prPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    q('#prGen').addEventListener('click', () => {
+      q('#prPass').value = makePhrase();
+      q('#prCopy').hidden = false;
+    });
+    q('#prCopy').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(q('#prPass').value); toast('Code copié — partage-le à la promo.'); }
+      catch (e) { toast('Copie impossible ici — recopie-le à la main.'); }
+    });
     sh.setFoot([btn('Entrer', 'btn-primary', go)]);
     q('#prPass').focus();
   };
@@ -378,8 +408,7 @@ export function openPromo(){
   async function enter(pass){
     sh.body.innerHTML =
       `<div class="sy-status" id="prStatus">${ic('radio', 'ic-14')} Connexion…</div>
-       <div id="prZone"></div>
-       <p class="hint" id="prHint" style="text-align:center">Chacun garde la feuille ouverte ; chaque envoi montre un aperçu avant fusion.</p>`;
+       <div id="prZone"></div>`;
     sh.setFoot([btn('Quitter le groupe', 'btn-ghost', () => { leave(); ask(); })]);
     const setStatus = txt => { const el = q('#prStatus'); if (el) el.innerHTML = txt; };
     /* le statut dit l'étape prouvée — pas « personne » quand c'est le
@@ -426,6 +455,7 @@ export function openPromo(){
       }
       zone.innerHTML =
         `<button class="btn btn-primary pr-send" id="prSend"${n ? '' : ' disabled'}>${ic('share', 'ic-14')} Envoyer ${n ? n + ' piste' + (n > 1 ? 's' : '') : '…'}</button>
+         <div style="text-align:center;margin-top:6px"><span class="tag-share">jamais le privé</span></div>
          <button class="linklike" id="prPick" style="margin-top:6px">${choosing ? 'Replier la liste' : 'Choisir ce qui part…'}</button>
          ${choosing ? `<div class="pick-list" style="margin-top:8px">
            ${mine().map(c =>

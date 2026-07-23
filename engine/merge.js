@@ -43,12 +43,17 @@ export function mergeIncoming(list, companies){
   const differ = (a, b) => String(a).trim() !== String(b).trim();
   for (const rawC of list){
     const x = normalizeCompany(rawC);
-    (x.contacts || []).forEach(ct => { if (ct.conf === 'ok') ct.conf = 'doubt'; });  /* S5 */
+    (x.contacts || []).forEach(ct => {
+      if (ct.conf === 'ok') ct.conf = 'doubt';                                       /* S5 */
+      delete ct.activatedAt;    /* #14 : le suivi privé ne s'importe jamais — */
+      ct.src = 'promo';         /* un contact reçu = nom connu, zéro to-do   */
+    });
     const ex = findMatch(x, companies);
     if (!ex){
       x.id = uid(); x.demo = false;
       x.status = 'todo'; x.notes = ''; x.appliedAt = ''; x.nextAction = '';          /* le privé ne s'importe jamais */
       x.nextActionText = ''; x.closedAt = ''; x.closedReason = '';
+      delete x.nextActionCt;                                                         /* #14 */
       x.history = [{ d: todayISO(), t: 'Reçue via partage' }];
       companies.push(x);
       stats.addedC++;

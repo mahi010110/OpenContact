@@ -54,6 +54,16 @@ export async function attendre(page, fn, { timeout = 15000, pas = 250, message =
   }
 }
 
+/* Depuis « Moi » : atteint les lignes de Réglages — porte à ouvrir sur
+   mobile (#20), colonne déjà dépliée sur desktop. */
+export async function ouvrirReglages(page){
+  await page.waitForSelector('#moiReglages, #moiVerrou');
+  if (!(await page.$('#moiVerrou'))){
+    await page.click('#moiReglages');
+    await page.waitForSelector('#moiVerrou');
+  }
+}
+
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
   '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.txt': 'text/plain' };

@@ -2,7 +2,7 @@
    adresse visible), envoi intercepté au niveau réseau (jamais de vrai
    Gmail), boucle « Envoyé ✓ — et ensuite ? », jeton expiré → feuille
    Reconnecter SANS perte du brouillon, ligne Connexions dans Moi. */
-import { chromium, chromiumPath, ROOT, SHOTS, attendre } from './outils.mjs';
+import { chromium, chromiumPath, ROOT, SHOTS, attendre, ouvrirReglages } from './outils.mjs';
 import http from 'http';
 import { readFile } from 'fs/promises';
 import path from 'path';
@@ -51,6 +51,7 @@ await page.reload({ waitUntil: 'load' });
 
 /* Moi : la ligne Connexions montre l'adresse */
 await page.goto(base + '/#/moi');
+await ouvrirReglages(page);
 await page.waitForSelector('#moiCx');
 const cxLabel = await page.evaluate(() =>
   document.querySelector('#moiCx').closest('.ec-row').querySelector('.ec-sub').textContent);

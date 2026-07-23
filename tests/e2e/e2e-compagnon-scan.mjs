@@ -4,7 +4,7 @@
    (lien javascript:, confiance « ok ») : le résultat repasse par
    l'aperçu multi-sélection de la PWA et le rail neutralise tout.
    L'app est rechargée PENDANT l'analyse : le mid scellé doit permettre
-   sa reprise, puis un chip Aujourd'hui doit rendre le résultat triable.
+   sa reprise, puis la ligne « À trier » d'Aujourd'hui doit rendre le résultat triable (#10).
    Sauté proprement si le binaire n'est pas construit. */
 import { chromium, chromiumPath, SHOTS, serveRepo, ROOT } from './outils.mjs';
 import { spawn } from 'child_process';
@@ -125,10 +125,8 @@ await page.evaluate(async code => {
 }, CODE);
 console.log('appairé ✓');
 
-/* Recevoir → Depuis mes e-mails → le chemin automatique */
-await page.evaluate(async () => (await import('./ui/recevoir.js')).openRecevoir());
-await page.waitForSelector('#rcMails');
-await page.click('#rcMails');
+/* Ajouter une piste → Depuis mes e-mails → le chemin automatique (#5) */
+await page.evaluate(async () => (await import('./ui/recevoir.js')).openImportMails());
 await page.waitForSelector('#rcScan7');
 await page.waitForTimeout(300);
 await page.screenshot({ path: SHOTS + '/90-scan-choix.png' });
@@ -169,7 +167,7 @@ await page.waitForSelector('.lock .pad-k');
 await tapIn('.lock', '280941');
 await page.waitForFunction(() => !document.querySelector('.lock'), null, { timeout: 10000 });
 try {
-  await page.waitForSelector('#tdAnalysis', { timeout: 40000 });
+  await page.waitForSelector('#tdTriage', { timeout: 40000 });
 } catch (e) {
   const diagnostic = await page.evaluate(async () => {
     const st = await import('./engine/storage.js');
@@ -179,16 +177,16 @@ try {
   console.error('Diagnostic reprise :', JSON.stringify(diagnostic), compagnonOut, compagnonErr);
   throw e;
 }
-const chip = await page.textContent('#tdAnalysis');
-if (!/2 pistes proposées à trier/.test(chip)) fail('chip de reprise inattendu : ' + chip);
+const chip = (await page.textContent('#tdTriage')).replace(/\s+/g, ' ');
+if (!/À trier 2/.test(chip)) fail('ligne « À trier » de reprise inattendue : ' + chip);
 await page.screenshot({ path: SHOTS + '/91-scan-repris-aujourdhui.png' });
 
 /* Ouvrir puis fermer l'aperçu ne consomme pas le résultat. */
-await page.click('#tdAnalysis');
+await page.click('#tdTriage');
 await page.waitForSelector('[data-sel]');
 await page.click('.modal-f .btn-ghost:has-text("Annuler")');
-await page.waitForSelector('#tdAnalysis');
-await page.click('#tdAnalysis');
+await page.waitForSelector('#tdTriage');
+await page.click('#tdTriage');
 await page.waitForSelector('[data-sel]');
 const nSel = await page.$$eval('[data-sel]', els => els.length);
 if (nSel !== 2) fail('2 propositions attendues, vu ' + nSel);
@@ -210,9 +208,13 @@ const etat = await page.evaluate(async () => {
 if (etat.names !== 'Sopra Steria') fail('fusion attendue Sopra seule, vu : ' + etat.names);
 if (/javascript:/i.test(etat.link)) fail('lien piégé non neutralisé : ' + etat.link);
 if (etat.conf === 'ok') fail('confiance transmise à tort');
+/* le résultat d'analyse est consommé ; la ligne « À trier » peut rester
+   pour la piste fraîchement reçue (« Reçu de la promo », #10) — mais
+   plus aucune entrée « lue dans tes e-mails » */
 await attendre(() => page.evaluate(async () => {
   const st = await import('./engine/storage.js');
-  return !(await st.kvGet(st.ANALYSIS_KEY)) && !document.querySelector('#tdAnalysis');
+  const { mailAnalysis } = await import('./ui/analyse.js');
+  return !(await st.kvGet(st.ANALYSIS_KEY)) && !mailAnalysis();
 }), 10000, 'consommation du résultat après fusion');
 console.log('app fermée → résultat repris dans Aujourd’hui → aperçu conservé puis fusion sûre ✓');
 

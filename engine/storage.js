@@ -220,3 +220,32 @@ function idbReq(mode, fn){
 export const docGet = k => idbReq('readonly', s => s.get(k));
 export const docPut = (k, v) => idbReq('readwrite', s => s.put(v, k));
 export const docDel = k => idbReq('readwrite', s => s.delete(k));
+export const docClear = () => idbReq('readwrite', s => s.clear());
+/* la liste des documents (variantes nommées, #4) : clés + entrées d'un
+   seul mouvement — les clés héritées cv / lettre restent des variantes
+   comme les autres */
+export function docList(){
+  return new Promise((res, rej) => {
+    if (!window.indexedDB) return rej(new Error('noidb'));
+    const open = indexedDB.open('oc_docs_v1', 1);
+    open.onupgradeneeded = () => { open.result.createObjectStore('docs'); };
+    open.onerror = () => rej(open.error || new Error('idb'));
+    open.onsuccess = () => {
+      const db = open.result;
+      let keys = null, vals = null;
+      const done = () => {
+        if (!keys || !vals) return;
+        res(keys.map((k, i) => Object.assign({ key: String(k) }, vals[i])));
+        db.close();
+      };
+      try {
+        const s = db.transaction('docs').objectStore('docs');
+        const kq = s.getAllKeys();
+        const vq = s.getAll();
+        kq.onsuccess = () => { keys = kq.result; done(); };
+        vq.onsuccess = () => { vals = vq.result; done(); };
+        kq.onerror = vq.onerror = () => { rej(new Error('idb')); db.close(); };
+      } catch (e) { db.close(); rej(e); }
+    };
+  });
+}

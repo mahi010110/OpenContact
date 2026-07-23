@@ -8,7 +8,7 @@
 import { esc, todayISO } from '../engine/utils.js';
 import { dueFollowups } from '../engine/assist.js';
 import { S, bus, isClosed, markDone, hasDemo, addDemo, removeDemo } from './state.js';
-import { $, ic, toast } from './dom.js';
+import { $, ic, toast, openSheet } from './dom.js';
 import { frToday, frDate, relLabel } from './dates.js';
 import { askNextAction, reportAction } from './actions.js';
 import { openMail } from './mail.js';
@@ -76,6 +76,39 @@ function trancheHTML(key, label, icon, items, open){
           </section>`;
 }
 
+/* les entrants à trier — une seule ligne calme (#10), plus jamais une
+   pile de bandeaux au-dessus du travail du jour */
+function triageItems(){
+  const items = [];
+  if (S.orphans.length) items.push({
+    n: S.orphans.length, icon: 'contact', label: 'Contacts à rattacher',
+    open: () => { location.hash = '#/pistes'; } });
+  const recv = receivedTodayCount();
+  if (recv) items.push({
+    n: recv, icon: 'inbox', label: 'Reçu de la promo',
+    open: () => { location.hash = '#/pistes'; } });
+  const analysis = mailAnalysis();
+  if (analysis && analysis.state === 'ready') items.push({
+    n: analysis.count, icon: 'sparkles', label: 'Pistes lues dans tes e-mails',
+    open: openPendingMailAnalysis });
+  const nProps = pendingProposals().reduce((n, p) => n + p.n, 0);
+  if (nProps) items.push({
+    n: nProps, icon: 'sparkles', label: 'Ton assistant propose',
+    open: openPendingProposals });
+  return { items, total: items.reduce((s, x) => s + x.n, 0) };
+}
+function openTriage(items){
+  if (items.length === 1){ items[0].open(); return; }
+  const sh = openSheet({ title: 'À trier', icon: 'inbox' });
+  sh.body.innerHTML =
+    `<div class="pick-list">${items.map((x, i) =>
+      `<button class="pick" data-i="${i}">
+         <b>${ic(x.icon, 'ic-14')} ${esc(x.label)}</b><span>${x.n}</span>
+       </button>`).join('')}</div>`;
+  sh.body.querySelectorAll('.pick').forEach(b =>
+    b.addEventListener('click', () => { sh.close(); items[+b.dataset.i].open(); }));
+}
+
 export function renderToday(){
   const root = $('#view-aujourdhui');
   const today = todayISO();
@@ -90,9 +123,7 @@ export function renderToday(){
   const soon = alive.filter(c => c.nextAction && c.nextAction > today).sort(byDate);
   const noAction = alive.filter(c => !c.nextAction);
   const done = doneTodayCount();
-  const analysis = mailAnalysis();
-  const props = pendingProposals();
-  const nProps = props.reduce((n, p) => n + p.n, 0);
+  const triage = triageItems();
 
   let html =
     `<div class="page-inner">
@@ -100,13 +131,7 @@ export function renderToday(){
          <h2>Aujourd’hui</h2>
          <div class="td-date">${frToday()}</div>
        </div>
-       ${done ? `<div class="done-line">${ic('check', 'ic-14')} ${done} action${done > 1 ? 's' : ''} faite${done > 1 ? 's' : ''} aujourd’hui</div>` : ''}
-       ${S.orphans.length ? `<button class="td-chip" data-go="pistes">${ic('contact', 'ic-14')} ${S.orphans.length} contact${S.orphans.length > 1 ? 's' : ''} à rattacher</button>` : ''}
-       ${receivedTodayCount() ? `<button class="td-chip" data-go="pistes">${ic('inbox', 'ic-14')} reçu de la promo : ${receivedTodayCount()}</button>` : ''}
-       ${analysis && analysis.state === 'ready' ? `<button class="td-chip" id="tdAnalysis">${ic('sparkles', 'ic-14')} ${analysis.count} piste${analysis.count > 1 ? 's' : ''} proposée${analysis.count > 1 ? 's' : ''} à trier</button>` : ''}
-       ${nProps ? `<button class="td-chip" id="tdProps">${ic('sparkles', 'ic-14')} ton assistant propose ${nProps} piste${nProps > 1 ? 's' : ''} — à trier</button>` : ''}
-       ${campaignLines().map(l =>
-         `<button class="camp-line" data-camp="${esc(l.id)}">${ic('flag', 'ic-14')} <span>${esc(l.txt)}</span> <em>Voir</em></button>`).join('')}`;
+       ${done ? `<div class="done-line">${ic('check', 'ic-14')} ${done} action${done > 1 ? 's' : ''} faite${done > 1 ? 's' : ''} aujourd’hui</div>` : ''}`;
 
   if (!alive.length && !S.companies.length){
     /* première visite : la promesse, puis un seul geste */
@@ -136,7 +161,13 @@ export function renderToday(){
     html += trancheHTML('late', 'En retard', 'square-alert', late);
     html += trancheHTML('due', 'Aujourd’hui', 'zap', due);
   }
+  /* les campagnes du jour — SOUS le travail, jamais tronquées (#10) */
+  html += campaignLines().map(l =>
+    `<button class="camp-line" data-camp="${esc(l.id)}">${ic('flag', 'ic-14')} <span>${esc(l.txt)}</span> <em>Voir</em></button>`).join('');
   html += trancheHTML('soon', 'Bientôt', 'calendar', soon, false);
+  if (triage.total){
+    html += `<button class="td-triage" id="tdTriage">${ic('inbox', 'ic-14')} À trier <span class="tr-n">${triage.total}</span></button>`;
+  }
   if (noAction.length && alive.length){
     html += `<button class="td-foot linklike" id="tdNoAct">${noAction.length} piste${noAction.length > 1 ? 's' : ''} sans prochaine action →</button>`;
   }
@@ -155,7 +186,8 @@ export function renderToday(){
     row.querySelector('.act-main').addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openFiche(c); }
     });
-    row.querySelector('[data-a="mail"]').addEventListener('click', () => openMail(c));
+    row.querySelector('[data-a="mail"]').addEventListener('click', () =>
+      openMail(c, { ctId: c.nextActionCt }));      /* l'action vise sa personne (#14) */
     row.querySelector('[data-a="report"]').addEventListener('click', () => reportAction(c));
     row.querySelector('[data-a="done"]').addEventListener('click', () => finishRow(row, c));
     bindSwipe(row, c);
@@ -163,11 +195,9 @@ export function renderToday(){
   root.querySelectorAll('.tr-more').forEach(b =>
     b.addEventListener('click', () => { expanded.add(b.dataset.tr); renderToday(); }));
   const goPistes = () => { location.hash = '#/pistes'; };
-  root.querySelectorAll('[data-go="pistes"]').forEach(b => b.addEventListener('click', goPistes));
   root.querySelectorAll('[data-camp]').forEach(b =>
     b.addEventListener('click', () => openCampaignById(b.dataset.camp)));
-  root.querySelector('#tdAnalysis')?.addEventListener('click', openPendingMailAnalysis);
-  root.querySelector('#tdProps')?.addEventListener('click', openPendingProposals);
+  root.querySelector('#tdTriage')?.addEventListener('click', () => openTriage(triage.items));
   root.querySelector('#tdNoAct')?.addEventListener('click', goPistes);
   root.querySelector('#tdeAdd')?.addEventListener('click', () => openCapture());
   root.querySelector('#tdeDemo')?.addEventListener('click', () => { addDemo(); bus.refresh(); toast('Exemple ajouté — retire-le quand tu veux.'); });

@@ -41,8 +41,8 @@ function tellTabs(){
 }
 if (tabs) tabs.addEventListener('message', e => {
   if (e.data === selfTab) return;
-  /* une feuille ouverte = édition en cours : on recharge après, pas pendant */
-  if (document.querySelector('.overlay')){ S.stale = true; return; }
+  /* une feuille ou un panneau ouvert = édition en cours : on recharge après */
+  if (document.querySelector('.overlay, .spanel')){ S.stale = true; return; }
   reloadFromStorage();
 });
 export async function reloadFromStorage(){
@@ -114,11 +114,23 @@ export async function loadAll(){
    (le statut, lui, ne s'écrit plus qu'au « Confirmer » de la fiche) */
 export const isClosed = c => !!c.closedReason;
 
-export function setNextAction(c, text, dateISO){
+export function setNextAction(c, text, dateISO, ctId){
   c.nextActionText = String(text || '').trim();
   c.nextAction = dateISO || '';
+  /* #14 : l'action vise une personne quand on la connaît — sinon elle
+     reste au niveau entreprise (le champ optionnel disparaît) */
+  if (ctId && (c.contacts || []).some(t => t.id === ctId)) c.nextActionCt = ctId;
+  else delete c.nextActionCt;
   c.updatedAt = Date.now();
   if (c.nextAction) pushHist(c, 'À faire : ' + (c.nextActionText || 'faire le point') + ' — ' + fmtDate(c.nextAction));
+  saveData();
+}
+/* #14 : écrire à quelqu'un (ou l'appeler) le rend « actif » — il cesse
+   d'être un simple nom connu. Silencieux et idempotent. */
+export function activateContact(c, ct){
+  if (!ct || ct.activatedAt) return;
+  ct.activatedAt = todayISO();
+  c.updatedAt = Date.now();
   saveData();
 }
 export function markDone(c){
@@ -127,6 +139,7 @@ export function markDone(c){
   logJ('Fait : ' + label + ' — ' + c.name, c.id);
   c.nextAction = '';
   c.nextActionText = '';
+  delete c.nextActionCt;
   c.updatedAt = Date.now();
   saveData();
 }
@@ -136,6 +149,7 @@ export function closePiste(c, reason){
   c.closedAt = todayISO();
   c.nextAction = '';
   c.nextActionText = '';
+  delete c.nextActionCt;
   c.updatedAt = Date.now();
   pushHist(c, 'Clôturée — ' + CLOSE_REASONS[reason].label);
   logJ('Clôturée (' + CLOSE_REASONS[reason].label + ') : ' + c.name, c.id);

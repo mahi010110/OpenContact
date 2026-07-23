@@ -34,17 +34,49 @@ export const toB64Url = s => b64(new TextEncoder().encode(s)).replace(/\+/g, '-'
 export function encodeHeader(s){
   return /^[\x20-\x7E]*$/.test(s) ? s : '=?UTF-8?B?' + b64(new TextEncoder().encode(s)) + '?=';
 }
+const wrap76 = s => s.replace(/(.{76})/g, '$1\r\n');
+const safeName = n => String(n || 'document.pdf').replace(/["\\\r\n]/g, '');
 export function buildMime(m){
-  const lines = [
+  const head = [
     'From: ' + m.from,
     'To: ' + m.to,
     'Subject: ' + encodeHeader(m.subject || ''),
-    'MIME-Version: 1.0',
+    'MIME-Version: 1.0'
+  ];
+  const bodyB64 = b64(new TextEncoder().encode(m.body || ''));
+  const atts = m.attachments || [];
+  if (!atts.length){
+    return head.concat([
+      'Content-Type: text/plain; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      wrap76(bodyB64)
+    ]).join('\r\n');
+  }
+  /* pièces jointes réelles (#16) : multipart/mixed — le texte d'abord,
+     puis chaque document en base64, jamais un lien dans le corps */
+  const B = 'oc-' + Math.random().toString(36).slice(2, 12);
+  const lines = head.concat([
+    `Content-Type: multipart/mixed; boundary="${B}"`,
+    '',
+    `--${B}`,
     'Content-Type: text/plain; charset=UTF-8',
     'Content-Transfer-Encoding: base64',
     '',
-    b64(new TextEncoder().encode(m.body || '')).replace(/(.{76})/g, '$1\r\n')
-  ];
+    wrap76(bodyB64)
+  ]);
+  for (const a of atts){
+    const name = safeName(a.name);
+    lines.push(
+      `--${B}`,
+      `Content-Type: ${a.type || 'application/pdf'}; name="${encodeHeader(name)}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${encodeHeader(name)}"`,
+      '',
+      wrap76(a.b64 || '')
+    );
+  }
+  lines.push(`--${B}--`);
   return lines.join('\r\n');
 }
 
@@ -126,17 +158,23 @@ export async function sendMail(provider, token, msg){
       body: JSON.stringify({ raw: toB64Url(buildMime(msg)) })
     });
   } else if (provider === 'outlook'){
+    const message = {
+      subject: msg.subject || '',
+      body: { contentType: 'Text', content: msg.body || '' },
+      toRecipients: [{ emailAddress: { address: msg.to } }]
+    };
+    if (msg.attachments && msg.attachments.length){
+      message.attachments = msg.attachments.map(a => ({
+        '@odata.type': '#microsoft.graph.fileAttachment',
+        name: safeName(a.name),
+        contentType: a.type || 'application/pdf',
+        contentBytes: a.b64 || ''
+      }));
+    }
     r = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: {
-          subject: msg.subject || '',
-          body: { contentType: 'Text', content: msg.body || '' },
-          toRecipients: [{ emailAddress: { address: msg.to } }]
-        },
-        saveToSentItems: true
-      })
+      body: JSON.stringify({ message, saveToSentItems: true })
     });
   } else throw new Error('fournisseur');
   if (r.status === 401 || r.status === 403) throw new Error('expire');

@@ -22,26 +22,35 @@ import { mailAnalysis, beginMailAnalysis, markMailAnalysisRunning,
          failMailAnalysis, clearMailAnalysis, reconcileMailAnalysis,
          subscribeMailAnalysis } from './analyse.js';
 
+const ERRS = {
+  vide: 'Rien à lire — le contenu est vide.',
+  format: 'Format non reconnu — est-ce bien un partage OpenContact ?',
+  motdepasse: 'Mot de passe incorrect.',
+  troplourd: 'Fichier trop lourd (plus de 4 Mo) — refusé par prudence.',
+  tropdepistes: 'Plus de 2 000 pistes — refusé par prudence.',
+  altéré: 'Le contenu a été modifié depuis son scellement — refusé.',
+  noqr: 'Ce navigateur ne sait pas lire ce format compact.'
+};
+
 export function openRecevoir(){
   let stopScan = null;
-  let stopAnalysis = null;
   let room = null;         /* salle de rendez-vous (QR OCR1 / code tapé) */
   let rdvWatch = null;     /* honnêteté de la liaison du rendez-vous */
   let gen = 0;
   const halt = () => { if (stopScan){ stopScan(); stopScan = null; } };
-  const leaveAnalysis = () => { if (stopAnalysis){ stopAnalysis(); stopAnalysis = null; } };
   const leaveRdv = () => {
     if (rdvWatch){ rdvWatch.stop(); rdvWatch = null; }
     if (room){ try { room.leave(); } catch (e) {} room = null; }
   };
   /* caméra et salle se coupent quelle que soit la façon de fermer */
-  const sh = openSheet({ title: 'Recevoir', icon: 'inbox', onClose: () => { gen++; halt(); leaveAnalysis(); leaveRdv(); } });
+  const sh = openSheet({ title: 'Recevoir', icon: 'inbox', onClose: () => { gen++; halt(); leaveRdv(); } });
   const q = s => sh.body.querySelector(s);
 
+  /* Recevoir = ce qu'un CAMARADE t'envoie (#5) — l'import de ses propres
+     e-mails vit dans la capture (« Ajouter une piste → depuis mes e-mails ») */
   const menu = () => {
     gen++;
     halt();
-    leaveAnalysis();
     leaveRdv();
     sh.setTitle('Recevoir');
     sh.body.innerHTML =
@@ -49,14 +58,12 @@ export function openRecevoir(){
          <button class="pick" id="rcScan"><b>${ic('grid-3x3', 'ic-14')} Scanner</b></button>
          <button class="pick" id="rcFile"><b>${ic('folder', 'ic-14')} Ouvrir un fichier</b><span>.oc</span></button>
          <button class="pick" id="rcPaste"><b>${ic('clipboard', 'ic-14')} Coller</b></button>
-         <button class="pick" id="rcMails"><b>${ic('sparkles', 'ic-14')} Depuis mes e-mails</b><span>l’IA propose, tu tries</span></button>
        </div>
        <p class="hint">${ic('shield', 'ic-14')} Aperçu avant fusion — annulable.</p>
        <input type="file" id="rcInput" accept=".oc,.txt,.json,application/octet-stream,text/plain,application/json" hidden>`;
     q('#rcScan').addEventListener('click', scan);
     q('#rcFile').addEventListener('click', () => q('#rcInput').click());
     q('#rcPaste').addEventListener('click', paste);
-    q('#rcMails').addEventListener('click', mails);
     q('#rcInput').addEventListener('change', e => {
       const f = e.target.files[0];
       if (!f) return;
@@ -164,10 +171,72 @@ export function openRecevoir(){
     };
   };
 
-  /* ---- depuis mes e-mails : l'IA lit chez toi, propose ici ----
-     Le prompt guidé reste le repli. Avec le Compagnon, la mission est
-     mémorisée avant son départ : fermer cette feuille ou l'app ne la
-     perd plus, et le résultat revient dans le même aperçu triable. */
+  /* ---- coller ---- */
+  const paste = () => {
+    sh.setTitle('Coller');
+    sh.body.innerHTML =
+      `<div class="field"><label for="rcTxt">Le texte reçu</label>
+         <textarea id="rcTxt" style="min-height:140px" placeholder="Colle ici le contenu partagé"></textarea></div>`;
+    sh.setFoot([btn('← Retour', 'btn-ghost', menu), btn('Lire', 'btn-primary', () => treat(q('#rcTxt').value))]);
+    q('#rcTxt').focus();
+  };
+
+  /* ---- mot de passe (fichiers OC2) ---- */
+  const askPass = raw => {
+    sh.setTitle('Fichier protégé');
+    sh.body.innerHTML =
+      `<p class="hint" style="margin:0 0 10px">${ic('lock', 'ic-14')} Chiffré — demande le mot de passe à l’expéditeur.</p>
+       <div class="field"><label for="rcPass">Mot de passe</label>
+         <input id="rcPass" type="password" autocomplete="off"></div>`;
+    const go = () => treat(raw, q('#rcPass').value);
+    sh.setFoot([btn('← Retour', 'btn-ghost', menu), btn('Déverrouiller', 'btn-primary', go)]);
+    q('#rcPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    q('#rcPass').focus();
+  };
+
+  /* ---- lecture + aperçu ---- */
+  const treat = async (raw, pass, extra) => {
+    halt();
+    let obj;
+    try {
+      obj = await parseInput(raw, pass);
+    } catch (e) {
+      if (e.message === 'besoinpass'){ askPass(raw); return; }
+      toast(ERRS[e.message] || 'Lecture impossible : ' + e.message);
+      if (e.message === 'motdepasse') askPass(raw);
+      return;
+    }
+    mergePreviewInto(sh, obj, Object.assign({ onCancel: menu }, extra || {}));
+  };
+
+  menu();
+}
+
+/* ---- depuis mes e-mails : une source de la capture (#5) ----
+   L'IA lit chez toi, propose ici — feuille autonome, ouverte depuis
+   « Ajouter une piste ». Le prompt guidé reste le repli. Avec le
+   Compagnon, la mission est mémorisée avant son départ : fermer cette
+   feuille ou l'app ne la perd plus, et le résultat revient dans le
+   même aperçu triable. */
+export function openImportMails(){
+  let stopAnalysis = null;
+  let gen = 0;
+  const leaveAnalysis = () => { if (stopAnalysis){ stopAnalysis(); stopAnalysis = null; } };
+  const sh = openSheet({ title: 'Depuis mes e-mails', icon: 'sparkles',
+    onClose: () => { gen++; leaveAnalysis(); } });
+  const q = s => sh.body.querySelector(s);
+
+  const treat = async raw => {
+    let obj;
+    try {
+      obj = await parseInput(raw);
+    } catch (e) {
+      toast(ERRS[e.message] || 'Lecture impossible : ' + e.message);
+      return;
+    }
+    mergePreviewInto(sh, obj, { select: true, onCancel: mails });
+  };
+
   const mails = async () => {
     const view = ++gen;
     leaveAnalysis();
@@ -211,12 +280,11 @@ export function openRecevoir(){
     q('#rcScan7')?.addEventListener('click', () => scan(7));
     q('#rcScan30')?.addEventListener('click', () => scan(30));
     sh.setFoot([
-      btn('← Retour', 'btn-ghost', menu),
       btn('Copier le prompt', '', async () => {
         try { await navigator.clipboard.writeText(prompt.text); toast('Prompt copié — colle-le dans ton assistant.'); }
-        catch (e) { toast('Copie impossible ici — retrouve-le dans Moi → Coup de pouce IA.'); }
+        catch (e) { toast('Copie impossible ici.'); }
       }, 'copy'),
-      btn('Lire', 'btn-primary', () => treat(q('#rcMailTxt').value, undefined, { select: true }))
+      btn('Lire', 'btn-primary', () => treat(q('#rcMailTxt').value))
     ]);
     if (pending && (pending.state === 'sending' || pending.state === 'running'))
       reconcileMailAnalysis().catch(() => {});
@@ -331,54 +399,7 @@ export function openRecevoir(){
     }
   };
 
-  /* ---- coller ---- */
-  const paste = () => {
-    sh.setTitle('Coller');
-    sh.body.innerHTML =
-      `<div class="field"><label for="rcTxt">Le texte reçu</label>
-         <textarea id="rcTxt" style="min-height:140px" placeholder="Colle ici le contenu partagé"></textarea></div>`;
-    sh.setFoot([btn('← Retour', 'btn-ghost', menu), btn('Lire', 'btn-primary', () => treat(q('#rcTxt').value))]);
-    q('#rcTxt').focus();
-  };
-
-  /* ---- mot de passe (fichiers OC2) ---- */
-  const askPass = raw => {
-    sh.setTitle('Fichier protégé');
-    sh.body.innerHTML =
-      `<p class="hint" style="margin:0 0 10px">${ic('lock', 'ic-14')} Chiffré — demande le mot de passe à l’expéditeur.</p>
-       <div class="field"><label for="rcPass">Mot de passe</label>
-         <input id="rcPass" type="password" autocomplete="off"></div>`;
-    const go = () => treat(raw, q('#rcPass').value);
-    sh.setFoot([btn('← Retour', 'btn-ghost', menu), btn('Déverrouiller', 'btn-primary', go)]);
-    q('#rcPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-    q('#rcPass').focus();
-  };
-
-  /* ---- lecture + aperçu ---- */
-  const ERRS = {
-    vide: 'Rien à lire — le contenu est vide.',
-    format: 'Format non reconnu — est-ce bien un partage OpenContact ?',
-    motdepasse: 'Mot de passe incorrect.',
-    troplourd: 'Fichier trop lourd (plus de 4 Mo) — refusé par prudence.',
-    tropdepistes: 'Plus de 2 000 pistes — refusé par prudence.',
-    altéré: 'Le contenu a été modifié depuis son scellement — refusé.',
-    noqr: 'Ce navigateur ne sait pas lire ce format compact.'
-  };
-  const treat = async (raw, pass, extra) => {
-    halt();
-    let obj;
-    try {
-      obj = await parseInput(raw, pass);
-    } catch (e) {
-      if (e.message === 'besoinpass'){ askPass(raw); return; }
-      toast(ERRS[e.message] || 'Lecture impossible : ' + e.message);
-      if (e.message === 'motdepasse') askPass(raw);
-      return;
-    }
-    mergePreviewInto(sh, obj, Object.assign({ onCancel: menu }, extra || {}));
-  };
-
-  menu();
+  mails();
 }
 
 /* Ouverture directe depuis le chip d'Aujourd'hui. Annuler ferme seulement

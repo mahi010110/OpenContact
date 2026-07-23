@@ -208,20 +208,26 @@ function askClientId(provider, rerender){
   });
 }
 
-/* ---------- la feuille ---------- */
-export async function openConnexions(){
+/* ---------- Ma messagerie (#21 — « Connexions » éclaté) ---------- */
+/* N9, pour les chemins qui arrivent ici sans passer par Réglages
+   (composeur, campagnes) : pas de mur — le pré-requis faisable,
+   qui mène tout droit à la protection */
+async function gateProtect(titre, quoi){
   if (!isProtected()){
-    const okv = await confirmSheet({ title: 'Protéger d’abord', icon: 'lock', okLabel: 'Protéger',
-      msg: 'Les connexions gardent des accès à ta messagerie : elles exigent le verrouillage. Deux minutes, une seule fois.' });
+    const okv = await confirmSheet({ title: titre, icon: 'lock', okLabel: 'Protéger',
+      msg: quoi + ' garde des accès sensibles : un code les protège d’abord. Deux minutes, une seule fois.' });
     if (okv) openProtectFlow();
-    return;
+    return false;
   }
-  if (!await requireCode('Ton code, pour les connexions')) return;
-  const sh = openSheet({ title: 'Connexions', icon: 'zap' });
+  return true;
+}
+export async function openConnexions(){
+  if (!await gateProtect('Protéger pour connecter', 'Ta messagerie')) return;
+  if (!await requireCode('Ton code, pour la messagerie')) return;
+  const sh = openSheet({ title: 'Ma messagerie', icon: 'mail' });
   const render = () => {
     sh.body.innerHTML =
-      `<div class="lbl-row"><label>Messagerie</label></div>
-       ${PROVIDERS.map(p => {
+      `${PROVIDERS.map(p => {
          const a = acct(p.id);
          const on = a && a.token;
          const exp = on && expired(a) && !(p.id === 'outlook' && a.refresh);
@@ -234,12 +240,6 @@ export async function openConnexions(){
              : `<button class="btn btn-sm" data-cx="${p.id}">Connecter</button>`}
          </div>`;
        }).join('')}
-       <div class="lbl-row" style="margin-top:14px"><label>IA <span class="lbl-soft">— aide à la rédaction</span></label></div>
-       <div class="ec-row">
-         <div class="ec-row-m"><b>${ic('sparkles', 'ic-14')} Assistant</b>
-           <span class="ec-sub">${esc(aiStateLabel())}</span></div>
-         <button class="btn btn-sm" id="cxAi">${aiConnection() ? 'Gérer' : 'Choisir'}</button>
-       </div>
        <p class="hint" style="margin-top:14px">${ic('lock', 'ic-14')} Tes accès restent chiffrés sur tes appareils. Rien ne passe par un serveur OpenContact.</p>`;
     sh.body.querySelectorAll('[data-cx]').forEach(b =>
       b.addEventListener('click', () => connect(b.dataset.cx, render)));
@@ -254,9 +254,15 @@ export async function openConnexions(){
         render();
         bus.refresh();
       }));
-    sh.body.querySelector('#cxAi').addEventListener('click', () => openAiSheet(render));
   };
   render();
+}
+
+/* ---------- Mon assistant IA (#21) — sa propre porte ---------- */
+export async function openAssistantIA(){
+  if (!await gateProtect('Protéger pour brancher', 'L’assistant IA')) return;
+  if (!await requireCode('Ton code, pour l’assistant IA')) return;
+  openAiSheet(null);
 }
 
 /* la feuille IA : chaque famille dit son chemin — « ici » (clé

@@ -6,22 +6,24 @@
    restauration, aide condensée — et le coup de pouce IA, rangé
    ici sans faire d'ombre au reste.
    ============================================================ */
-import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile,
-         defaultPrompts, PROMPTS_MAX, PROMPT_MAX_LEN } from '../engine/model.js';
+import { APP_VERSION, normalizeCompany, normalizeContact, normalizeProfile } from '../engine/model.js';
 import { fullPayload, parseInput } from '../engine/exchange.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { fmtSize, todayISO, esc } from '../engine/utils.js';
 import { mergeTombs } from '../engine/sync.js';
-import { docGet, docPut, docDel } from '../engine/storage.js';
-import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ, isClosed } from './state.js';
-import { $, ic, toast, btn, openSheet, confirmSheet, showUndo, bindDeleteGesture } from './dom.js';
+import { docGet } from '../engine/storage.js';
+import { listDocs, docKind, docTitle, pickPdf, removeDoc } from './docs.js';
+import { S, bus, saveData, saveProfile, saveOrphans, saveTombs, logJ } from './state.js';
+import { $, ic, toast, btn, openSheet, confirmSheet, showUndo } from './dom.js';
 import { openProfil, openTemplates } from './profil.js';
 import { openAppareils } from './direct.js';
 import { getSync } from './synclive.js';
 import { isProtected, openProtectFlow, openManageSheet, verrouLabel, requireCode } from './verrou.js';
-import { openConnexions, mailStateLabel, mailAccount } from './connexions.js';
+import { openConnexions, openAssistantIA, mailStateLabel, mailAccount, aiStateLabel, aiConnection } from './connexions.js';
+import { loadCompanion, openAddCompanion, openCompanionSheet } from './compagnon.js';
+import { DIST_PAGE } from '../engine/distribution.js';
 
-/* ---------- sauvegarde (.oc complet) ---------- */
+/* ---------- garder une copie (.oc complet) ---------- */
 export function downloadBackup(pass){
   const doIt = async () => {
     const payload = fullPayload(S.companies, S.profile, S.orphans, S.tombs);
@@ -33,21 +35,24 @@ export function downloadBackup(pass){
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    logJ('Sauvegarde téléchargée' + (pass ? ' (chiffrée)' : ''));
-    toast('Sauvegarde téléchargée.');
+    /* l'état « N pistes depuis ta dernière copie » repart d'ici (#4) */
+    S.profile.flags.lastBackupAt = Date.now();
+    saveProfile();
+    logJ('Copie téléchargée' + (pass ? ' (chiffrée)' : ''));
+    toast('Copie gardée ✓');
+    bus.refresh();
   };
   return doIt();
 }
 
 function openBackupSheet(){
-  const sh = openSheet({ title: 'Ma sauvegarde', icon: 'save' });
+  const sh = openSheet({ title: 'Copie avec mot de passe', icon: 'save' });
   sh.body.innerHTML =
-    `<p class="hint" style="margin:0 0 12px"><span class="tag-priv">privé inclus</span> Tout, dans un fichier — pour toi seul.</p>
-     <div class="field"><label for="bkPass">Mot de passe <span class="lbl-soft">— optionnel</span></label>
-       <input id="bkPass" type="password" placeholder="Vide = lisible par tous" autocomplete="new-password">
-       <p class="hint">Chiffré si tu en mets un — perdu = irrécupérable.</p></div>`;
+    `<div class="field"><label for="bkPass">Mot de passe</label>
+       <input id="bkPass" type="password" autocomplete="new-password">
+       <p class="hint">Perdu = copie irrécupérable.</p></div>`;
   sh.setFoot([
-    btn('Télécharger', 'btn-primary', async () => {
+    btn('Garder la copie', 'btn-primary', async () => {
       await downloadBackup(sh.body.querySelector('#bkPass').value || '');
       sh.close();
     }, 'download')
@@ -121,103 +126,36 @@ function askRestorePass(raw){
   sh.setFoot([btn('Déverrouiller', 'btn-primary', go)]);
 }
 
-/* ---------- CV & lettre (PDF, IndexedDB — séparés des pistes) ---------- */
-const DOCS = [['cv', 'Mon CV'], ['lettre', 'Ma lettre type']];
-async function docLine(key, label){
-  let d = null;
-  try { d = await docGet(key); } catch (e) {}
-  const row = $('#doc-' + key);
-  if (!row) return;
-  row.innerHTML = d
-    ? `<span class="doc-name">${ic('attachment', 'ic-14')} <b>${esc(d.name)}</b> · ${fmtSize(d.size)}</span>
-       <button class="btn btn-sm" data-see="${key}">Voir</button>
-       <button class="abtn abtn-sm" data-del="${key}" aria-label="Retirer ${label}" title="Retirer">${ic('trash', 'ic-14')}</button>`
-    : `<span class="doc-name doc-none">${esc(label)} — aucun fichier</span>
-       <button class="btn btn-sm" data-add="${key}">${ic('upload', 'ic-14')} Ajouter</button>`;
-  row.querySelector('[data-see]')?.addEventListener('click', async () => {
-    const doc = await docGet(key);
-    if (!doc) return;
-    const url = URL.createObjectURL(new Blob([doc.blob], { type: doc.type || 'application/pdf' }));
-    window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  });
-  row.querySelector('[data-del]')?.addEventListener('click', async () => {
-    const ok = await confirmSheet({ title: 'Retirer ce document ?', danger: true, okLabel: 'Retirer',
-      msg: 'Retiré de cet appareil seulement.' });
-    if (!ok) return;
-    await docDel(key).catch(() => {});
-    docLine(key, label);
-  });
-  row.querySelector('[data-add]')?.addEventListener('click', () => {
-    const inp = document.createElement('input');
-    inp.type = 'file';
-    inp.accept = 'application/pdf';
-    inp.addEventListener('change', async () => {
-      const f = inp.files[0];
-      if (!f) return;
-      if (f.size > 8 * 1048576){ toast('Trop lourd (8 Mo max) — allège le PDF.'); return; }
-      try {
-        await docPut(key, { name: f.name, size: f.size, type: f.type, added: Date.now(), blob: f });
-        toast('Document rangé.');
-      } catch (e) { toast('Stockage indisponible sur ce navigateur.'); }
-      docLine(key, label);
-    });
-    inp.click();
-  });
+/* ---------- CV & lettres : variantes nommées (#4) ---------- */
+async function renderDocs(){
+  const box = $('#moiDocs');
+  if (!box) return;
+  const docs = await listDocs();
+  box.innerHTML = docs.map(d =>
+    `<div class="doc-row">
+       <span class="doc-name">${ic('attachment', 'ic-14')} <b>${esc(docTitle(d))}</b> · ${docKind(d.key) === 'cv' ? 'CV' : 'lettre'} · ${fmtSize(d.size)}</span>
+       <button class="btn btn-sm" data-see="${esc(d.key)}">Voir</button>
+       <button class="abtn abtn-sm" data-del="${esc(d.key)}" aria-label="Retirer ${esc(docTitle(d))}" title="Retirer">${ic('trash', 'ic-14')}</button>
+     </div>`).join('');
+  box.querySelectorAll('[data-see]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const doc = await docGet(b.dataset.see).catch(() => null);
+      if (!doc) return;
+      const url = URL.createObjectURL(new Blob([doc.blob], { type: doc.type || 'application/pdf' }));
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }));
+  box.querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', async () => {
+      const ok = await confirmSheet({ title: 'Retirer ce document ?', danger: true, okLabel: 'Retirer',
+        msg: 'Retiré de cet appareil seulement.' });
+      if (!ok) return;
+      await removeDoc(b.dataset.del).catch(() => {});
+      renderDocs();
+    }));
 }
 
-/* ---------- prompts IA : les SIENS — créés, modifiés, bornés ----------
-   Un seul livré d'origine (« Mes emails → pistes », qui fabrique un JSON
-   à coller dans Recevoir) ; le reste appartient à l'utilisateur. Ils
-   vivent dans le profil, donc voyagent entre ses appareils.
-   Supprimer = le geste (glisser / poubelle) + Annuler ~30 s. Le moteur
-   ressuscite les défauts quand la liste est vide : le dernier reste. */
-function delPrompt(i){
-  const list = S.profile.prompts;
-  if (list.length <= 1){
-    toast('Le dernier prompt reste — modifie-le plutôt.');
-    bus.refresh();
-    return;
-  }
-  const gone = list.splice(i, 1)[0];
-  saveProfile();
-  bus.refresh();
-  showUndo(`${ic('check', 'ic-14')} « ${esc(gone.name)} » supprimé.`, () => {
-    S.profile.prompts.splice(Math.min(i, S.profile.prompts.length), 0, gone);
-    saveProfile();
-    bus.refresh();
-    toast('Prompt restauré.');
-  });
-}
-function editPrompt(i){
-  const isNew = i < 0;
-  const src = isNew ? { name: '', text: '' } : S.profile.prompts[i];
-  const sh = openSheet({ title: isNew ? 'Nouveau prompt' : 'Modifier le prompt', icon: 'sparkles', focus: '#ppName' });
-  sh.body.innerHTML =
-    `<div class="field"><label for="ppName">Nom</label>
-       <input id="ppName" value="${esc(src.name)}" maxlength="60" placeholder="Ex : Préparer un entretien"></div>
-     <div class="field"><label for="ppText">Le prompt <span class="lbl-soft">— [crochets] = à remplacer au moment de coller</span></label>
-       <textarea id="ppText" maxlength="${PROMPT_MAX_LEN}" style="min-height:180px">${esc(src.text)}</textarea>
-       <p class="hint" style="text-align:right"><span id="ppCount">${src.text.length}</span> / ${PROMPT_MAX_LEN}</p></div>`;
-  const q = s => sh.body.querySelector(s);
-  q('#ppText').addEventListener('input', () => { q('#ppCount').textContent = q('#ppText').value.length; });
-  const foot = [
-    btn('Enregistrer', 'btn-primary', () => {
-      const name = q('#ppName').value.trim();
-      const text = q('#ppText').value.trim();
-      if (!name || !text){ toast('Un nom et un contenu — il manque l’un des deux.'); return; }
-      if (isNew) S.profile.prompts.push({ name, text: text.slice(0, PROMPT_MAX_LEN) });
-      else S.profile.prompts[i] = { name, text: text.slice(0, PROMPT_MAX_LEN) };
-      saveProfile();
-      sh.close();
-      bus.refresh();
-      toast('Prompt enregistré ✓');
-    })
-  ];
-  sh.setFoot(foot);
-}
-
-/* ---------- l'écran ---------- */
+/* ---------- l'écran : Profil & données + Réglages (#20) ---------- */
 function syncLabel(){
   const sy = getSync();
   if (!sy.phrase) return 'non relié';
@@ -227,103 +165,58 @@ function syncLabel(){
   if (sy.state === 'rtcfail') return 'relié — liaison directe en échec';
   return 'relié — en attente';
 }
-export function renderMoi(){
-  const root = $('#view-moi');
-  const p = S.profile;
-  const pReady = p.name && p.email;
-  const alive = S.companies.filter(c => !isClosed(c)).length;
-  root.innerHTML =
-    `<div class="page-inner">
-       <div class="td-head"><h2>Moi</h2><div class="td-date">privé — jamais partagé</div></div>
+/* « N pistes depuis ta dernière copie » — l'état qui pousse au geste (#4) ;
+   se calme quand les appareils reliés dupliquent déjà les données */
+function backupState(){
+  const last = Number((S.profile.flags || {}).lastBackupAt) || 0;
+  return {
+    last,
+    linked: !!getSync().phrase,
+    n: S.companies.filter(c => (c.updatedAt || 0) > last).length
+  };
+}
 
-       <div class="pcard">
-         <h3>${ic('user', 'ic-14')} Mon profil</h3>
-         <p class="pd">${pReady
-            ? `<b>${esc(p.name)}</b>${p.formation ? ' · ' + esc(p.formation) : ''} — tes emails se signent tout seuls.`
-            : 'Nom, formation, contact : une fois remplis, chaque email part signé et complet.'}</p>
-         <div class="pc-actions">
-           <button class="btn ${pReady ? '' : 'btn-primary'}" id="moiProfil">${ic('pencil', 'ic-14')} ${pReady ? 'Modifier' : 'Remplir mon profil'}</button>
-           <button class="btn" id="moiTpl">${ic('mail', 'ic-14')} Modèles d’emails (${p.templates.length})</button>
-         </div>
-       </div>
-
-       <div class="pcard">
-         <h3>${ic('attachment', 'ic-14')} CV &amp; lettre <span class="lbl-soft">PDF, sur cet appareil</span></h3>
-         <div class="doc-row" id="doc-cv"></div>
-         <div class="doc-row" id="doc-lettre"></div>
-       </div>
-
-       <div class="pcard">
-         <h3>${ic('save', 'ic-14')} Ma sauvegarde <span class="tag-priv">privé inclus</span></h3>
-         <p class="pd">${S.companies.length} piste${S.companies.length > 1 ? 's' : ''} (${alive} vivante${alive > 1 ? 's' : ''}), suivi et profil dans un fichier <b>.oc</b> — à refaire régulièrement.</p>
-         <div class="pc-actions">
-           <button class="btn ${pReady ? 'btn-primary' : ''}" id="moiBackup">${ic('download', 'ic-14')} Télécharger</button>
-           <button class="btn" id="moiRestore">${ic('reload', 'ic-14')} Restaurer</button>
-           <input type="file" id="moiRestoreFile" accept=".oc,.txt,.json,application/octet-stream,application/json,text/plain" hidden>
-         </div>
-         <div class="stor-line" id="moiStor"></div>
-       </div>
-
-       <div class="pcard">
-         <div class="ec-row" style="padding:6px 0 8px">
-           <div class="ec-row-m"><b>${ic('lock', 'ic-14')} Verrouillage</b>
-             <span class="ec-sub">${verrouLabel()}</span></div>
-           <button class="btn" id="moiVerrou">${isProtected() ? 'Gérer' : 'Protéger'}</button>
-         </div>
-         <div class="ec-row" style="padding:8px 0">
-           <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
-             <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
-           <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
-         </div>
-         <div class="ec-row" style="border:0;padding:8px 0 2px">
-           <div class="ec-row-m"><b>${ic('zap', 'ic-14')} Connexions</b>
-             <span class="ec-sub">${mailStateLabel()}</span></div>
-           <button class="btn" id="moiCx">${mailAccount() ? 'Gérer' : 'Connecter'}</button>
-         </div>
-       </div>
-
-       <details class="pcard pcard-details">
-         <summary><h3>${ic('sparkles', 'ic-14')} Coup de pouce IA</h3></summary>
-         ${p.prompts.map((pr, i) =>
-           `<div class="prompt-row">
-              <div class="sw-in">
-                <button class="pr-name" data-copy="${i}" title="Copier">${esc(pr.name)}</button>
-                <span class="pr-hint" aria-hidden="true">${ic('copy', 'ic-14')}</span>
-                <button class="abtn abtn-sm" data-pedit="${i}" aria-label="Modifier ${esc(pr.name)}" title="Modifier">${ic('pencil', 'ic-14')}</button>
-              </div>
-            </div>`).join('')}
-         <div class="pr-foot">
-           ${p.prompts.length < PROMPTS_MAX
-             ? `<button class="btn btn-sm" id="moiPromptAdd">${ic('plus', 'ic-14')} Nouveau prompt</button>`
-             : `<span class="hint" style="margin:0">${PROMPTS_MAX} max — supprime-en un</span>`}
-           <button class="linklike" id="moiPromptReset">Revenir au prompt d’origine</button>
-         </div>
-       </details>
-
-       <details class="pcard pcard-details">
-         <summary><h3>${ic('book-open', 'ic-14')} Comment ça marche</h3></summary>
-         <ul class="help-list">
-           <li><b>Local-first.</b> Tout vit sur tes appareils — pas de compte, pas de serveur.</li>
-           <li><b>Une piste = une entreprise</b>, avec une prochaine action + une date : c’est ce qui nourrit « Aujourd’hui ».</li>
-           <li><b>Échanger</b> fait circuler les fiches dans la promo — jamais ton suivi privé.</li>
-           <li><b>Mes appareils</b> (ci-dessus) garde téléphone et ordinateur synchronisés en continu, suivi compris.</li>
-           <li><b>Coup de pouce IA :</b> taper un prompt le copie, à coller dans ton assistant. « Mes emails → pistes » fabrique un texte pour <b>Échanger → Recevoir → Coller</b>.</li>
-           <li><b>Supprimer :</b> glisse une ligne (ou survole-la) — annulable 30 s.</li>
-           <li><b>Raccourci :</b> « / » saute à la recherche.</li>
-         </ul>
-       </details>
-
-       <div class="moi-ver">OpenContact ${APP_VERSION} · local-first, sans compte · fichier .oc</div>
-     </div>`;
-
-  root.querySelector('#moiProfil').addEventListener('click', () => openProfil());
-  root.querySelector('#moiTpl').addEventListener('click', openTemplates);
-  root.querySelector('#moiBackup').addEventListener('click', openBackupSheet);
-  root.querySelector('#moiVerrou').addEventListener('click', () =>
-    isProtected() ? openManageSheet() : openProtectFlow());
-  root.querySelector('#moiSync').addEventListener('click', openAppareils);
-  root.querySelector('#moiCx').addEventListener('click', openConnexions);
-  /* l'état du lien vit : peers, liaison, rupture */
+/* les lignes de Réglages — noms clairs (#21) : nom + état + geste,
+   aucune explication ici (elle vit sur le 2ᵉ écran). Messagerie et IA
+   exigent le code : sans protection, le bouton dit le vrai premier
+   geste — « Protéger pour… » — au lieu d'un « Connecter » qui refuse
+   ensuite (N9). Le Compagnon a un vrai bouton : Télécharger sur
+   ordinateur, Copier le lien sur téléphone (#21). */
+function reglagesRowsHTML(){
+  const prot = isProtected();
+  return (
+    `<div class="ec-row">
+       <div class="ec-row-m"><b>${ic('lock', 'ic-14')} Protection</b>
+         <span class="ec-sub">${verrouLabel()}</span></div>
+       <button class="btn" id="moiVerrou">${prot ? 'Gérer' : 'Protéger'}</button>
+     </div>
+     <div class="ec-row">
+       <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Mes appareils</b>
+         <span class="ec-sub" id="moiSyncSt">${syncLabel()}</span></div>
+       <button class="btn" id="moiSync">${getSync().phrase ? 'Gérer' : 'Relier'}</button>
+     </div>
+     <div class="ec-row">
+       <div class="ec-row-m"><b>${ic('mail', 'ic-14')} Ma messagerie</b>
+         <span class="ec-sub">${mailStateLabel()}</span></div>
+       <button class="btn" id="moiCx">${!prot ? 'Protéger pour connecter' : (mailAccount() ? 'Gérer' : 'Connecter')}</button>
+     </div>
+     <div class="ec-row">
+       <div class="ec-row-m"><b>${ic('sparkles', 'ic-14')} Mon assistant IA</b>
+         <span class="ec-sub">${aiStateLabel()}</span></div>
+       <button class="btn" id="moiAi">${!prot ? 'Protéger pour brancher' : (aiConnection() ? 'Gérer' : 'Brancher')}</button>
+     </div>
+     <div class="ec-row" style="border:0">
+       <div class="ec-row-m"><b>${ic('switch', 'ic-14')} Le Compagnon</b>
+         <span class="ec-sub" id="moiCompSt">${mqWideMoi.matches ? 'pas encore installé' : 's’installe sur ton ordinateur'}</span></div>
+       <button class="btn" id="moiComp">${mqWideMoi.matches ? 'Télécharger' : 'Copier le lien'}</button>
+     </div>
+     <div class="rg-foot">
+       <button class="linklike" id="moiRestore">${ic('reload', 'ic-14')} Restaurer une copie</button>
+       <input type="file" id="moiRestoreFile" accept=".oc,.txt,.json,application/octet-stream,application/json,text/plain" hidden>
+     </div>`);
+}
+/* l'état du lien vit : peers, liaison, rupture */
+function bindSyncLive(root){
   if (root.__onSync) document.removeEventListener('oc:sync', root.__onSync);
   root.__onSync = () => {
     if (root.hidden){ document.removeEventListener('oc:sync', root.__onSync); root.__onSync = null; return; }
@@ -333,36 +226,150 @@ export function renderMoi(){
     if (b) b.textContent = getSync().phrase ? 'Gérer' : 'Relier';
   };
   document.addEventListener('oc:sync', root.__onSync);
-  const rf = root.querySelector('#moiRestoreFile');
-  /* restaurer = geste sensible : le code d'abord, si les données sont protégées */
-  root.querySelector('#moiRestore').addEventListener('click', async () => {
+}
+
+function bindReglages(box){
+  const q = s => box.querySelector(s);
+  q('#moiVerrou').addEventListener('click', () =>
+    isProtected() ? openManageSheet() : openProtectFlow());
+  q('#moiSync').addEventListener('click', openAppareils);
+  /* N9 : le bouton a promis « Protéger pour… » — il y va tout droit */
+  q('#moiCx').addEventListener('click', () =>
+    isProtected() ? openConnexions() : openProtectFlow());
+  q('#moiAi').addEventListener('click', () =>
+    isProtected() ? openAssistantIA() : openProtectFlow());
+  q('#moiComp').addEventListener('click', async () => {
+    const assoc = await loadCompanion().catch(() => null);
+    if (assoc){ openCompanionSheet(assoc); return; }
+    if (mqWideMoi.matches){ openAddCompanion(); return; }
+    try {
+      await navigator.clipboard.writeText(DIST_PAGE);
+      toast('Lien copié — ouvre-le sur ton ordinateur.');
+    } catch (e) { toast('Copie impossible ici — le lien : ' + DIST_PAGE); }
+  });
+  loadCompanion().then(a => {
+    if (!a) return;
+    const st = q('#moiCompSt');
+    const b = q('#moiComp');
+    if (st) st.textContent = 'associé — ' + (a.nom || 'ton ordinateur');
+    if (b) b.textContent = 'Gérer';
+  }).catch(() => {});
+  const rf = q('#moiRestoreFile');
+  /* restaurer = rare et sensible (#4) : rangé ici, le code d'abord */
+  q('#moiRestore').addEventListener('click', async () => {
     if (await requireCode('Ton code, pour restaurer')) rf.click();
   });
   rf.addEventListener('change', () => { if (rf.files[0]) restoreFile(rf.files[0]); });
-  root.querySelectorAll('[data-copy]').forEach(b =>
-    b.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(S.profile.prompts[+b.dataset.copy].text); toast('Copié ✓'); }
-      catch (e) { toast('Copie impossible ici.'); }
-    }));
-  root.querySelectorAll('[data-pedit]').forEach(b =>
-    b.addEventListener('click', () => editPrompt(+b.dataset.pedit)));
-  /* supprimer un prompt = le même geste que partout */
-  root.querySelectorAll('.prompt-row').forEach((r, i) =>
-    bindDeleteGesture(r, () => delPrompt(i)));
-  root.querySelector('#moiPromptAdd')?.addEventListener('click', () => editPrompt(-1));
-  root.querySelector('#moiPromptReset')?.addEventListener('click', async () => {
-    const ok = await confirmSheet({ title: 'Revenir au prompt d’origine ?', okLabel: 'Réinitialiser',
-      msg: 'Tes prompts actuels seront remplacés par le seul prompt d’origine (« Mes emails → pistes »).', danger: true });
-    if (!ok) return;
-    S.profile.prompts = defaultPrompts();
-    saveProfile();
-    bus.refresh();
+}
+
+/* mobile : Réglages est le 2ᵉ écran de « Moi » (la porte #20) — un vrai
+   écran re-rendu par bus.refresh, jamais une feuille qui gèlerait ses états */
+let reglagesOpen = false;
+const mqWideMoi = matchMedia('(min-width:901px)');
+mqWideMoi.addEventListener('change', () => { if (S.route === 'moi') renderMoi(); });
+
+export function renderMoi(){
+  const root = $('#view-moi');
+  const wide = mqWideMoi.matches;
+
+  if (!wide && reglagesOpen){
+    root.innerHTML =
+      `<div class="page-inner">
+         <div class="td-head">
+           <button class="btn icon-btn" id="moiBack" aria-label="Retour à Moi">${ic('arrow-left', 'ic-14')}</button>
+           <h2>Réglages</h2>
+         </div>
+         <div class="pcard">${reglagesRowsHTML()}</div>
+       </div>`;
+    root.querySelector('#moiBack').addEventListener('click', () => { reglagesOpen = false; renderMoi(); });
+    bindReglages(root);
+    bindSyncLive(root);
+    return;
+  }
+
+  const p = S.profile;
+  const pReady = p.name && p.email;
+  const bk = backupState();
+  const showBackup = !!(S.companies.length || p.name);   /* rien à copier = carte absente */
+  const bkPromote = showBackup && !bk.linked && (!bk.last || bk.n > 0);
+  const bkState = bk.linked
+    ? 'Tes appareils reliés la gardent déjà en double.'
+    : !bk.last
+      ? 'Aucune copie encore.'
+      : bk.n
+        ? `<b>${bk.n} piste${bk.n > 1 ? 's' : ''}</b> depuis ta dernière copie.`
+        : 'À jour.';
+
+  const cards =
+    `<div class="pcard">
+       <h3>${ic('user', 'ic-14')} Mon profil</h3>
+       <p class="pd">${pReady
+          ? `<b>${esc(p.name)}</b>${p.formation ? ' · ' + esc(p.formation) : ''} — tes emails se signent tout seuls.`
+          : 'Nom, formation, contact : une fois remplis, chaque email part signé et complet.'}</p>
+       <div class="pc-actions">
+         <button class="btn ${pReady ? '' : 'btn-primary'}" id="moiProfil">${ic('pencil', 'ic-14')} ${pReady ? 'Modifier' : 'Remplir mon profil'}</button>
+         <button class="btn" id="moiTpl">${ic('mail', 'ic-14')} Modèles d’emails (${p.templates.length})</button>
+       </div>
+     </div>
+
+     <div class="pcard">
+       <h3>${ic('attachment', 'ic-14')} Mes CV &amp; lettres <span class="lbl-soft">PDF, sur cet appareil</span></h3>
+       <div id="moiDocs"></div>
+       <div class="pc-actions">
+         <button class="btn btn-sm" id="moiDocCv">${ic('plus', 'ic-14')} CV</button>
+         <button class="btn btn-sm" id="moiDocLm">${ic('plus', 'ic-14')} Lettre</button>
+       </div>
+     </div>
+
+     ${showBackup ? `
+     <div class="pcard">
+       <h3>${ic('save', 'ic-14')} Garder une copie <span class="tag-priv">${ic('lock', 'ic-14')} privé inclus</span></h3>
+       <p class="pd">${bkState}</p>
+       <div class="pc-actions">
+         <button class="btn ${bkPromote ? 'btn-primary' : ''}" id="moiBackup">${ic('download', 'ic-14')} Garder une copie</button>
+         <button class="linklike" id="moiBackupPass">avec un mot de passe</button>
+       </div>
+       <div class="stor-line" id="moiStor"></div>
+     </div>` : ''}`;
+
+  const reglages = `<div class="pcard">
+       ${wide ? `<h3>${ic('settings-2', 'ic-14')} Réglages</h3>` : ''}
+       ${reglagesRowsHTML()}
+     </div>`;
+
+  root.innerHTML =
+    `<div class="page-inner${wide ? ' page-wide' : ''}">
+       <div class="td-head"><h2>Moi</h2><div class="td-date">${ic('lock', 'ic-14')} privé — jamais partagé</div></div>
+       ${wide
+         ? `<div class="moi-cols"><div>${cards}</div><div>${reglages}</div></div>`
+         : cards +
+           `<button class="pcard moi-door" id="moiReglages">
+              <span class="md-m"><b>${ic('settings-2', 'ic-14')} Réglages</b>
+                <span class="ec-sub">protection · appareils · messagerie · IA · Compagnon</span></span>
+              ${ic('chevron-right', 'ic-14')}
+            </button>`}
+       <div class="moi-ver">OpenContact ${APP_VERSION} · local-first, sans compte · fichier .oc</div>
+     </div>`;
+
+  root.querySelector('#moiProfil').addEventListener('click', () => openProfil());
+  root.querySelector('#moiTpl').addEventListener('click', openTemplates);
+  root.querySelector('#moiBackup')?.addEventListener('click', () => downloadBackup(''));
+  root.querySelector('#moiBackupPass')?.addEventListener('click', openBackupSheet);
+  if (wide) bindReglages(root);
+  else root.querySelector('#moiReglages').addEventListener('click', () => {
+    reglagesOpen = true;
+    renderMoi();
+    root.scrollTop = 0;
   });
-  DOCS.forEach(([k, l]) => docLine(k, l));
+  bindSyncLive(root);
+  root.querySelector('#moiDocCv').addEventListener('click', () => pickPdf('cv', renderDocs));
+  root.querySelector('#moiDocLm').addEventListener('click', () => pickPdf('lm', renderDocs));
+  renderDocs();
   if (navigator.storage && navigator.storage.estimate){
     navigator.storage.estimate().then(({ usage, quota }) => {
       if (usage != null && quota){
-        $('#moiStor').textContent = 'Espace local utilisé : ' + fmtSize(usage) + ' sur ' + fmtSize(quota) + '.';
+        const el = $('#moiStor');
+        if (el) el.textContent = 'Espace local utilisé : ' + fmtSize(usage) + ' sur ' + fmtSize(quota) + '.';
       }
     }).catch(() => {});
   }

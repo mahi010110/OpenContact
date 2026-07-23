@@ -11,14 +11,15 @@ import { STATUSES, CLOSE_REASONS, DOMAINS, pushHist } from '../engine/model.js';
 import { scoreOf } from '../engine/score.js';
 import { filterCompanies } from '../engine/filter.js';
 import { S, bus, isClosed, hasDemo, addDemo, ctLabel, deletePiste, undeletePiste, saveData, logJ } from './state.js';
-import { $, ic, toast, showUndo, bindDeleteGesture, openSheet } from './dom.js';
-import { sortState, sortArgs, sortHasDist, sortBarHTML, bindSortBar } from './sort.js';
+import { $, ic, toast, showUndo, bindDeleteGesture, openSheet, softReorder } from './dom.js';
+import { sortState, sortArgs, sortHasDist,
+         sortSectionHTML, bindSortSection, sortChipHTML, bindSortChip } from './sort.js';
 import { relLabel } from './dates.js';
 import { openFiche } from './fiche.js';
 import { openCapture } from './capture.js';
 import { openContactEditor, openAttach } from './contact.js';
 import { openProspect } from './prospect.js';
-import { campaignOfPiste } from './campagnes.js';
+import { campaignOfPiste, liveCampaignsCount, openCampaignsHome } from './campagnes.js';
 
 let q = '';
 const st = sortState('recent');
@@ -51,8 +52,8 @@ const kmBit = c => (sortHasDist(st) && st.userPos && c.lat != null)
 
 function rowHTML(c){
   const closed = isClosed(c);
-  const color = closed ? CLOSE_REASONS[c.closedReason].color : STATUSES[c.status].color;
-  /* le verbe d'action d'abord — jamais tronqué (la ligne peut plier) */
+  /* le verbe d'action d'abord — jamais tronqué (la ligne peut plier) ;
+     le statut UNE seule fois : la pastille texte + couleur (#13) */
   const bits = [];
   if (closed) bits.push('<b>' + CLOSE_REASONS[c.closedReason].label + '</b>');
   else if (c.nextAction) bits.push('<b>' + esc(c.nextActionText || 'Faire le point') + '</b> · ' + relLabel(c.nextAction));
@@ -64,12 +65,11 @@ function rowHTML(c){
   return (
     `<div class="row-item${closed ? ' row-closed' : ''}" data-id="${c.id}">
        <div class="sw-in">
-         <span class="dotc" style="background:${color}"></span>
          <div class="ri-main" role="button" tabindex="0" aria-label="Ouvrir ${esc(c.name)}">
            <h3>${esc(c.name)}</h3>
            <div class="ri-sub">${bits.join(' · ')}</div>
          </div>
-         ${!closed ? `<span class="ri-st" style="--c:${color}">${STATUSES[c.status].label}</span>` : ''}
+         ${!closed ? `<span class="ri-st" style="--c:${STATUSES[c.status].color}">${STATUSES[c.status].label}</span>` : ''}
        </div>
      </div>`);
 }
@@ -160,20 +160,12 @@ function bindBoardDrag(body){
   });
 }
 
-/* le bouton « Filtrer » à côté du tri — actif = marqué, re-tap = tout montrer */
-function filterBtnHTML(){
-  const names = [ft.status && STATUSES[ft.status].label, ft.domain && DOMAINS[ft.domain].label]
-    .filter(Boolean).join(' + ');
-  const lbl = ftOn() ? `Filtre : ${names} — retaper pour tout montrer` : 'Filtrer';
-  return `<button class="btn icon-btn${ftOn() ? ' sort-on' : ''}" id="piFilt"
-                  aria-label="${esc(lbl)}" title="${esc(lbl)}">${ic('filter', 'ic-14')}</button>`;
-}
-
-/* la feuille « Filtrer » — même grammaire que « Trier » : chaque tap
-   s'applique aussitôt, la croix referme, le bouton actif re-tapé montre
-   tout. Le statut n'est proposé qu'en liste (le tableau segmente déjà). */
-function openFilterSheet(onChange){
-  const sh = openSheet({ title: 'Filtrer', icon: 'filter' });
+/* la feuille « Affiner » (#8) : filtres + tri, une seule surface, même
+   grammaire partout — chaque tap s'applique aussitôt, la croix referme.
+   Le statut n'est proposé qu'en liste (le tableau desktop segmente déjà) ;
+   le tri multi-niveaux vit replié dans la section « Trier ». */
+function openAffinerSheet(onChange){
+  const sh = openSheet({ title: 'Affiner', icon: 'filter' });
   const render = () => {
     const chips = (grp, defs, cur) => Object.keys(defs).map(k =>
       `<button class="fl-chip${cur === k ? ' on' : ''}" data-${grp}="${k}" aria-pressed="${cur === k}">
@@ -183,7 +175,8 @@ function openFilterSheet(onChange){
         `<div class="lbl-row"><label>Statut</label></div>
          <div class="fl-grid">${chips('st', STATUSES, ft.status)}</div>`}
        <div class="lbl-row"><label>Domaine</label></div>
-       <div class="fl-grid">${chips('dom', DOMAINS, ft.domain)}</div>`;
+       <div class="fl-grid">${chips('dom', DOMAINS, ft.domain)}</div>
+       ${sortSectionHTML(st)}`;
     sh.body.querySelectorAll('[data-st]').forEach(b =>
       b.addEventListener('click', () => {
         ft.status = (ft.status === b.dataset.st) ? '' : b.dataset.st;
@@ -194,14 +187,33 @@ function openFilterSheet(onChange){
         ft.domain = (ft.domain === b.dataset.dom) ? '' : b.dataset.dom;
         onChange(); render();
       }));
+    bindSortSection(sh.body, st, () => { onChange(); render(); });
   };
   render();
 }
 
+/* l'état actif = des puces sous la recherche, un regard suffit (#8) —
+   la croix enlève, taper la puce de tri inverse son sens */
+function chipsRowHTML(){
+  const bits = [];
+  if (ft.status) bits.push(
+    `<span class="st-chip"><button class="st-chip-b" data-clear="st" aria-label="Retirer le filtre ${STATUSES[ft.status].label}">
+       <span class="dotc" style="background:${STATUSES[ft.status].color}"></span>${STATUSES[ft.status].label}</button>
+     <button class="st-chip-x" data-clear-x="st" aria-label="Retirer le filtre">✕</button></span>`);
+  if (ft.domain) bits.push(
+    `<span class="st-chip"><button class="st-chip-b" data-clear="dom" aria-label="Retirer le filtre ${DOMAINS[ft.domain].label}">
+       <span class="dotc" style="background:${DOMAINS[ft.domain].color}"></span>${DOMAINS[ft.domain].label}</button>
+     <button class="st-chip-x" data-clear-x="dom" aria-label="Retirer le filtre">✕</button></span>`);
+  const sc = sortChipHTML(st);
+  if (sc) bits.push(sc);
+  return bits.length ? `<div class="chips-row">${bits.join('')}</div>` : '';
+}
+
 function orphansHTML(){
   if (!S.orphans.length) return '';
+  /* ligne calme, repliée (#13) : présente, mais ne vole plus la place */
   return (
-    `<details class="tranche tr-orph" open>
+    `<details class="tranche tr-orph">
        <summary class="tr-h">${ic('contact', 'ic-14')} Contacts à rattacher <span class="tr-n">${S.orphans.length}</span></summary>
        <div class="rows">${S.orphans.map(o => {
          const title = ctLabel(o);
@@ -238,19 +250,21 @@ export function renderPistes(){
   const wide = mqWide.matches;
   const nAlive = S.companies.filter(c => !isClosed(c)).length;
 
+  const nCamps = liveCampaignsCount();
   root.innerHTML =
     `<div class="page-inner${wide ? ' page-wide' : ''}">
        <div class="td-head">
          <h2>Mes pistes</h2>
          <div class="td-date">${S.companies.length} piste${S.companies.length > 1 ? 's' : ''}</div>
+         ${nCamps ? `<button class="btn btn-sm" id="piCamps">${ic('flag', 'ic-14')} Campagnes (${nCamps})</button>` : ''}
          ${nAlive ? `<button class="btn btn-sm" id="piProspect">${ic('mail', 'ic-14')} Prospecter</button>` : ''}
        </div>
        <div class="search-wrap">
          <input class="search" id="piQ" type="search" placeholder="Chercher…"
                 aria-label="Rechercher une piste" value="${esc(q)}">
-         ${filterBtnHTML()}
-         ${sortBarHTML(st)}
+         <button class="btn" id="piAffiner">${ic('filter', 'ic-14')} Affiner</button>
        </div>
+       <div id="piChips">${chipsRowHTML()}</div>
        <div id="piBody"></div>
      </div>`;
 
@@ -337,12 +351,30 @@ export function renderPistes(){
     clearTimeout(h);
     h = setTimeout(() => { q = input.value; renderBody(); }, 180);
   });
-  bindSortBar(root, st, renderPistes);
-  root.querySelector('#piFilt').addEventListener('click', () => {
-    /* re-tap sur un filtre actif = tout montrer (comme le tri) */
-    if (ftOn()){ ftClear(); renderPistes(); return; }
-    openFilterSheet(renderPistes);
-  });
+  /* les puces d'état et le corps se re-rendent ensemble, la recherche
+     reste le même nœud (le curseur ne saute pas) ; les lignes retrouvées
+     glissent vers leur nouvelle place (#23) */
+  const refresh = () => {
+    const play = softReorder('#piBody .row-item, #piBody .bcard');
+    const chips = root.querySelector('#piChips');
+    chips.innerHTML = chipsRowHTML();
+    bindChips(chips);
+    renderBody();
+    play();
+  };
+  const bindChips = box => {
+    box.querySelectorAll('[data-clear], [data-clear-x]').forEach(b =>
+      b.addEventListener('click', () => {
+        const grp = b.dataset.clear || b.dataset.clearX;
+        if (grp === 'st') ft.status = '';
+        else ft.domain = '';
+        refresh();
+      }));
+    bindSortChip(box, st, refresh);
+  };
+  bindChips(root.querySelector('#piChips'));
+  root.querySelector('#piAffiner').addEventListener('click', () => openAffinerSheet(refresh));
   root.querySelector('#piProspect')?.addEventListener('click', openProspect);
+  root.querySelector('#piCamps')?.addEventListener('click', openCampaignsHome);
   renderBody();
 }

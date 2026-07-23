@@ -12,7 +12,7 @@ import { sharePayload, encodeOCQ, splitOCQ, makeRdvCode, rdvNorm, rdvWrap } from
 import { filterCompanies } from '../engine/filter.js';
 import { encryptOC2 } from '../engine/crypto.js';
 import { S, isClosed, logJ } from './state.js';
-import { openSheet, toast, btn, ic } from './dom.js';
+import { openSheet, toast, btn, ic, softReorder } from './dom.js';
 import { sortState, sortArgs, sortBarHTML, bindSortBar } from './sort.js';
 import { openRoom, watchLiaison } from './synclive.js';
 import { makeQrSvg } from './qr.js';
@@ -43,11 +43,15 @@ export function openDonner(){
   const stepHow = () => {
     enter();
     sh.setTitle('Donner');
+    /* mobile = le terrain : QR d'abord ; desktop = le poste : fichier
+       d'abord, le QR devient le pont vers le téléphone (#18) */
+    const wide = matchMedia('(min-width:901px)').matches;
+    const optQR = `<button class="pick" id="dnQR"><b>${ic('grid-3x3', 'ic-14')} QR</b><span>${wide ? 'à faire scanner par un téléphone' : 'en personne'}</span></button>`;
+    const optFile = `<button class="pick" id="dnFile"><b>${ic('file', 'ic-14')} Fichier .oc</b><span>à distance</span></button>`;
     sh.body.innerHTML =
       `<p class="hint" style="margin:0 0 10px">${ic('lock', 'ic-14')} Seules les fiches partent — jamais ton suivi privé.</p>
        <div class="pick-list">
-         <button class="pick" id="dnQR"><b>${ic('grid-3x3', 'ic-14')} QR</b><span>en personne</span></button>
-         <button class="pick" id="dnFile"><b>${ic('file', 'ic-14')} Fichier .oc</b><span>à distance</span></button>
+         ${wide ? optFile + optQR : optQR + optFile}
        </div>
        <div class="dn-what">
          <span class="dn-count" id="dnCount"></span>
@@ -75,7 +79,7 @@ export function openDonner(){
                   <span>${STATUSES[c.status].label}${c.city ? ' · ' + esc(c.city) : ''}</span></div>
               </button>`).join('')}
          </div>`;
-      bindSortBar(zone, st, renderList);
+      bindSortBar(zone, st, () => { const play = softReorder('.modal-b .pk'); renderList(); play(); });
       zone.querySelectorAll('.pk').forEach(b =>
         b.addEventListener('click', () => {
           const id = b.dataset.id;

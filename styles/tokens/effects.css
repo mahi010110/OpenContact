@@ -26,12 +26,15 @@
   --focus-outline:1px dotted var(--focus-ring);
   --focus-offset:2px;
 
-  /* Mouvement : instantané ou presque. Pas d'easing spectaculaire. */
+  /* Mouvement (#23) : les OBJETS restent « 98 » — nets, instantanés,
+     steps() pour le feedback (secousse, bascule). Seul le DÉPLACEMENT
+     entre états est doux : court, ease-out, senti sans être vu.
+     transform/opacity uniquement (GPU) ; reduced-motion coupe tout. */
   --dur-1:0ms;      /* changements d'état : immédiats, comme à l'époque */
-  --dur-2:120ms;    /* apparitions (menus, toasts) */
-  --dur-3:180ms;    /* modales */
-  --ease-steps:steps(2, end);
-  --ease-out:cubic-bezier(.2,.9,.3,1);
+  --dur-2:120ms;    /* apparitions discrètes (toast, page, lignes) */
+  --dur-3:200ms;    /* déplacements (feuille, panneau, liste, barre) */
+  --ease-steps:steps(2, end);           /* les objets qui claquent */
+  --ease-out:cubic-bezier(.2,.9,.3,1);  /* le déplacement doux */
 }
 
 html[data-theme="dark"]{

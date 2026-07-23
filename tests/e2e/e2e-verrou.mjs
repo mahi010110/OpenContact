@@ -1,7 +1,7 @@
 /* E2E P1 : création du verrou, scellement, rechargement → écran
    verrouillé, mauvais code, bon code, re-authentification.
    390×844 (tactile) puis 1280×800, thème clair puis sombre. */
-import { chromium, chromiumPath, ROOT, SHOTS } from './outils.mjs';
+import { chromium, chromiumPath, ROOT, SHOTS, ouvrirReglages } from './outils.mjs';
 import http from 'http';
 import { readFile, stat } from 'fs/promises';
 import path from 'path';
@@ -34,7 +34,7 @@ page.on('pageerror', e => errors.push(String(e)));
 
 /* --- 1. sans verrou : Moi montre la ligne sobre --- */
 await page.goto(base + '/#/moi', { waitUntil: 'load' });
-await page.waitForSelector('#moiVerrou');
+await ouvrirReglages(page);
 const label = await page.textContent('#view-moi .ec-row .ec-sub');
 if (!/non protégé/.test(label)) fail('étiquette attendue « non protégé », vu : ' + label);
 await snap(page, 'moi-non-protege');
@@ -44,7 +44,7 @@ await page.evaluate(() => {
   localStorage.setItem('oc_data_v3', JSON.stringify([{ id: 'seed1', name: 'Entreprise Témoin', city: 'Lille' }]));
 });
 await page.reload({ waitUntil: 'load' });
-await page.waitForSelector('#moiVerrou');
+await ouvrirReglages(page);
 
 /* --- 2. parcours de création --- */
 await page.click('#moiVerrou');
@@ -127,6 +127,7 @@ console.log('déverrouillage OK ; la donnée témoin est relue :',
 
 /* --- 5. re-authentification d'un geste sensible --- */
 await page.goto(base + '/#/moi');
+await ouvrirReglages(page);
 await page.click('#moiRestore');
 await page.waitForSelector('.modal-confirm .pad-k');
 await snap(page, 'reauth-restaurer');

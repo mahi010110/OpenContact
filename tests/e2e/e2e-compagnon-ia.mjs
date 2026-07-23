@@ -204,13 +204,12 @@ await page.evaluate(async code => {
 }, CODE);
 console.log('appairé ✓');
 
-/* ---------- Connexions : aucune famille grisée, chacune dit son chemin ----------
-   (openConnexions attend le code : on déclenche sans retenir sa promesse) */
-await page.evaluate(() => { import('./ui/connexions.js').then(m => m.openConnexions()); });
+/* ---------- Assistant IA : aucune famille grisée, chacune dit son chemin ----------
+   (#21 : l'IA a sa propre porte, openAssistantIA — elle attend le code,
+   on déclenche sans retenir sa promesse) */
+await page.evaluate(() => { import('./ui/connexions.js').then(m => m.openAssistantIA()); });
 await page.waitForSelector('#rqPad .pad-k');
 await tapIn('#rqPad', '280941');
-await page.waitForSelector('#cxAi');
-await page.click('#cxAi');
 await page.waitForSelector('[data-ai]');
 const familles = await page.$$eval('[data-ai]', els => els.map(b => ({
   id: b.dataset.ai, off: b.disabled, txt: b.textContent })));
@@ -294,11 +293,9 @@ await page.waitForFunction(() => !document.querySelector('.modal-w'), null, { ti
 await page.setViewportSize({ width: 390, height: 844 });
 await page.click('#btnTheme');
 await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
-await page.evaluate(() => { import('./ui/connexions.js').then(m => m.openConnexions()); });
+await page.evaluate(() => { import('./ui/connexions.js').then(m => m.openAssistantIA()); });
 await page.waitForSelector('#rqPad .pad-k');
 await tapIn('#rqPad', '280941');
-await page.waitForSelector('#cxAi');
-await page.click('#cxAi');
 await page.waitForSelector('[data-ai="chatgpt"]');
 await page.click('[data-ai="chatgpt"]');
 await page.waitForSelector('[data-m]', { timeout: 25000 });

@@ -82,6 +82,11 @@ bindBarSwipe(document.getElementById('toast'), hideToast);
 
 /* ---------- feuilles empilables ---------- */
 const stack = [];
+/* N8 : une seule surface modale à la fois. Sur desktop, une feuille
+   ouverte sur une autre REMPLACE sa fenêtre à l'écran — la précédente
+   attend, cachée, et revient à la fermeture. Seules les confirmations
+   (une question, un tap — modal-confirm) se posent par-dessus. */
+const wideModal = matchMedia('(min-width:901px)');
 function focusables(root){
   return Array.from(root.querySelectorAll(
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -127,10 +132,16 @@ export function openSheet(o){
     const i = stack.indexOf(rec);
     if (i >= 0) stack.splice(i, 1);
     ov.remove();
+    if (rec.behind){ rec.behind.ov.classList.remove('ov-behind'); rec.behind = null; }
     if (o.onClose) o.onClose(result);
     if (prevFocus && prevFocus.focus){ try { prevFocus.focus(); } catch (e) {} }
   }
   const rec = { ov, close, dismissible: o.dismissible !== false };
+  const below = stack[stack.length - 1] || null;
+  if (wideModal.matches && below && !(o.className || '').includes('modal-confirm')){
+    below.ov.classList.add('ov-behind');
+    rec.behind = below;
+  }
   stack.push(rec);
   ov.addEventListener('click', e => { if (e.target === ov && o.dismissible !== false) close(); });
   ov.querySelector('.x').addEventListener('click', () => close());
@@ -186,8 +197,78 @@ export function openSheet(o){
 }
 export function topSheet(){ return stack[stack.length - 1] || null; }
 
+/* ---------- panneau latéral (desktop) ----------
+   « on ouvre une piste à droite, la liste reste » (#10). Même structure
+   interne qu'une feuille (modal-h/b/f) : un écran s'y rend tel quel.
+   Un seul panneau à la fois — en ouvrir un autre remplace le premier,
+   après son garde-fou (null rendu tant qu'il retient). Non modal :
+   Échap le ferme quand aucune feuille n'est ouverte. */
+let panelRec = null;
+export function openPanel(o){
+  o = o || {};
+  if (panelRec && !panelRec.tryClose()) return null;
+  const aside = el(
+    `<aside class="spanel" role="complementary" aria-label="${esc(o.title || '')}">
+       <div class="modal ${o.className || ''}">
+         <div class="modal-h"><h2>${o.icon ? ic(o.icon, 'ic-14') : ''}<span>${esc(o.title || '')}</span></h2>
+           <button class="x" aria-label="Fermer">✕</button></div>
+         <div class="modal-b"></div>
+         <div class="modal-f" hidden></div>
+       </div>
+     </aside>`);
+  const body = aside.querySelector('.modal-b');
+  const foot = aside.querySelector('.modal-f');
+  if (typeof o.body === 'string') body.innerHTML = o.body;
+  else if (o.body) body.append(o.body);
+  let closed = false;
+  function close(result, force){
+    if (closed) return;
+    if (!force && o.guard){
+      const g = o.guard();
+      if (g === false) return;
+      if (g && typeof g.then === 'function'){ g.then(ok => { if (ok) close(result, true); }); return; }
+    }
+    closed = true;
+    if (panelRec === rec) panelRec = null;
+    aside.remove();
+    if (o.onClose) o.onClose(result);
+  }
+  const rec = {
+    close,
+    /* vrai = la place est libre ; faux = garde-fou en cours (asynchrone) */
+    tryClose(){
+      if (closed) return true;
+      if (o.guard){
+        const g = o.guard();
+        if (g === false) return false;
+        if (g && typeof g.then === 'function'){ g.then(ok => { if (ok) close(undefined, true); }); return false; }
+      }
+      close(undefined, true);
+      return true;
+    }
+  };
+  panelRec = rec;
+  aside.querySelector('.x').addEventListener('click', () => close());
+  (document.querySelector('.main') || document.body).append(aside);
+  return {
+    ov: aside, body, close,
+    setTitle(t){ aside.querySelector('.modal-h h2 span').textContent = t; },
+    setFoot(content){
+      foot.innerHTML = '';
+      foot.hidden = content == null;
+      if (content == null) return;
+      if (typeof content === 'string') foot.innerHTML = content;
+      else foot.append(...[].concat(content));
+    }
+  };
+}
+export function closePanel(){ if (panelRec) panelRec.close(); }
+
 document.addEventListener('keydown', e => {
-  if (!stack.length) return;
+  if (!stack.length){
+    if (e.key === 'Escape' && panelRec){ e.preventDefault(); panelRec.close(); }
+    return;
+  }
   const top = stack[stack.length - 1];
   if (e.key === 'Escape'){ e.preventDefault(); if (top.dismissible) top.close(); return; }
   if (e.key !== 'Tab') return;
@@ -266,6 +347,35 @@ export function bindDeleteGesture(node, onDelete){
   node.addEventListener('click', e => {
     if (Date.now() - endedAt < 400){ e.stopPropagation(); e.preventDefault(); }
   }, true);
+}
+
+/* ---------- réorganisation douce d'une liste (#23) ----------
+   FLIP minimal : appeler AVANT le re-rendu (mémorise la position des
+   lignes par data-id), jouer le retour APRÈS — chaque ligne retrouvée
+   glisse de son ancienne place à la nouvelle. transform seulement,
+   transition CSS ; reduced-motion et longues listes = rien. */
+export function softReorder(sel){
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) return () => {};
+  const nodes = document.querySelectorAll(sel);
+  if (!nodes.length || nodes.length > 60) return () => {};
+  const old = new Map();
+  nodes.forEach(n => { if (n.dataset.id) old.set(n.dataset.id, n.getBoundingClientRect()); });
+  return () => {
+    document.querySelectorAll(sel).forEach(n => {
+      const was = n.dataset.id && old.get(n.dataset.id);
+      if (!was) return;
+      const now = n.getBoundingClientRect();
+      const dx = was.left - now.left, dy = was.top - now.top;
+      if (!dx && !dy) return;
+      n.style.transition = 'none';
+      n.style.transform = `translate(${dx}px,${dy}px)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        n.style.transition = 'transform var(--dur-3) var(--ease-out)';
+        n.style.transform = '';
+        n.addEventListener('transitionend', () => { n.style.transition = ''; }, { once: true });
+      }));
+    });
+  };
 }
 
 /* confirmation simple — remplace confirm() natif */

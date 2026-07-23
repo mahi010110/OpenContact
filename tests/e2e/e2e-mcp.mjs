@@ -273,8 +273,8 @@ await canalPret();
 
 /* ---------- 10-11 : la PWA la rapporte, la garde scellée, la retrouve ---------- */
 await page.evaluate(async () => (await import('./ui/propositions.js')).reconcileProposals());
-await page.waitForSelector('#tdProps', { timeout: 15000 });
-ok(/2 pistes/.test(await page.textContent('#tdProps')), 'chip d’Aujourd’hui');
+await page.waitForSelector('#tdTriage', { timeout: 15000 });
+ok(/À trier\s*2/.test((await page.textContent('#tdTriage')).replace(/\s+/g, ' ')), 'ligne « À trier » d’Aujourd’hui (#10)');
 const scelle = await page.evaluate(async () => {
   const db = await new Promise((res, rej) => {
     const rq = indexedDB.open('oc_kv_v1', 1);
@@ -293,19 +293,19 @@ ok(scelle === 'OCV1.', 'proposition scellée au repos, vu : ' + scelle);
 /* rechargement + verrouillage/déverrouillage : rien ne se perd */
 await page.reload({ waitUntil: 'load' });
 await deverrouiller();
-await page.waitForSelector('#tdProps', { timeout: 15000 });
+await page.waitForSelector('#tdTriage', { timeout: 15000 });
 await page.waitForTimeout(300);
 await page.screenshot({ path: SHOTS + '/96-mcp-chip-aujourdhui.png' });
 console.log('proposition scellée, retrouvée après rechargement + kill du Compagnon ✓');
 
 /* ---------- 12-15 : aperçu, décocher, fusion sûre, Annuler ---------- */
-await page.click('#tdProps');
+await page.click('#tdTriage');
 await page.waitForSelector('[data-sel]');
 ok(await page.$$eval('[data-sel]', els => els.length) === 2, '2 propositions à trier');
 /* fermer la feuille ne consomme pas */
 await page.click('.modal-f .btn-ghost:has-text("Annuler")');
-await page.waitForSelector('#tdProps');
-await page.click('#tdProps');
+await page.waitForSelector('#tdTriage');
+await page.click('#tdTriage');
 await page.waitForSelector('[data-sel]');
 await page.waitForTimeout(300);
 await page.screenshot({ path: SHOTS + '/97-mcp-apercu.png' });
@@ -335,7 +335,11 @@ ok(etat.status === 'todo', 'le statut arrive vierge : ' + etat.status);
 ok(!/javascript:/i.test(etat.link), 'lien piégé non neutralisé : ' + etat.link);
 ok(etat.conf !== 'ok', 'confiance transmise à tort');
 ok(etat.pending === 0 && JSON.stringify(etat.done) === '["fusion"]', 'proposition non consommée après fusion');
-ok(!(await page.$('#tdProps')), 'chip encore là après fusion');
+/* la ligne « À trier » peut rester pour les pistes fraîchement reçues
+   (« Reçu de la promo », #10) — mais plus rien côté assistant */
+ok(await page.evaluate(async () =>
+  !(await import('./ui/propositions.js')).pendingProposals().length),
+  'proposition encore listée après fusion');
 /* le Compagnon n'a plus rien en attente (réglée) */
 const resteCompagnon = await page.evaluate(async () => {
   const st = await import('./engine/storage.js');
@@ -362,7 +366,7 @@ ok(rejeu.result.isError && /déjà été traitée/.test(rejeu.result.content[0].
   'rejeu après fusion accepté à tort');
 await page.evaluate(async () => (await import('./ui/propositions.js')).reconcileProposals());
 await new Promise(r => setTimeout(r, 1200));
-ok(!(await page.$('#tdProps')), 'le rejeu a recréé un aperçu');
+ok(!(await page.$('#tdTriage')), 'le rejeu a recréé un aperçu');
 
 /* ---------- écarter, avec retour en arrière ---------- */
 const P2 = { pistes: [{ name: 'Nouvelle Piste', city: 'Paris' }] };
@@ -370,16 +374,16 @@ const d2 = await c2.outil('proposer_pistes', P2);
 ok(!d2.result.isError, 'dépôt de la seconde proposition');
 await c2.fermer();
 await page.evaluate(async () => (await import('./ui/propositions.js')).reconcileProposals());
-await page.waitForSelector('#tdProps', { timeout: 15000 });
+await page.waitForSelector('#tdTriage', { timeout: 15000 });
 
 /* ---------- mobile 390×844, thème sombre, cibles 44 px ---------- */
 await page.setViewportSize({ width: 390, height: 844 });
 await page.click('#btnTheme');
 await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
-await page.waitForSelector('#tdProps');
+await page.waitForSelector('#tdTriage');
 await page.waitForTimeout(300);
 await page.screenshot({ path: SHOTS + '/98-mcp-mobile-sombre.png' });
-await page.click('#tdProps');
+await page.click('#tdTriage');
 await page.waitForSelector('[data-sel]');
 const tailles = await page.evaluate(() => {
   const h = s => Math.round(document.querySelector(s)?.getBoundingClientRect().height || 0);
@@ -392,9 +396,9 @@ await page.screenshot({ path: SHOTS + '/99-mcp-apercu-mobile-sombre.png' });
 /* écarter — puis retour en arrière par la barre Annuler */
 await page.click('#rcDiscard');
 await page.waitForSelector('.undo-bar');
-ok(!(await page.$('#tdProps')), 'chip encore là après écart');
+ok(!(await page.$('#tdTriage')), 'chip encore là après écart');
 await page.click('.undo-bar .btn-sm');
-await page.waitForSelector('#tdProps', { timeout: 10000 });
+await page.waitForSelector('#tdTriage', { timeout: 10000 });
 console.log('mobile sombre, cibles ≥ 44 px, écarter + retour ✓');
 
 /* ---------- 17 : révocation locale immédiate ---------- */
